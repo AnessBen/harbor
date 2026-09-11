@@ -52,7 +52,14 @@ type IdRanker = {
   enabledPrefixes: string[];
 };
 
-function makeIdRanker(animeIdPriority: AnimeIdPriorityEntry[]): IdRanker {
+const NO_OP_RANKER: IdRanker = {
+  priorityOf: () => 0,
+  sortByPriority: (ids) => ids,
+  enabledPrefixes: [],
+};
+
+function makeIdRanker(animeIdPriority: AnimeIdPriorityEntry[], isAnime: boolean): IdRanker {
+  if (!isAnime) return NO_OP_RANKER;
   const priorityOf = (id: string): number => {
     const idx = animeIdPriority.findIndex((entry) => id.startsWith(entry.prefix));
     return idx === -1 ? 999 : idx;
@@ -68,6 +75,7 @@ function makeIdRanker(animeIdPriority: AnimeIdPriorityEntry[]): IdRanker {
 export async function fetchAddonStreams(
   addons: Addon[],
   req: StreamRequest,
+  isAnime: boolean,
   signal: AbortSignal,
   onPartial?: (current: Stream[]) => void,
   onProgress?: (progress: AddonProgress) => void,
@@ -75,7 +83,7 @@ export async function fetchAddonStreams(
   ranks?: AddonRankFn | null,
   forced?: Array<{ base: string; id: string }>,
 ): Promise<Stream[]> {
-  const ranker = makeIdRanker(req.animeIdPriority);
+  const ranker = makeIdRanker(req.animeIdPriority, isAnime);
   const forcedBases = new Map((forced ?? []).map((f) => [f.base, f.id]));
   const namedTasks: Array<{ addonId: string; name: string; p: Promise<Stream[]>; plugin?: boolean }> = [];
   const skipped: string[] = [];
@@ -195,8 +203,8 @@ export async function fetchAddonStreams(
   return dedupeStreams(accumulated);
 }
 
-export function addonSupportsStream(addon: Addon, req: StreamRequest): boolean {
-  const ranker = makeIdRanker(req.animeIdPriority);
+export function addonSupportsStream(addon: Addon, req: StreamRequest, isAnime: boolean): boolean {
+  const ranker = makeIdRanker(req.animeIdPriority, isAnime);
   return pickId(addon, req.type, req.ids, ranker) != null;
 }
 
