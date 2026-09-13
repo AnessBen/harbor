@@ -128,7 +128,8 @@ const sweep: Record<string, string> = {
   "All times": "Toutes les périodes",
   "All video": "Toutes les vidéos",
   "All-time bests": "Les meilleurs de tous les temps",
-  "Also joins Harbor's Discord server.": "Rejoint également le serveur Discord de Harbor.",
+  "Linking your Discord account also joins you to Harbor's Discord server, so the bot can send your Backup keys privately.":
+    "Linking your Discord account also joins you to Harbor's Discord server, so the bot can send your Backup keys privately.",
   "Always re-encode when casting": "Toujours réencoder lors du cast",
   "Always stream P2P": "Toujours diffuser en P2P",
   Amber: "Ambre",
@@ -601,7 +602,8 @@ const sweep: Record<string, string> = {
   "Favour titles from where you are": "Privilégier les titres disponibles là où vous êtes",
   "Favour titles from your region on Home": "Privilégier sur l’accueil les titres de votre région",
   Feishin: "Feishin",
-  "Fetches a small public test file over P2P, then reports UDP and HTTPS egress, DHT bootstrap and tracker reachability step by step.": "Télécharge un petit fichier de test public en P2P, puis indique étape par étape l’état des connexions sortantes UDP et HTTPS, de l’amorçage DHT et de l’accessibilité des trackers.",
+  "Fetches a small public test file over P2P, then reports UDP and HTTPS egress, DHT bootstrap and tracker reachability step by step.":
+    "Télécharge un petit fichier de test public en P2P, puis indique étape par étape l’état des connexions sortantes UDP et HTTPS, de l’amorçage DHT et de l’accessibilité des trackers.",
   "Filename hidden": "Nom du fichier masqué",
   "Filename shown": "Nom du fichier affiché",
   "Files smaller than this are skipped when scanning a folder.":
@@ -695,7 +697,8 @@ const sweep: Record<string, string> = {
   "Guide data only": "Données du guide uniquement",
   Guided: "Guidé",
   "Hall of Fame": "Temple de la renommée",
-  "Handles P2P playback and transcoding for this machine.": "Gère la lecture P2P et le transcodage sur cet appareil.",
+  "Handles P2P playback and transcoding for this machine.":
+    "Gère la lecture P2P et le transcodage sur cet appareil.",
   "Harbor accepted that but returned no session. Try again.":
     "Harbor a accepté la demande, mais n’a renvoyé aucune session. Réessayez.",
   "Harbor account linked as {name}": "Compte Harbor associé en tant que {name}",
@@ -912,7 +915,8 @@ const sweep: Record<string, string> = {
   "Listening for Harbors": "Détection des Harbor",
   Lists: "Listes",
   "Live action": "Prises de vues réelles",
-  "Live state of Harbor's own P2P engine on this machine.": "État en direct du moteur P2P intégré de Harbor sur cet appareil.",
+  "Live state of Harbor's own P2P engine on this machine.":
+    "État en direct du moteur P2P intégré de Harbor sur cet appareil.",
   "Live TV source": "Source de TV en direct",
   "Live TV sources": "Sources de TV en direct",
   "Loading more collections...": "Chargement de collections supplémentaires...",
@@ -1073,7 +1077,8 @@ const sweep: Record<string, string> = {
     "Aucun appareil ne s’est encore connecté. Votre téléphone est peut-être sur un réseau invité, ou ce téléviseur n’est peut-être pas sur le même réseau que votre téléphone.",
   "Nothing here yet.": "Rien ici pour le moment.",
   "Nothing in {genre} right now.": "Aucun contenu dans {genre} pour le moment.",
-  "Nothing left to confirm while P2P is disabled.": "Plus rien à confirmer tant que le P2P est désactivé.",
+  "Nothing left to confirm while P2P is disabled.":
+    "Plus rien à confirmer tant que le P2P est désactivé.",
   "Nothing on your TV changes until you confirm you have saved this.":
     "Rien ne changera sur votre téléviseur tant que vous n’aurez pas confirmé avoir enregistré ceci.",
   "Nothing selected. Harbor will not load a subtitle on its own.":
@@ -1127,7 +1132,8 @@ const sweep: Record<string, string> = {
   "Open this page by scanning the code on your TV's setup screen.":
     "Ouvrez cette page en scannant le code affiché sur l’écran de configuration de votre TV.",
   "Open Trakt profile": "Ouvrir le profil Trakt",
-  "Opens the folder holding the DHT cache and active transfer data.": "Ouvre le dossier contenant le cache DHT et les données des transferts actifs.",
+  "Opens the folder holding the DHT cache and active transfer data.":
+    "Ouvre le dossier contenant le cache DHT et les données des transferts actifs.",
   "Opens the free signup page": "Ouvre la page d’inscription gratuite",
   "Opens your API settings page": "Ouvre la page des paramètres de votre API",
   "OpenSubtitles API key": "Clé API OpenSubtitles",
@@ -1178,7 +1184,8 @@ const sweep: Record<string, string> = {
   "Paste your v3 API key": "Collez votre clé API v3",
   PBS: "PBS",
   Peacock: "Peacock",
-  "Peers, speed and progress on the player while a P2P stream plays. Sits top left, clear of the exit button.": "Pairs, vitesse et progression sur le lecteur pendant la lecture d’un flux P2P. S’affichent en haut à gauche, à l’écart du bouton de sortie.",
+  "Peers, speed and progress on the player while a P2P stream plays. Sits top left, clear of the exit button.":
+    "Pairs, vitesse et progression sur le lecteur pendant la lecture d’un flux P2P. S’affichent en haut à gauche, à l’écart du bouton de sortie.",
   "People from the week's hottest titles, weighted by what is being talked about.":
     "Personnes issues des titres les plus populaires de la semaine, pondérées selon les sujets qui font parler.",
   Philo: "Philo",
@@ -1680,7 +1687,8 @@ const sweep: Record<string, string> = {
     "La ligne pointillée représente une compression uniforme de toute la plage. Une courbe qui reste haute conserve des tons moyens percutants et ne compresse les hautes lumières que tardivement ; une courbe plus basse les atténue plus tôt pour un rendu plus doux.",
   "The editor is a working copy of the player. Click any control on it to move, resize, restyle or hide that control.":
     "L’éditeur est une copie fonctionnelle du lecteur. Cliquez sur une commande pour la déplacer, la redimensionner, modifier son style ou la masquer.",
-  "The engine listens on a local port and joins the DHT to find peers. Active transfers are the streams it currently has open.": "Le moteur écoute sur un port local et rejoint la DHT pour trouver des pairs. Les transferts actifs correspondent aux flux qu’il a actuellement ouverts.",
+  "The engine listens on a local port and joins the DHT to find peers. Active transfers are the streams it currently has open.":
+    "Le moteur écoute sur un port local et rejoint la DHT pour trouver des pairs. Les transferts actifs correspondent aux flux qu’il a actuellement ouverts.",
   "The key is saved on this device only.": "La clé est enregistrée uniquement sur cet appareil.",
   "The label looks high (1080p / 4K) but doesn't match expected file size or release window. Often a CAM or TS rebadged. Try a Theater Capture stream or check the source list before committing.":
     "La qualité affichée semble élevée (1080p / 4K), mais ne correspond ni à la taille de fichier attendue ni à la fenêtre de sortie. Il s’agit souvent d’un CAM ou d’un TS réétiqueté. Essayez un flux de capture en salle ou vérifiez la liste des sources avant de vous lancer.",
