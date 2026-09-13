@@ -12,6 +12,8 @@ function ensureObserver(): IntersectionObserver {
       for (const e of entries) {
         const set = subs.get(e.target);
         if (!set) continue;
+        // Snapshot: callbacks can subscribe or unsubscribe during delivery.
+        // oxlint-disable-next-line unicorn/no-useless-spread
         for (const cb of [...set]) cb(e.isIntersecting);
       }
     },
@@ -43,7 +45,10 @@ export function observe(el: Element, cb: Callback): () => void {
 }
 
 type EntryCallback = (entry: IntersectionObserverEntry) => void;
-type MarginObserver = { observer: IntersectionObserver; subs: WeakMap<Element, Set<EntryCallback>> };
+type MarginObserver = {
+  observer: IntersectionObserver;
+  subs: WeakMap<Element, Set<EntryCallback>>;
+};
 const viewportObservers = new Map<string, MarginObserver>();
 const rootObservers = new WeakMap<Element, Map<string, MarginObserver>>();
 const scrollRoots = new WeakMap<Element, Element | null>();
@@ -88,6 +93,8 @@ function marginObserver(rootMargin: string, root: Element | null): MarginObserve
       for (const e of entries) {
         const set = subs.get(e.target);
         if (!set) continue;
+        // Snapshot: callbacks can subscribe or unsubscribe during delivery.
+        // oxlint-disable-next-line unicorn/no-useless-spread
         for (const cb of [...set]) cb(e);
       }
     },
@@ -135,6 +142,8 @@ export function observeResize(el: Element, cb: ResizeCallback): () => void {
       for (const e of entries) {
         const set = resizeSubs.get(e.target);
         if (!set) continue;
+        // Snapshot: callbacks can subscribe or unsubscribe during delivery.
+        // oxlint-disable-next-line unicorn/no-useless-spread
         for (const fn of [...set]) fn(e.contentRect);
       }
     });
@@ -160,10 +169,7 @@ export function observeResize(el: Element, cb: ResizeCallback): () => void {
   };
 }
 
-export function useInViewport(
-  ref: RefObject<Element | null>,
-  initial = false,
-): boolean {
+export function useInViewport(ref: RefObject<Element | null>, initial = false): boolean {
   const [inView, setInView] = useState(initial);
   useEffect(() => {
     const el = ref.current;
@@ -174,9 +180,7 @@ export function useInViewport(
 }
 
 export function usePageVisible(): boolean {
-  const [visible, setVisible] = useState(
-    typeof document === "undefined" ? true : !document.hidden,
-  );
+  const [visible, setVisible] = useState(typeof document === "undefined" ? true : !document.hidden);
   useEffect(() => {
     const onChange = () => setVisible(!document.hidden);
     document.addEventListener("visibilitychange", onChange);
