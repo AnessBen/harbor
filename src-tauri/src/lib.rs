@@ -14,6 +14,7 @@ mod ebook_tts;
 mod fonts;
 mod gamepad;
 mod http_fetch;
+mod http_redirect;
 mod local_lib;
 mod media_server;
 mod power;
@@ -54,6 +55,8 @@ mod cast_server;
 mod cf_relay;
 #[cfg(desktop)]
 mod cf_solver;
+#[cfg(desktop)]
+mod desktop_notify;
 #[cfg(desktop)]
 mod discord_rp;
 #[cfg(desktop)]
@@ -99,8 +102,6 @@ mod sub_extract;
 mod subsync;
 #[cfg(desktop)]
 mod svp;
-#[cfg(windows)]
-mod win_graphics;
 #[cfg(desktop)]
 mod thumbs;
 #[cfg(desktop)]
@@ -109,6 +110,8 @@ mod trailer;
 mod tray;
 #[cfg(desktop)]
 mod webview_helpers;
+#[cfg(windows)]
+mod win_graphics;
 
 // http_fetch calls crate::cf_solver on the challenge path, and the real solver
 // needs a hidden webview window that Android does not have. Rather than edit
@@ -286,6 +289,9 @@ pub(crate) fn force_show_foreground(window: &tauri::WebviewWindow) {
 const HARBOR_MAXGUARD_SUBCLASS_ID: usize = 0x4842_4D47;
 
 #[cfg(windows)]
+static MAIN_IN_SIZE_MOVE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+#[cfg(windows)]
 unsafe extern "system" fn maxguard_subclass_proc(
     hwnd: windows::Win32::Foundation::HWND,
     msg: u32,
@@ -298,13 +304,19 @@ unsafe extern "system" fn maxguard_subclass_proc(
         GetMonitorInfoW, MonitorFromWindow, MONITORINFO, MONITOR_DEFAULTTONEAREST,
     };
     use windows::Win32::UI::Shell::DefSubclassProc;
-    use windows::Win32::UI::WindowsAndMessaging::{MINMAXINFO, WM_ERASEBKGND, WM_GETMINMAXINFO};
-    // Claim the erase. The WebView covers the whole client area, so nothing
-    // needs painting underneath it, but Windows still fills the frame with the
-    // class brush on every move and resize tick. The WebView and the mpv
-    // surface both repaint a beat later, and that gap is the black strobe over
-    // the video while the window is being dragged.
-    if msg == WM_ERASEBKGND {
+    use windows::Win32::UI::WindowsAndMessaging::{
+        MINMAXINFO, WM_ENTERSIZEMOVE, WM_ERASEBKGND, WM_EXITSIZEMOVE, WM_GETMINMAXINFO,
+        WM_NCDESTROY,
+    };
+    if msg == WM_ENTERSIZEMOVE {
+        MAIN_IN_SIZE_MOVE.store(true, std::sync::atomic::Ordering::Relaxed);
+    } else if msg == WM_EXITSIZEMOVE || msg == WM_NCDESTROY {
+        MAIN_IN_SIZE_MOVE.store(false, std::sync::atomic::Ordering::Relaxed);
+    }
+    // Suppress repeated erases only during an interactive move/resize, where
+    // the WebView and mpv repaint asynchronously. Outside that loop, let Tao
+    // paint the configured black background before transparent content appears.
+    if msg == WM_ERASEBKGND && MAIN_IN_SIZE_MOVE.load(std::sync::atomic::Ordering::Relaxed) {
         return windows::Win32::Foundation::LRESULT(1);
     }
     let res = DefSubclassProc(hwnd, msg, wparam, lparam);
@@ -647,6 +659,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_deep_link::init())
+        .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         .plugin(
@@ -821,6 +834,7 @@ pub fn run() {
             harbor_flush_done,
             harbor_startup_ready,
             close_aux_windows,
+            desktop_notify::send_clickable_notification,
             installer_handoff::handoff_probe,
             installer_handoff::handoff_stage,
             installer_handoff::handoff_launch,
@@ -959,6 +973,7 @@ pub fn run() {
             discord_rp::discord_set_presence,
             discord_rp::discord_clear,
             media_controls::media_controls_update,
+            media_controls::media_controls_seeked,
             media_controls::media_controls_clear,
             gamepad::gamepad_list,
             gamepad::gamepad_set_enabled,
