@@ -13,6 +13,7 @@ export type RememberedSub = {
   source?: string;
   lang?: string;
   title?: string;
+  trackId?: string;
   subId?: string;
   provider?: string;
   release?: string;
@@ -151,6 +152,7 @@ export function rememberedFromChoice(choice: SubChoiceInput): Omit<RememberedSub
     source,
     lang: choice.lang ?? undefined,
     title: choice.title,
+    trackId: choice.external || choice.imported ? undefined : choice.id,
     subId: choice.subId,
     provider: choice.provider,
     release: choice.release,

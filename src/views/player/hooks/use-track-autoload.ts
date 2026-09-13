@@ -502,6 +502,7 @@ export function useTrackAutoload(params: {
   const subRestoreAddRef = useRef<{ key: string; pending: boolean } | null>(null);
   const subRestoreTimerRef = useRef<{ id: number; dueAt: number } | null>(null);
   const [subRestoreTick, setSubRestoreTick] = useState(0);
+  const embeddedRestoreRef = useRef<string | null>(null);
   useEffect(() => {
     subRestoreWaitRef.current = null;
     subRestoreLogRef.current = null;
@@ -692,13 +693,22 @@ export function useTrackAutoload(params: {
     }
 
     if (snap.subtitleTracks.length === 0) return;
+    if (embeddedRestoreRef.current === src.url) return;
+    embeddedRestoreRef.current = src.url;
+    const byTrackId = remembered.trackId
+      ? snap.subtitleTracks.find(
+          (t) => !t.external && t.id === remembered.trackId && sameLang(t.lang, remembered.lang),
+        )
+      : undefined;
     const want =
+      byTrackId ??
       snap.subtitleTracks.find(
         (t) =>
           !t.external &&
           sameLang(t.lang, remembered.lang) &&
           (!remembered.title || t.title === remembered.title),
-      ) ?? snap.subtitleTracks.find((t) => !t.external && sameLang(t.lang, remembered.lang));
+      ) ??
+      snap.subtitleTracks.find((t) => !t.external && sameLang(t.lang, remembered.lang));
     if (want) {
       if (!want.selected) bridge.setSubtitleTrack(want.id);
       autoSubIdRef.current = want.id;
