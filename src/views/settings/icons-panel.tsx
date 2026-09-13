@@ -58,6 +58,7 @@ const PLAYER_URL: Glob = {
   "/player-icons/song-id.svg": "/player-icons/song-id.svg",
   "/player-icons/speed.svg": "/player-icons/speed.svg",
   "/player-icons/subtitle.svg": "/player-icons/subtitle.svg",
+  "/player-icons/subtitle-fps.svg": "/player-icons/subtitle-fps.svg",
   "/player-icons/volume--mute.svg": "/player-icons/volume--mute.svg",
   "/player-icons/volume.svg": "/player-icons/volume.svg",
 };
@@ -100,6 +101,7 @@ const NAMES: Record<string, string> = {
   "mark-unwatched": "Mark unwatched",
   "mark-watched": "Mark watched",
   "customize-subtitles": "Customize subtitles",
+  "subtitle-fps": "Subtitle FPS",
   "all-addons": "All addons",
   "play-filled": "Play",
   "skip-fwd": "Skip forward",
