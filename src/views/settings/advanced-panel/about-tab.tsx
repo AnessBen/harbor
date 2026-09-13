@@ -1,4 +1,5 @@
 import { ActionRow } from "./action-row";
+import { ExperimentalChangelog } from "@/components/update/experimental-changelog";
 import { useOnboarding } from "@/lib/onboarding";
 import { Check, RotateCw } from "../icons";
 import { useEffect, useState } from "react";
@@ -21,11 +22,9 @@ export function AboutTab() {
         <OnboardingRow />
       </Section>
 
-      <Section
-        title={t("About")}
-        subtitle={t("Build identity. Useful when filing a bug report.")}
-      >
+      <Section title={t("About")} subtitle={t("Build identity. Useful when filing a bug report.")}>
         <AboutRow />
+        <ExperimentalChangelog />
       </Section>
 
       <LegalDisclaimer />

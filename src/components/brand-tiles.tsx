@@ -11,7 +11,10 @@ import { useSettings } from "@/lib/settings";
 import { useView } from "@/lib/view";
 import { Row } from "./row";
 
-export function useBrandRanking(kind: BrandKind, scope: BrandScope = "top"): { brands: BrandSummary[]; loading: boolean } {
+export function useBrandRanking(
+  kind: BrandKind,
+  scope: BrandScope = "top",
+): { brands: BrandSummary[]; loading: boolean } {
   const [brands, setBrands] = useState<BrandSummary[]>(() => tmdbBrandRankingCached(kind, scope));
   const [loading, setLoading] = useState(brands.length === 0);
   useEffect(() => {
@@ -61,8 +64,10 @@ export function BrandTile({ brand, facts }: { brand: BrandSummary; facts?: strin
   const t = useT();
   const { openFilter } = useView();
   const [logoBroken, setLogoBroken] = useState(false);
-  const open = () => openFilter({ kind: brand.kind, mediaType: brand.media, name: brand.name, id: brand.id });
-  const line = facts ?? (brand.count > 0 ? t("{n} titles", { n: brand.count.toLocaleString() }) : "");
+  const open = () =>
+    openFilter({ kind: brand.kind, mediaType: brand.media, name: brand.name, id: brand.id });
+  const line =
+    facts ?? (brand.count > 0 ? t("{n} titles", { n: brand.count.toLocaleString() }) : "");
   const showLogo = !!brand.logo && !logoBroken;
   return (
     <button
@@ -114,7 +119,9 @@ export function BrandTile({ brand, facts }: { brand: BrandSummary; facts?: strin
       </div>
       <div className="absolute inset-x-5 bottom-4 flex items-end justify-between gap-3">
         <span className="min-w-0">
-          <span className="block truncate text-[14px] font-semibold text-white/95">{brand.name}</span>
+          <span className="block truncate text-[14px] font-semibold text-white/95">
+            {brand.name}
+          </span>
           {line && <span className="block text-[12px] text-white/65">{line}</span>}
         </span>
         <span

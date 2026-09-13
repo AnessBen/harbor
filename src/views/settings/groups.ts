@@ -63,7 +63,7 @@ export const TOP_GROUPS: TopGroup[] = [
     section: "DEVICES",
     label: "Controls & devices",
     sub: "Keyboard, controller, remotes, and the big-screen build.",
-    children: ["hotkeys", "controllers", "remotes", "tv"],
+    children: ["hotkeys", "controllers", "remotes", "tv", "bigPicture"],
   },
   {
     id: "system",

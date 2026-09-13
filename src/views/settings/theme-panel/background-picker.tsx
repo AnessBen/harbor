@@ -140,10 +140,7 @@ export function BackgroundPicker({
           {busy ? t("Compressing…") : imageData ? t("Replace image") : t("Choose image")}
         </button>
         {imageData && !busy && (
-          <button
-            onClick={() => onImageChange(null)}
-            className={ROW_ACTION}
-          >
+          <button onClick={() => onImageChange(null)} className={ROW_ACTION}>
             <Trash2 size={18} strokeWidth={2.2} />
             {t("Remove")}
           </button>

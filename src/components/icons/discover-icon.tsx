@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { useReducedMotion } from "@/lib/use-reduced-motion";
 
 const RING =
   "m256.003,0C114.845,0-.002,114.84-.002,256.002s114.847,255.998,256.005,255.998,255.999-114.84,255.999-255.998S397.162,0,256.003,0Zm0,473.552c-119.963,0-217.551-97.592-217.551-217.551S136.041,38.448,256.003,38.448s217.544,97.595,217.544,217.554-97.588,217.551-217.544,217.551Z";
@@ -16,12 +17,26 @@ function currentAngle(el: Element): number {
 }
 
 export function DiscoverIcon({ active = false }: { active?: boolean }) {
+  const reducedMotion = useReducedMotion();
   const needleRef = useRef<HTMLSpanElement>(null);
   const spinRef = useRef<Animation | null>(null);
+  useEffect(
+    () => () => {
+      spinRef.current?.cancel();
+      spinRef.current = null;
+    },
+    [],
+  );
 
   useEffect(() => {
     const el = needleRef.current;
     if (!el) return;
+    if (reducedMotion) {
+      spinRef.current?.cancel();
+      spinRef.current = null;
+      el.style.transform = "";
+      return;
+    }
     if (active) {
       spinRef.current?.cancel();
       el.style.transform = "";
@@ -44,7 +59,7 @@ export function DiscoverIcon({ active = false }: { active?: boolean }) {
     );
     settle.onfinish = () => settle.cancel();
     return () => settle.cancel();
-  }, [active]);
+  }, [active, reducedMotion]);
 
   return (
     <span className="relative inline-flex leading-none">

@@ -17,7 +17,7 @@ import { SEEK_STEP_OPTIONS } from "@/lib/seek-step";
 import { useSettings } from "@/lib/settings";
 import { useT } from "@/lib/i18n";
 import { Dropdown } from "@/components/dropdown";
-import { Section, ToggleRow, Segmented} from "./shared";
+import { Section, ToggleRow } from "./shared";
 import { ModalButton, ROW_DESC, SettingRow, SettingsModal } from "./kit";
 import { SSection } from "./ui";
 import { usePageActions } from "./page-actions";
@@ -50,11 +50,15 @@ export function HotkeysPanel() {
   const { settings, update } = useSettings();
   const overrides = settings.hotkeys ?? {};
   const [capturing, setCapturing] = useState<HotkeyId | null>(null);
-  const [conflict, setConflict] = useState<{ target: HotkeyId; existing: HotkeyId; binding: string } | null>(null);
+  const [conflict, setConflict] = useState<{
+    target: HotkeyId;
+    existing: HotkeyId;
+    binding: string;
+  } | null>(null);
   const [resetOpen, setResetOpen] = useState(false);
 
   const grouped = useMemo(() => {
-    const scopes: Record<HotkeyScope, HotkeyDef[]> = { Global: [], Player: [] };
+    const scopes: Record<HotkeyScope, HotkeyDef[]> = { Global: [], Player: [], Manga: [] };
     for (const def of HOTKEYS) scopes[def.scope].push(def);
     return scopes;
   }, []);
@@ -82,7 +86,10 @@ export function HotkeysPanel() {
       if (isModifierOnly(e)) return;
       const binding = eventToBinding(e);
       const dupe = HOTKEYS.find(
-        (h) => h.id !== capturing && h.scope === HOTKEY_MAP[capturing].scope && effectiveBinding(h.id, overrides) === binding,
+        (h) =>
+          h.id !== capturing &&
+          h.scope === HOTKEY_MAP[capturing].scope &&
+          effectiveBinding(h.id, overrides) === binding,
       );
       if (dupe) {
         setConflict({ target: capturing, existing: dupe.id, binding });
@@ -129,17 +136,30 @@ export function HotkeysPanel() {
         onClose={() => setResetOpen(false)}
         title={t("Reset keyboard shortcuts?")}
         sub={t("Your {n} custom shortcuts will return to their defaults.", { n: overrideCount })}
-        actions={<>
-          <ModalButton ghost onClick={() => setResetOpen(false)}>{t("Keep my shortcuts")}</ModalButton>
-          <ModalButton onClick={() => { resetAll(); setResetOpen(false); }}>{t("Reset shortcuts")}</ModalButton>
-        </>}
+        actions={
+          <>
+            <ModalButton ghost onClick={() => setResetOpen(false)}>
+              {t("Keep my shortcuts")}
+            </ModalButton>
+            <ModalButton
+              onClick={() => {
+                resetAll();
+                setResetOpen(false);
+              }}
+            >
+              {t("Reset shortcuts")}
+            </ModalButton>
+          </>
+        }
       >
         <p className={ROW_DESC}>{t("Playback and navigation preferences stay as they are.")}</p>
       </SettingsModal>
       {tab === "keys" && (
         <>
           <p className={`max-w-[70ch] ${ROW_DESC}`}>
-            {t("Click any binding to rebind it. Press Esc while capturing to cancel. Letters ignore Shift (so K and Shift+K trigger the same action).")}
+            {t(
+              "Click any binding to rebind it. Press Esc while capturing to cancel. Letters ignore Shift (so K and Shift+K trigger the same action).",
+            )}
           </p>
 
           {(Object.keys(grouped) as HotkeyScope[]).map((scope) => {
@@ -156,7 +176,13 @@ export function HotkeysPanel() {
               <Section
                 key={scope}
                 title={t(scope)}
-                subtitle={scope === "Player" ? t("Inside the playback view.") : t("Anywhere in Harbor.")}
+                subtitle={
+                  scope === "Player"
+                    ? t("Inside the playback view.")
+                    : scope === "Manga"
+                      ? t("In the manga reader.")
+                      : t("Anywhere in Harbor.")
+                }
               >
                 {Array.from(subgroups.entries()).map(([groupName, items]) => (
                   <SSection key={groupName} label={t(groupName)}>
@@ -167,24 +193,31 @@ export function HotkeysPanel() {
                         binding={effectiveBinding(def.id, overrides)}
                         isCustom={def.id in overrides}
                         isCapturing={capturing === def.id}
-                        conflict={conflict?.target === def.id
-                          ? t("{key} is used for {action}. Press another key or cancel.", {
-                              key: formatBindingForDisplay(conflict.binding),
-                              action: t(HOTKEY_MAP[conflict.existing].label),
-                            })
-                          : undefined}
+                        conflict={
+                          conflict?.target === def.id
+                            ? t("{key} is used for {action}. Press another key or cancel.", {
+                                key: formatBindingForDisplay(conflict.binding),
+                                action: t(HOTKEY_MAP[conflict.existing].label),
+                              })
+                            : undefined
+                        }
                         onStartCapture={() => {
                           setConflict(null);
                           setCapturing(def.id);
                         }}
                         onReset={() => setBinding(def.id, null)}
-                        onCancel={() => { setCapturing(null); setConflict(null); }}
+                        onCancel={() => {
+                          setCapturing(null);
+                          setConflict(null);
+                        }}
                       />
                     ))}
                     {scope === "Global" && groupName === "Interface" && (
                       <ReadOnlyHotkeyRow
                         label={t("Adjust interface scale with wheel")}
-                        description={t("Hold Ctrl or Cmd and scroll to resize Harbor's interface smoothly. This one cannot be changed.")}
+                        description={t(
+                          "Hold Ctrl or Cmd and scroll to resize Harbor's interface smoothly. This one cannot be changed.",
+                        )}
                         binding="Ctrl / ⌘ + Scroll"
                       />
                     )}
@@ -193,48 +226,27 @@ export function HotkeysPanel() {
               </Section>
             );
           })}
-
         </>
       )}
       {tab === "behaviour" && (
         <>
           <Section
-            title={t("Big Picture")}
-            subtitle={t("A full screen, couch friendly Harbor for TVs, handhelds and big monitors.")}
+            title={t("Navigation")}
+            subtitle={t("Move focus with the keyboard, like a TV remote.")}
           >
             <ToggleRow
-              label={t("Show the Big Picture button")}
-              sub={t("Puts a Big Picture button in the top bar so you can switch to the ten-foot layout in one click. The keyboard shortcut keeps working either way.")}
-              value={settings.bigPictureButton}
-              onChange={(bigPictureButton) => update({ bigPictureButton })}
-            />
-            <SettingRow
-              label={t("Player controls in Big Picture")}
-              desc={t("Ten-foot uses large controls built for a remote across the room. Desktop keeps the same player you use in the normal window, which is quicker with a mouse and keyboard.")}
-            >
-              <Segmented
-                value={settings.bigPicturePlayerUi}
-                options={[
-                  { value: "tenFoot", label: t("Ten-foot") },
-                  { value: "desktop", label: t("Desktop") },
-                ]}
-                onChange={(v) =>
-                  update({ bigPicturePlayerUi: v as typeof settings.bigPicturePlayerUi })
-                }
-              />
-            </SettingRow>
-          </Section>
-
-          <Section title={t("Navigation")} subtitle={t("Move focus with the keyboard, like a TV remote.")}>
-            <ToggleRow
               label={t("TV navigation")}
-              sub={t("Use the arrow keys and Enter to move focus through Harbor. Turn this off to keep arrow keys free and disable focus navigation everywhere.")}
+              sub={t(
+                "Use the arrow keys and Enter to move focus through Harbor. Turn this off to keep arrow keys free and disable focus navigation everywhere.",
+              )}
               value={settings.tvNavigation}
               onChange={(v) => update({ tvNavigation: v })}
             />
             <ToggleRow
               label={t("TV navigation in player")}
-              sub={t("Use arrows and Select/Space to move focus between player controls. Turn this off to keep arrows for seeking and Space for play/pause.")}
+              sub={t(
+                "Use arrows and Select/Space to move focus between player controls. Turn this off to keep arrows for seeking and Space for play/pause.",
+              )}
               value={settings.playerTvNavigation}
               onChange={(v) => update({ playerTvNavigation: v })}
               lockReason={
@@ -248,13 +260,17 @@ export function HotkeysPanel() {
           <Section title={t("Behavior")} subtitle={t("How keys behave during playback.")}>
             <ToggleRow
               label={t("Esc exits fullscreen first")}
-              sub={t("When in fullscreen, Esc leaves fullscreen instead of closing the player. Press Esc again to close. Turn off to make Esc always close.")}
+              sub={t(
+                "When in fullscreen, Esc leaves fullscreen instead of closing the player. Press Esc again to close. Turn off to make Esc always close.",
+              )}
               value={settings.playerEscExitsFullscreen}
               onChange={(v) => update({ playerEscExitsFullscreen: v })}
             />
             <ToggleRow
               label={t("Ask before leaving")}
-              sub={t("When Esc would close the player, show a quick confirm first. You can tick \"Don't ask me again\" in that prompt to always leave on Esc.")}
+              sub={t(
+                'When Esc would close the player, show a quick confirm first. You can tick "Don\'t ask me again" in that prompt to always leave on Esc.',
+              )}
               value={settings.playerConfirmLeave}
               onChange={(v) => update({ playerConfirmLeave: v })}
             />
@@ -268,7 +284,9 @@ export function HotkeysPanel() {
             />
             <SeekStepRow
               label={t("Short seek (Shift + arrows)")}
-              sub={t("A shorter jump on Shift plus the arrow keys, for nudging a few seconds at a time.")}
+              sub={t(
+                "A shorter jump on Shift plus the arrow keys, for nudging a few seconds at a time.",
+              )}
               back={settings.seekBackStepShortSec}
               forward={settings.seekForwardStepShortSec}
               onBack={(seekBackStepShortSec) => update({ seekBackStepShortSec })}
@@ -389,7 +407,11 @@ function HotkeyRow({
       desc={t(def.description)}
       warn={conflict}
     >
-      {isCapturing && <button type="button" onClick={onCancel} className={QUIET_ACTION}>{t("Cancel")}</button>}
+      {isCapturing && (
+        <button type="button" onClick={onCancel} className={QUIET_ACTION}>
+          {t("Cancel")}
+        </button>
+      )}
       {isCustom && !isCapturing && (
         <button type="button" onClick={onReset} className={QUIET_ACTION}>
           <RotateCcw size={17} strokeWidth={2.2} />

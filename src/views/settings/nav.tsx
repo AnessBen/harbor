@@ -72,6 +72,17 @@ function IconTvSettings(p: IconProps) {
   );
 }
 
+function IconBigPicture(p: IconProps) {
+  return (
+    <IconBase {...p}>
+      <rect x="2.5" y="4.5" width="19" height="12.5" rx="2.2" />
+      <path d="M8.5 20.5h7" />
+      <path d="M12 17v3.5" />
+      <path d="M10 8.6l4.1 2.5-4.1 2.5z" />
+    </IconBase>
+  );
+}
+
 function IconStorage(p: IconProps) {
   return (
     <IconBase {...p}>
@@ -696,6 +707,32 @@ const NAV_GROUPS: Array<{ heading: string | null; items: NavItem[] }> = [
           "from my computer",
         ],
       },
+      {
+        id: "bigPicture",
+        label: "Big Picture",
+        Icon: IconBigPicture,
+        keywords: [
+          "big picture",
+          "couch",
+          "ten foot",
+          "10 foot",
+          "fullscreen",
+          "full screen",
+          "monitor",
+          "laptop",
+          "handheld",
+          "steam deck",
+          "launch",
+          "auto start",
+          "interface sounds",
+          "overscan",
+          "mosaic",
+          "edge margin",
+          "big picture button",
+          "open big picture",
+          "play on boot",
+        ],
+      },
     ],
   },
   {
@@ -1255,6 +1292,33 @@ const SETTINGS_OPTIONS: SettingsOption[] = [
       "remote setup",
       "edit tv settings",
       "tv not signed in",
+    ],
+  },
+  {
+    label: "Open in Big Picture",
+    section: "bigPicture",
+    anchorTitle: "Launch",
+    keywords: [
+      "big picture",
+      "couch",
+      "ten foot",
+      "10 foot",
+      "fullscreen",
+      "full screen",
+      "monitor",
+      "handheld",
+      "steam deck",
+      "open big picture",
+      "big picture button",
+      "auto start",
+      "launch harbor",
+      "interface sounds",
+      "ui sounds",
+      "overscan",
+      "edge margin",
+      "mosaic",
+      "animated backdrop",
+      "20 percent",
     ],
   },
   {
@@ -4847,7 +4911,16 @@ const SETTINGS_OPTIONS: SettingsOption[] = [
     section: "p2p",
     tab: "engine",
     anchorTitle: "Power tools & diagnostics",
-    keywords: ["auto confirm", "consent prompt", "skip prompt", "p2p prompt", "uncached torrents", "p2p confirm", "skip torrent warning", "dont ask torrent"],
+    keywords: [
+      "auto confirm",
+      "consent prompt",
+      "skip prompt",
+      "p2p prompt",
+      "uncached torrents",
+      "p2p confirm",
+      "skip torrent warning",
+      "dont ask torrent",
+    ],
   },
   {
     label: "Copy diagnostics",
@@ -10805,59 +10878,82 @@ function SearchField({
   onSubmit,
 }: {
   query: string;
-  setQuery: (v: string) => void;
+  setQuery: (q: string) => void;
   onSubmit: () => void;
 }) {
   const t = useT();
+  const SEARCH_NAV_HINT = "Press Enter or Space to type";
+  const SEARCH_EDIT_HINT = "Text mode — Esc to exit";
   return (
-    <div className={NAV_FIELD}>
-      <svg
-        width="18"
-        height="18"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        className={NAV_FIELD_GLYPH}
-        aria-hidden
-      >
-        <circle cx="11" cy="11" r="7" />
-        <path d="m20 20-3.5-3.5" />
-      </svg>
-      <input
-        type="text"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder={t("Search settings")}
-        className={NAV_FIELD_INPUT}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") onSubmit();
-          else if (e.key === "Escape") setQuery("");
-        }}
-      />
-      {query && (
-        <button
-          type="button"
-          onClick={() => setQuery("")}
-          className={NAV_FIELD_CLEAR}
-          aria-label={t("Clear")}
+    <div className="flex flex-1 flex-col">
+      <div data-settings-search-field data-tv-text-field className={NAV_FIELD}>
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className={NAV_FIELD_GLYPH}
+          aria-hidden
         >
-          <svg
-            width="15"
-            height="15"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.4"
-            strokeLinecap="round"
-            aria-hidden
+          <circle cx="11" cy="11" r="7" />
+          <path d="m20 20-3.5-3.5" />
+        </svg>
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={t("Search settings")}
+          aria-describedby="settings-search-mode"
+          className={NAV_FIELD_INPUT}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") onSubmit();
+            else if (e.key === "Escape") setQuery("");
+          }}
+        />
+        {query && (
+          <button
+            type="button"
+            onClick={() => setQuery("")}
+            className={NAV_FIELD_CLEAR}
+            aria-label={t("Clear")}
           >
-            <path d="M6 6l12 12M18 6 6 18" />
-          </svg>
-        </button>
-      )}
+            <svg
+              width="15"
+              height="15"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.4"
+              strokeLinecap="round"
+              aria-hidden
+            >
+              <path d="M6 6l12 12M18 6 6 18" />
+            </svg>
+          </button>
+        )}
+      </div>
+      <div
+        id="settings-search-mode"
+        data-settings-search-mode
+        aria-live="polite"
+        className="flex min-h-5 items-center px-2 pt-1 text-[10.5px] leading-none"
+      >
+        <span data-settings-search-nav-hint className="hidden items-center gap-1.5 text-ink-subtle">
+          <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-ink-subtle" />
+          {t(SEARCH_NAV_HINT)}
+        </span>
+        <span
+          data-settings-search-edit-hint
+          className="hidden items-center gap-1.5 font-semibold text-accent"
+        >
+          <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-accent" />
+          {t(SEARCH_EDIT_HINT)}
+        </span>
+      </div>
     </div>
   );
 }
@@ -10979,7 +11075,9 @@ export function SettingsNav({
   const relayLive = settings.togetherRelayUrl ? "live" : null;
 
   const webhookActive =
-    (settings.webhooks.discordUrl || settings.webhooks.telegramUrl) &&
+    (settings.webhooks.discordUrl ||
+      settings.webhooks.telegramUrl ||
+      settings.webhooks.desktopEnabled) &&
     Object.values(settings.webhooks.sources).some(Boolean);
 
   const status: Record<SectionId, string | null> = {
@@ -11034,6 +11132,7 @@ export function SettingsNav({
     support: null,
     remotes: settings.serveWebUi || settings.remoteControlEnabled ? "live" : null,
     tv: null,
+    bigPicture: null,
     storage: null,
     advanced: null,
   };

@@ -11,13 +11,13 @@ import {
   type ReactNode,
 } from "react";
 import { flushSync } from "react-dom";
+import { observeWithin } from "@/lib/visibility";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { ThreeLiquidGlassSurface } from "@/components/ThreeLiquidGlassSurface";
 import { NavChevron } from "./nav-arrow";
-import { useT } from "@/lib/i18n";
+import { useT, useUiLanguage, isRtl as checkRtl } from "@/lib/i18n";
 import { useSettings } from "@/lib/settings";
 import { useView } from "@/lib/view";
-import { observeWithin } from "@/lib/visibility";
 import { resetPosterDock as resetPosterDockItems, updatePosterDock } from "@/lib/poster-dock";
 import { scrollDeltaToRevealCard } from "@/lib/poster-backdrop-expansion";
 import { RowCardExpansionProvider } from "@/components/row-card-expansion";
@@ -211,6 +211,7 @@ function Skeleton({ shape }: { shape: RowShape }) {
 export function Row({
   title,
   titleExtra,
+  headerDescription,
   className = "",
   min = 144,
   shape = "portrait",
@@ -228,6 +229,7 @@ export function Row({
 }: {
   title?: React.ReactNode;
   titleExtra?: React.ReactNode;
+  headerDescription?: React.ReactNode;
   className?: string;
   min?: number;
   shape?: RowShape;
@@ -245,6 +247,9 @@ export function Row({
 }) {
   const { settings } = useSettings();
   const t = useT();
+  const { rememberRowScroll, recallRowScroll } = useView();
+  const lang = useUiLanguage();
+  const rtl = checkRtl(lang);
   const tvCards =
     shape === "portrait" && settings.rowCardStyle === "tv" && holdsPosterCards(children);
   const effShape: RowShape = tvCards ? "landscape" : shape;
@@ -271,7 +276,6 @@ export function Row({
     onEndRef.current = onEndReached;
   });
 
-  const rtlRef = useRef(false);
   const [near, setNear] = useState(false);
   useEffect(() => {
     const el = containerRef.current;
@@ -281,7 +285,6 @@ export function Row({
   const measure = () => {
     const container = containerRef.current;
     if (!container) return;
-    rtlRef.current = getComputedStyle(container).direction === "rtl";
     const available = container.getBoundingClientRect().width;
     if (available <= 0) return;
     const fits = Math.max(1, Math.floor((available + GAP) / (effMin + GAP)));
@@ -290,9 +293,9 @@ export function Row({
     batchWrite(() => setCellWidth(next));
   };
 
-  const readPos = (el: HTMLDivElement) => (rtlRef.current ? -el.scrollLeft : el.scrollLeft);
+  const readPos = (el: HTMLDivElement) => (rtl ? -el.scrollLeft : el.scrollLeft);
   const writePos = (el: HTMLDivElement, pos: number) => {
-    el.scrollLeft = rtlRef.current ? -pos : pos;
+    el.scrollLeft = rtl ? -pos : pos;
   };
 
   const measureScroll = () => {
@@ -390,11 +393,10 @@ export function Row({
   const childCount = Children.count(children);
   const restoredRef = useRef(false);
   const userInteractedRef = useRef(false);
-  const { rememberRowScroll, recallRowScroll } = useView();
   useLayoutEffect(() => {
     measure();
     measureScroll();
-  }, [childCount, trackEl, effMin]);
+  }, [childCount, trackEl, effMin, rtl]);
   useLayoutEffect(() => {
     if (!trackEl || cellWidth == null) return;
     if (scrollKey && !restoredRef.current && childCount > 0) {
@@ -510,7 +512,6 @@ export function Row({
     if (!el) return;
     userInteractedRef.current = true;
     cancelGlide();
-    const rtl = rtlRef.current;
     const cur = rtl ? -el.scrollLeft : el.scrollLeft;
     const max = el.scrollWidth - el.clientWidth;
     const stride = strideRef.current;
@@ -542,7 +543,6 @@ export function Row({
       resetPosterDock();
       return;
     }
-    const rtl = rtlRef.current;
     updatePosterDock({
       track,
       pointerX,
@@ -552,7 +552,7 @@ export function Row({
       rtl,
       transitionMs: settings.posterDockTransitionMs,
     });
-  }, [cellWidth, dockEnabled, effMin, resetPosterDock, settings.posterDockTransitionMs]);
+  }, [cellWidth, dockEnabled, effMin, resetPosterDock, rtl, settings.posterDockTransitionMs]);
   const schedulePosterDock = useCallback(
     (clientX: number) => {
       dockPointerXRef.current = clientX;
@@ -581,7 +581,6 @@ export function Row({
   };
 
   const glideTo = (el: HTMLDivElement, target: number, snappy = false) => {
-    const rtl = rtlRef.current;
     const start = rtl ? -el.scrollLeft : el.scrollLeft;
     const distance = target - start;
     if (Math.abs(distance) < 2) {
@@ -679,7 +678,7 @@ export function Row({
     const v = d.vel;
     const projection = -((v * Math.abs(v)) / (2 * friction));
     const projectedRaw = el.scrollLeft + projection;
-    const projected = rtlRef.current ? -projectedRaw : projectedRaw;
+    const projected = rtl ? -projectedRaw : projectedRaw;
     const stride = (cellWidth ?? effMin) + GAP;
     const max = el.scrollWidth - el.clientWidth;
     const targetIdx = Math.round(projected / stride);
@@ -705,14 +704,17 @@ export function Row({
       {(title || onViewAll || headerRight) && (
         <div className="flex items-baseline justify-between gap-4 pe-1">
           {title && (
-            <div className="flex min-w-0 items-center gap-2">
-              <h3
-                className={`truncate font-medium tracking-tight ${titleClassName}`}
-                style={{ fontSize: `${Math.round(17 * settings.rowTitleScale * titleScale)}px` }}
-              >
-                {title}
-              </h3>
-              {titleExtra}
+            <div className="flex min-w-0 flex-col gap-1">
+              <div className="flex min-w-0 items-center gap-2">
+                <h3
+                  className={`truncate font-medium tracking-tight ${titleClassName}`}
+                  style={{ fontSize: `${Math.round(17 * settings.rowTitleScale * titleScale)}px` }}
+                >
+                  {title}
+                </h3>
+                {titleExtra}
+              </div>
+              {headerDescription}
             </div>
           )}
           {(onViewAll || headerRight) && (
@@ -852,14 +854,10 @@ function EdgeArrow({
           intensity={0.9}
           interactive={false}
           alwaysActive
-          experimentalStyle={{
-            background:
-              "linear-gradient(145deg, rgba(8,12,18,0.50), rgba(8,12,18,0.38) 52%, rgba(8,12,18,0.44))",
-          }}
           style={{
-            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.10), inset 0 -1px 0 rgba(0,0,0,0.05)",
+            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08), inset 0 -1px 0 rgba(0,0,0,0.04)",
           }}
-          className={`h-11 w-11 pointer-events-auto border border-white/[0.08] transition-opacity duration-200 ${
+          className={`h-11 w-11 pointer-events-auto border border-white/[0.06] transition-opacity duration-200 ${
             visible
               ? "opacity-85 group-hover/row:opacity-100 focus-within:opacity-100"
               : "pointer-events-none opacity-0"
@@ -900,7 +898,7 @@ function EdgeArrow({
         onClick={onClick}
         aria-label={label}
         tabIndex={visible ? 0 : -1}
-        data-tv-skip=""
+        data-tv-skip="true"
         className={`group/edge grid h-full w-full place-items-center ${
           visible ? "pointer-events-auto" : "pointer-events-none"
         }`}

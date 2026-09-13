@@ -27,8 +27,7 @@ const SIZE = "clamp(58px,6.6vh,80px)";
 // region once bpOverscan is non-zero.
 const ROW_STYLE: CSSProperties = { contentVisibility: "visible", marginInline: 0 };
 
-const ACTIVE_CHIP =
-  "border-transparent bg-[var(--bp-on)] text-ink";
+const ACTIVE_CHIP = "border-transparent bg-[var(--bp-on)] text-ink";
 const REST_CHIP = "border-[var(--bp-edge-2)] bg-[var(--bp-glass)] text-ink";
 
 export type BpQueueAction = {

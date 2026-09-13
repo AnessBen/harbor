@@ -16,7 +16,10 @@ import { compactMoney } from "./brand-rails";
 
 type Branded = MetaFilter & { kind: "studio" | "network"; id: number; name: string };
 
-export function useBrandStats(filter: Branded): { details: BrandDetails | null; stats: BrandStats | null } {
+export function useBrandStats(filter: Branded): {
+  details: BrandDetails | null;
+  stats: BrandStats | null;
+} {
   const { settings } = useSettings();
   const [details, setDetails] = useState<BrandDetails | null>(null);
   const [stats, setStats] = useState<BrandStats | null>(null);
@@ -45,8 +48,12 @@ function FactCard({ fact }: { fact: Fact }) {
   const sub = fact.title ? fact.title.meta.name : fact.sub;
   return (
     <div className="flex min-w-0 flex-col gap-1 rounded-2xl border border-edge-soft bg-elevated/40 px-4 py-3.5">
-      <span className="font-display text-[26px] font-medium leading-none tracking-tight text-ink tabular-nums">{fact.value}</span>
-      <span className="text-[11.5px] font-medium uppercase tracking-[0.16em] text-ink-subtle">{fact.label}</span>
+      <span className="font-display text-[26px] font-medium leading-none tracking-tight text-ink tabular-nums">
+        {fact.value}
+      </span>
+      <span className="text-[11.5px] font-medium uppercase tracking-[0.16em] text-ink-subtle">
+        {fact.label}
+      </span>
       {sub &&
         (fact.title ? (
           <button
@@ -72,7 +79,15 @@ function Chip({ children, onClick }: { children: React.ReactNode; onClick?: () =
   );
 }
 
-export function BrandFacts({ filter, details, stats }: { filter: Branded; details: BrandDetails | null; stats: BrandStats | null }) {
+export function BrandFacts({
+  filter,
+  details,
+  stats,
+}: {
+  filter: Branded;
+  details: BrandDetails | null;
+  stats: BrandStats | null;
+}) {
   const t = useT();
   const uiLang = useUiLanguage();
   const { openFilter } = useView();
@@ -97,7 +112,12 @@ export function BrandFacts({ filter, details, stats }: { filter: Branded; detail
   const facts: Fact[] = [];
   if (stats) {
     if (stats.first?.year) {
-      facts.push({ key: "first", value: String(stats.first.year), label: tv ? t("First aired") : t("First release"), title: stats.first });
+      facts.push({
+        key: "first",
+        value: String(stats.first.year),
+        label: tv ? t("First aired") : t("First release"),
+        title: stats.first,
+      });
     }
     if (!tv && stats.totalGross > 0) {
       facts.push({
@@ -108,13 +128,28 @@ export function BrandFacts({ filter, details, stats }: { filter: Branded; detail
       });
     }
     if (!tv && stats.grossing[0]) {
-      facts.push({ key: "top", value: compactMoney(stats.grossing[0].revenue, uiLang), label: t("Highest-grossing"), title: stats.grossing[0] });
+      facts.push({
+        key: "top",
+        value: compactMoney(stats.grossing[0].revenue, uiLang),
+        label: t("Highest-grossing"),
+        title: stats.grossing[0],
+      });
     }
     if (tv && stats.longest[0]) {
-      facts.push({ key: "longest", value: t("{n} episodes", { n: stats.longest[0].episodes }), label: t("Longest-running"), title: stats.longest[0] });
+      facts.push({
+        key: "longest",
+        value: t("{n} episodes", { n: stats.longest[0].episodes }),
+        label: t("Longest-running"),
+        title: stats.longest[0],
+      });
     }
     if (tv && stats.titles.length > 0) {
-      facts.push({ key: "onair", value: String(stats.onAir), label: t("Still on air"), sub: t("of {n} top shows", { n: stats.titles.length }) });
+      facts.push({
+        key: "onair",
+        value: String(stats.onAir),
+        label: t("Still on air"),
+        sub: t("of {n} top shows", { n: stats.titles.length }),
+      });
     }
     if (stats.mostAcclaimed) {
       const score = acclaimedImdb ?? (stats.mostAcclaimed.rating ?? 0).toFixed(1);
@@ -129,11 +164,22 @@ export function BrandFacts({ filter, details, stats }: { filter: Branded; detail
 
   const chips: React.ReactNode[] = [];
   if (details?.country) chips.push(<Chip key="country">{region(details.country)}</Chip>);
-  if (details?.headquarters) chips.push(<Chip key="hq">{t("Based in {city}", { city: details.headquarters })}</Chip>);
+  if (details?.headquarters)
+    chips.push(<Chip key="hq">{t("Based in {city}", { city: details.headquarters })}</Chip>);
   if (details?.parent) {
     const parent = details.parent;
     chips.push(
-      <Chip key="parent" onClick={() => openFilter({ kind: "studio", mediaType: filter.mediaType, name: parent.name, id: parent.id })}>
+      <Chip
+        key="parent"
+        onClick={() =>
+          openFilter({
+            kind: "studio",
+            mediaType: filter.mediaType,
+            name: parent.name,
+            id: parent.id,
+          })
+        }
+      >
         {t("Part of {parent}", { parent: parent.name })}
       </Chip>,
     );
@@ -146,7 +192,9 @@ export function BrandFacts({ filter, details, stats }: { filter: Branded; detail
       </Chip>,
     );
   }
-  const genres = (stats?.genres ?? []).map((name) => ({ name, id: genreTable[name] })).filter((g) => typeof g.id === "number");
+  const genres = (stats?.genres ?? [])
+    .map((name) => ({ name, id: genreTable[name] }))
+    .filter((g) => typeof g.id === "number");
 
   if (facts.length === 0 && chips.length === 0 && genres.length === 0) return null;
   return (
@@ -163,10 +211,17 @@ export function BrandFacts({ filter, details, stats }: { filter: Branded; detail
           {chips}
           {genres.length > 0 && chips.length > 0 && <span className="brand-divider" />}
           {genres.length > 0 && (
-            <span className="text-[12px] font-medium uppercase tracking-[0.18em] text-ink-subtle">{t("Signature genres")}</span>
+            <span className="text-[12px] font-medium uppercase tracking-[0.18em] text-ink-subtle">
+              {t("Signature genres")}
+            </span>
           )}
           {genres.map((g) => (
-            <Chip key={g.name} onClick={() => openFilter({ kind: "genre", mediaType: filter.mediaType, name: g.name, id: g.id })}>
+            <Chip
+              key={g.name}
+              onClick={() =>
+                openFilter({ kind: "genre", mediaType: filter.mediaType, name: g.name, id: g.id })
+              }
+            >
               {t(g.name)}
             </Chip>
           ))}

@@ -94,7 +94,10 @@ export function Dropdown({
       const top = up ? Math.max(EDGE, r.top - GAP - Math.min(natural, maxHeight)) : r.bottom + GAP;
       const rtl = getComputedStyle(el).direction === "rtl";
       const anchored = rtl ? r.right - width : r.left;
-      const left = Math.min(Math.max(EDGE, anchored), Math.max(EDGE, window.innerWidth - width - EDGE));
+      const left = Math.min(
+        Math.max(EDGE, anchored),
+        Math.max(EDGE, window.innerWidth - width - EDGE),
+      );
       setBox({ top, left, minWidth, maxWidth, maxHeight, up });
     };
     place();
@@ -182,7 +185,9 @@ export function Dropdown({
           size === "sm" ? "h-9 px-3 text-[12.5px]" : "h-11 px-3.5 text-[13.5px]"
         } ${open ? "bg-raised" : "bg-canvas hover:bg-elevated"}`}
       >
-        <span className={`flex min-w-0 items-center gap-2 ${selected ? "text-ink" : "text-ink-subtle"}`}>
+        <span
+          className={`flex min-w-0 items-center gap-2 ${selected ? "text-ink" : "text-ink-subtle"}`}
+        >
           {selected?.left}
           <span className="truncate">{selected?.label ?? placeholder ?? ""}</span>
         </span>

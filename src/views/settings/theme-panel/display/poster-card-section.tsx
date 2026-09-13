@@ -70,7 +70,17 @@ export function PosterCardSection() {
         <div className="hset-postertune" style={tv ? { flexWrap: "wrap" } : undefined}>
           <div
             className="hset-postertune-stage"
-            style={tv ? { inlineSize: Math.round(236 * settings.posterScale), maxWidth: "100%", alignSelf: "center", padding: 0, background: "transparent" } : undefined}
+            style={
+              tv
+                ? {
+                    inlineSize: Math.round(236 * settings.posterScale),
+                    maxWidth: "100%",
+                    alignSelf: "center",
+                    padding: 0,
+                    background: "transparent",
+                  }
+                : undefined
+            }
           >
             {tv ? (
               <div
@@ -154,7 +164,9 @@ export function PosterCardSection() {
         <SettingRow
           wide
           label={t("Load effect")}
-          desc={t("Blur up looks smoothest. Fade is lighter on older devices. Instant turns it off.")}
+          desc={t(
+            "Blur up looks smoothest. Fade is lighter on older devices. Instant turns it off.",
+          )}
         >
           <Segmented
             value={settings.posterEffect}
@@ -170,7 +182,9 @@ export function PosterCardSection() {
         <SettingRow
           wide
           label={t("Quality")}
-          desc={t("High is sized to your screen and looks identical to full res on far less memory. Balanced saves the most. Maximum keeps original resolution.")}
+          desc={t(
+            "High is sized to your screen and looks identical to full res on far less memory. Balanced saves the most. Maximum keeps original resolution.",
+          )}
         >
           <Segmented
             value={settings.posterQuality}
@@ -187,13 +201,17 @@ export function PosterCardSection() {
       <Section title={t("Card behaviour")}>
         <ToggleRow
           label={t("Focused Card")}
-          sub={t("Emphasize the selected card across the page while gently darkening and blurring the other cards.")}
+          sub={t(
+            "Emphasize the selected card across the page while gently darkening and blurring the other cards.",
+          )}
           value={settings.posterFocusedCard}
           onChange={(posterFocusedCard) => update({ posterFocusedCard })}
         />
         <ToggleRow
           label={t("Expanding Cards")}
-          sub={t("Expand poster cards during keyboard or remote navigation across poster rows, using preloaded wide artwork.")}
+          sub={t(
+            "Expand poster cards during keyboard or remote navigation across poster rows, using preloaded wide artwork.",
+          )}
           value={settings.posterBackdropExpansion}
           onChange={(posterBackdropExpansion) => update({ posterBackdropExpansion })}
         />
@@ -219,7 +237,9 @@ export function PosterCardSection() {
                   step={50}
                   aria-label={t("Animation speed")}
                   value={settings.posterDockTransitionMs}
-                  onChange={(event) => update({ posterDockTransitionMs: Number(event.target.value) })}
+                  onChange={(event) =>
+                    update({ posterDockTransitionMs: Number(event.target.value) })
+                  }
                   className="harbor-slider h-11 min-w-0 flex-1"
                   style={fillStyle(settings.posterDockTransitionMs, 250, 1500, 50)}
                 />
@@ -296,10 +316,7 @@ function PosterDockPreview({ transitionMs }: { transitionMs: number }) {
         >
           {SETTINGS_FILMS.map(({ poster }, index) => (
             <div key={`${poster}-${index}`} className="min-w-0">
-              <div
-                data-preview-anchor
-                className="overflow-hidden rounded-[10px]"
-              >
+              <div data-preview-anchor className="overflow-hidden rounded-[10px]">
                 <PreviewImage src={poster} className="aspect-[2/3] w-full object-cover" />
               </div>
             </div>

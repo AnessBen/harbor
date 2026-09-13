@@ -50,6 +50,7 @@ export type SectionId =
   | "icons"
   | "remotes"
   | "tv"
+  | "bigPicture"
   | "storage"
   | "trackers"
   | "updates"
@@ -58,9 +59,7 @@ export type SectionId =
 export const SettingsActiveContext = createContext<{
   setActive: (s: SectionId, anchor?: string) => void;
   openPage: (s: SectionId, tab?: string) => void;
-} | null>(
-  null,
-);
+} | null>(null);
 
 export function useSettingsActiveContext() {
   const v = useContext(SettingsActiveContext);
@@ -299,9 +298,7 @@ export function Section({
               {newId && <NewBadge id={newId} />}
             </div>
           )}
-          {!bare && subtitle && (
-            <p className={`-mt-0.5 max-w-[70ch] ${ROW_DESC}`}>{subtitle}</p>
-          )}
+          {!bare && subtitle && <p className={`-mt-0.5 max-w-[70ch] ${ROW_DESC}`}>{subtitle}</p>}
           <div className={bare ? undefined : "harbor-settings-group"}>{children}</div>
         </section>
       </SectionFlagsContext.Provider>
@@ -692,7 +689,11 @@ export function Segmented<T extends string>({
     } else {
       thumb.animate(
         [
-          { left: `${from.offsetLeft}px`, top: `${from.offsetTop}px`, width: `${from.offsetWidth}px` },
+          {
+            left: `${from.offsetLeft}px`,
+            top: `${from.offsetTop}px`,
+            width: `${from.offsetWidth}px`,
+          },
           { left: `${to.offsetLeft}px`, top: `${to.offsetTop}px`, width: `${to.offsetWidth}px` },
         ],
         { duration: 320, easing: "ease-in-out" },

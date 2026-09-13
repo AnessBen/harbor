@@ -2,7 +2,15 @@ import { SliderRow } from "../theme-panel/display-section";
 import { useEffect, useRef, useState } from "react";
 import harborStyleImg from "@/assets/onboarding/harborstyle.webp";
 import traditionalStyleImg from "@/assets/onboarding/traditional.webp";
-import { Check, Contrast, Image as ImageIcon, LayoutTemplate, Maximize, Play, Volume2 } from "../icons";
+import {
+  Check,
+  Contrast,
+  Image as ImageIcon,
+  LayoutTemplate,
+  Maximize,
+  Play,
+  Volume2,
+} from "../icons";
 import { useSettings } from "@/lib/settings";
 import { clearAllSnapshots, snapshotCount } from "@/lib/snapshots";
 import { useT } from "@/lib/i18n";
@@ -29,7 +37,9 @@ export function HomeTab() {
             wide
             icon={<LayoutTemplate size={18} strokeWidth={2} />}
             label={t("Featured source")}
-            desc={t("What fills the hero. Trending is a fresh top list from Harbor, refreshed through the day. Classic uses your own Home rows.")}
+            desc={t(
+              "What fills the hero. Trending is a fresh top list from Harbor, refreshed through the day. Classic uses your own Home rows.",
+            )}
           >
             <Segmented
               value={settings.heroFeed}
@@ -39,7 +49,9 @@ export function HomeTab() {
                 { value: "simkl", label: t("Simkl") },
                 { value: "classic", label: t("Classic") },
               ]}
-              onChange={(v) => update({ heroFeed: v as "trending" | "trakt" | "simkl" | "classic" })}
+              onChange={(v) =>
+                update({ heroFeed: v as "trending" | "trakt" | "simkl" | "classic" })
+              }
             />
           </SettingRow>
           <ToggleRow
@@ -51,7 +63,9 @@ export function HomeTab() {
           />
           <ToggleRow
             label={t("Full quality hero image")}
-            sub={t("Load the highest-resolution artwork for the featured hero. Uses more bandwidth.")}
+            sub={t(
+              "Load the highest-resolution artwork for the featured hero. Uses more bandwidth.",
+            )}
             value={settings.heroFullQuality}
             onChange={(v) => update({ heroFullQuality: v })}
             leading={<ImageIcon size={18} strokeWidth={2} />}
@@ -62,7 +76,9 @@ export function HomeTab() {
           <ToggleRow
             label={t("Play trailers in the hero")}
             newId="theme:hero-video"
-            sub={t("After a moment on a slide, the featured title's trailer plays muted in the background. Uses more bandwidth.")}
+            sub={t(
+              "After a moment on a slide, the featured title's trailer plays muted in the background. Uses more bandwidth.",
+            )}
             value={settings.heroTrailers}
             onChange={(v) => update({ heroTrailers: v })}
             leading={<Play size={18} strokeWidth={2} />}
@@ -71,7 +87,9 @@ export function HomeTab() {
             <Nested>
               <ToggleRow
                 label={t("Home hero audio")}
-                sub={t("The home hero trailer plays with sound and a mute button in the corner, then shows a replay button when it ends. Auto-rotation pauses so it stays on the featured title.")}
+                sub={t(
+                  "The home hero trailer plays with sound and a mute button in the corner, then shows a replay button when it ends. Auto-rotation pauses so it stays on the featured title.",
+                )}
                 value={settings.heroTrailerAudio}
                 onChange={(v) => update({ heroTrailerAudio: v })}
                 leading={<Volume2 size={18} strokeWidth={2} />}
@@ -83,7 +101,9 @@ export function HomeTab() {
 
       <Section
         title={t("Home hero shadow")}
-        subtitle={t("How dark the gradient behind the featured title on Home is. 100% is the classic look.")}
+        subtitle={t(
+          "How dark the gradient behind the featured title on Home is. 100% is the classic look.",
+        )}
       >
         <HeroShadowPreview />
         <SettingGroup>
@@ -303,6 +323,15 @@ export function HomeTab() {
           )}
           value={settings.cwSnapshotFullQuality}
           onChange={(v) => update({ cwSnapshotFullQuality: v })}
+        />
+        <ToggleRow
+          label={t("Prefer episode still artwork")}
+          newId="home:prefer-episode-still"
+          sub={t(
+            "Show the detail page's episode still on the card instead of your saved frame. The saved frame is kept as a fallback when no still exists.",
+          )}
+          value={settings.cwPreferEpisodeStill}
+          onChange={(v) => update({ cwPreferEpisodeStill: v })}
         />
         <ClearSnapshotsButton />
       </Section>

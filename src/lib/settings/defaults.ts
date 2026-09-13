@@ -1,4 +1,7 @@
-import { DEFAULT_CONTROLLER_CURSOR_SIZE } from "@/lib/gamepad/cursor";
+import {
+  DEFAULT_CONTROLLER_CURSOR_HIDE_MS,
+  DEFAULT_CONTROLLER_CURSOR_SIZE,
+} from "@/lib/gamepad/cursor";
 import { DEFAULT_THEME } from "@/lib/theme";
 import { DEFAULT_FULLSCREEN_CLOCK_SIZE_PX } from "@/lib/local-time";
 import type { Settings } from "./types";
@@ -74,10 +77,10 @@ export const DEFAULT: Settings = {
   posterEffect: "off",
   posterQuality: "high",
   liquidGlass: false,
-  defaultLiquidGlassBlur: 2,
-  defaultLiquidGlassTint: 40,
+  defaultLiquidGlassBlur: 8,
+  defaultLiquidGlassTint: 20,
   experimentalLiquidGlassEnabled: false,
-  experimentalLiquidGlassOpacity: 100,
+  experimentalLiquidGlassOpacity: 25,
   posterBackdropExpansion: false,
   posterFocusedCard: false,
   posterDockMagnification: false,
@@ -99,6 +102,8 @@ export const DEFAULT: Settings = {
   controllerCursor: "dot",
   controllerCursorImage: "",
   controllerCursorSize: DEFAULT_CONTROLLER_CURSOR_SIZE,
+  controllerCursorEnabled: true,
+  controllerCursorHideMs: DEFAULT_CONTROLLER_CURSOR_HIDE_MS,
   controllerKeyboardSize: 100,
   controllerRepeatMs: 140,
   controllerInitialDelayMs: 400,
@@ -125,6 +130,7 @@ export const DEFAULT: Settings = {
   fullscreenRestorePosition: true,
   contentAdvisoryToast: false,
   contentAdvisoryTheme: "colored",
+  contentAdvisoryShowIgnore: true,
   playerVolumeHud: true,
   playerVolumeHudPosition: "top",
   customPlaybackSpeeds: [],
@@ -458,6 +464,7 @@ export const DEFAULT: Settings = {
   pauseUnfocused: false,
   cwSnapshotRetentionDays: 30,
   cwSnapshotFullQuality: false,
+  cwPreferEpisodeStill: false,
   streamFilterLevel: "strict",
   blockTrackers: true,
   homeRows: {
@@ -509,6 +516,7 @@ export const DEFAULT: Settings = {
   webhooks: {
     discordUrl: "",
     telegramUrl: "",
+    desktopEnabled: false,
     notifyMovies: true,
     notifyTv: true,
     notifyAnime: true,

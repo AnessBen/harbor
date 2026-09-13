@@ -1,4 +1,12 @@
-import { lazy, startTransition, Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  lazy,
+  startTransition,
+  Suspense,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import type { LibraryKey } from "./settings/library-panel";
 import type { RelayMode } from "./settings/relay-section";
 import type { DebridKey } from "./settings/streaming-sources-panel";
@@ -45,36 +53,90 @@ function glideToTop(el: HTMLElement): void {
   requestAnimationFrame(step);
 }
 
-const BasicsPanel = lazy(() => import("./settings/basics-panel").then((m) => ({ default: m.BasicsPanel })));
-const AccountStub = lazy(() => import("./settings/account").then((m) => ({ default: m.AccountStub })));
-const LibraryPanel = lazy(() => import("./settings/library-panel").then((m) => ({ default: m.LibraryPanel })));
-const PluginsPanel = lazy(() => import("./settings/plugins-panel").then((m) => ({ default: m.PluginsPanel })));
-const RelaySection = lazy(() => import("./settings/relay-section").then((m) => ({ default: m.RelaySection })));
-const StreamingSourcesPanel = lazy(() => import("./settings/streaming-sources-panel").then((m) => ({ default: m.StreamingSourcesPanel })));
-const StreamFiltersPanel = lazy(() => import("./settings/stream-filters-panel").then((m) => ({ default: m.StreamFiltersPanel })));
+const BasicsPanel = lazy(() =>
+  import("./settings/basics-panel").then((m) => ({ default: m.BasicsPanel })),
+);
+const AccountStub = lazy(() =>
+  import("./settings/account").then((m) => ({ default: m.AccountStub })),
+);
+const LibraryPanel = lazy(() =>
+  import("./settings/library-panel").then((m) => ({ default: m.LibraryPanel })),
+);
+const PluginsPanel = lazy(() =>
+  import("./settings/plugins-panel").then((m) => ({ default: m.PluginsPanel })),
+);
+const RelaySection = lazy(() =>
+  import("./settings/relay-section").then((m) => ({ default: m.RelaySection })),
+);
+const StreamingSourcesPanel = lazy(() =>
+  import("./settings/streaming-sources-panel").then((m) => ({ default: m.StreamingSourcesPanel })),
+);
+const StreamFiltersPanel = lazy(() =>
+  import("./settings/stream-filters-panel").then((m) => ({ default: m.StreamFiltersPanel })),
+);
 const P2PPanel = lazy(() => import("./settings/p2p-panel").then((m) => ({ default: m.P2PPanel })));
-const LanguagePanel = lazy(() => import("./settings/language-panel").then((m) => ({ default: m.LanguagePanel })));
-const SubtitlesPanel = lazy(() => import("./settings/subtitles-panel").then((m) => ({ default: m.SubtitlesPanel })));
-const QualityPanel = lazy(() => import("./settings/quality-panel").then((m) => ({ default: m.QualityPanel })));
+const LanguagePanel = lazy(() =>
+  import("./settings/language-panel").then((m) => ({ default: m.LanguagePanel })),
+);
+const SubtitlesPanel = lazy(() =>
+  import("./settings/subtitles-panel").then((m) => ({ default: m.SubtitlesPanel })),
+);
+const QualityPanel = lazy(() =>
+  import("./settings/quality-panel").then((m) => ({ default: m.QualityPanel })),
+);
 const MpvPanel = lazy(() => import("./settings/mpv-panel").then((m) => ({ default: m.MpvPanel })));
-const AnimePanel = lazy(() => import("./settings/anime-panel").then((m) => ({ default: m.AnimePanel })));
-const ShadersPanel = lazy(() => import("./settings/shaders-panel").then((m) => ({ default: m.ShadersPanel })));
-const PlayerLayoutPanel = lazy(() => import("./settings/player-layout-panel").then((m) => ({ default: m.PlayerLayoutPanel })));
-const HotkeysPanel = lazy(() => import("./settings/hotkeys-panel").then((m) => ({ default: m.HotkeysPanel })));
-const ControllersPanel = lazy(() => import("./settings/controllers-panel").then((m) => ({ default: m.ControllersPanel })));
-const ThemePanel = lazy(() => import("./settings/theme-panel").then((m) => ({ default: m.ThemePanel })));
-const StreamBadgesPanel = lazy(() => import("./settings/stream-badges-panel").then((m) => ({ default: m.StreamBadgesPanel })));
-const AwardIconsPanel = lazy(() => import("./settings/award-icons-panel").then((m) => ({ default: m.AwardIconsPanel })));
-const WebhooksPanel = lazy(() => import("./settings/webhooks-panel").then((m) => ({ default: m.WebhooksPanel })));
-const BugReportPanel = lazy(() => import("./settings/bug-report-panel").then((m) => ({ default: m.BugReportPanel })));
-const SupportPanel = lazy(() => import("./settings/support-panel").then((m) => ({ default: m.SupportPanel })));
-const RemotesPanel = lazy(() => import("./settings/remotes-panel").then((m) => ({ default: m.RemotesPanel })));
+const AnimePanel = lazy(() =>
+  import("./settings/anime-panel").then((m) => ({ default: m.AnimePanel })),
+);
+const ShadersPanel = lazy(() =>
+  import("./settings/shaders-panel").then((m) => ({ default: m.ShadersPanel })),
+);
+const PlayerLayoutPanel = lazy(() =>
+  import("./settings/player-layout-panel").then((m) => ({ default: m.PlayerLayoutPanel })),
+);
+const HotkeysPanel = lazy(() =>
+  import("./settings/hotkeys-panel").then((m) => ({ default: m.HotkeysPanel })),
+);
+const ControllersPanel = lazy(() =>
+  import("./settings/controllers-panel").then((m) => ({ default: m.ControllersPanel })),
+);
+const ThemePanel = lazy(() =>
+  import("./settings/theme-panel").then((m) => ({ default: m.ThemePanel })),
+);
+const StreamBadgesPanel = lazy(() =>
+  import("./settings/stream-badges-panel").then((m) => ({ default: m.StreamBadgesPanel })),
+);
+const AwardIconsPanel = lazy(() =>
+  import("./settings/award-icons-panel").then((m) => ({ default: m.AwardIconsPanel })),
+);
+const WebhooksPanel = lazy(() =>
+  import("./settings/webhooks-panel").then((m) => ({ default: m.WebhooksPanel })),
+);
+const BugReportPanel = lazy(() =>
+  import("./settings/bug-report-panel").then((m) => ({ default: m.BugReportPanel })),
+);
+const SupportPanel = lazy(() =>
+  import("./settings/support-panel").then((m) => ({ default: m.SupportPanel })),
+);
+const RemotesPanel = lazy(() =>
+  import("./settings/remotes-panel").then((m) => ({ default: m.RemotesPanel })),
+);
 const TvPanel = lazy(() => import("./settings/tv-panel").then((m) => ({ default: m.TvPanel })));
-const StoragePanel = lazy(() => import("./settings/storage-panel").then((m) => ({ default: m.StoragePanel })));
-const TrackersPanel = lazy(() => import("./settings/trackers-panel").then((m) => ({ default: m.TrackersPanel })));
-const UpdatesPanel = lazy(() => import("./settings/updates-panel").then((m) => ({ default: m.UpdatesPanel })));
-const AdvancedPanel = lazy(() => import("./settings/advanced-panel").then((m) => ({ default: m.AdvancedPanel })));
-
+const BigPicturePanel = lazy(() =>
+  import("./settings/big-picture-panel").then((m) => ({ default: m.BigPicturePanel })),
+);
+const StoragePanel = lazy(() =>
+  import("./settings/storage-panel").then((m) => ({ default: m.StoragePanel })),
+);
+const TrackersPanel = lazy(() =>
+  import("./settings/trackers-panel").then((m) => ({ default: m.TrackersPanel })),
+);
+const UpdatesPanel = lazy(() =>
+  import("./settings/updates-panel").then((m) => ({ default: m.UpdatesPanel })),
+);
+const AdvancedPanel = lazy(() =>
+  import("./settings/advanced-panel").then((m) => ({ default: m.AdvancedPanel })),
+);
 
 const SECTION_PRELOAD: Partial<Record<SectionId, () => Promise<unknown>>> = {
   basics: () => import("./settings/basics-panel"),
@@ -104,6 +166,7 @@ const SECTION_PRELOAD: Partial<Record<SectionId, () => Promise<unknown>>> = {
   icons: () => import("./settings/icons-panel"),
   remotes: () => import("./settings/remotes-panel"),
   tv: () => import("./settings/tv-panel"),
+  bigPicture: () => import("./settings/big-picture-panel"),
   storage: () => import("./settings/storage-panel"),
   trackers: () => import("./settings/trackers-panel"),
   updates: () => import("./settings/updates-panel"),
@@ -222,7 +285,7 @@ const SECTION_META: Record<SectionId, { label: string; sub: string }> = {
   },
   webhooks: {
     label: "Webhooks",
-    sub: "Push upcoming releases to Discord or Telegram. Pick which calendars feed the notifications.",
+    sub: "Push upcoming releases to Discord, Telegram, or your desktop. Pick which calendars feed the notifications.",
   },
   bug: {
     label: "Report a bug",
@@ -247,6 +310,10 @@ const SECTION_META: Record<SectionId, { label: string; sub: string }> = {
   tv: {
     label: "TV Settings",
     sub: "Set up your television from here. Everything on this page is written to your Harbor account and picked up by Big Picture on the TV, so you never have to type on a remote.",
+  },
+  bigPicture: {
+    label: "Big Picture",
+    sub: "A full screen, couch friendly Harbor for TVs, handhelds and big monitors. How it launches, the top-bar button, the interface sounds, and how it fills your screen.",
   },
   storage: {
     label: "Storage",
@@ -315,9 +382,7 @@ export function Settings({ visible = true }: { visible?: boolean }) {
     return id as SectionId;
   };
   const [landing, setLanding] = useState<string | null>(null);
-  const [active, setActive] = useState<SectionId>(
-    resolveSection(settingsSectionRequest.section),
-  );
+  const [active, setActive] = useState<SectionId>(resolveSection(settingsSectionRequest.section));
   const [relayMode, setRelayMode] = useState<RelayMode>("panel");
   const [pendingAnchor, setPendingAnchor] = useState<string | null>(null);
   const [pendingPage, setPendingPage] = useState<{ section: SectionId; tab?: string } | null>(null);
@@ -510,7 +575,10 @@ export function Settings({ visible = true }: { visible?: boolean }) {
       let best: HTMLElement | null = null;
       for (const s of sections) {
         if (!(s.id.startsWith(target) || target.startsWith(s.id))) continue;
-        if (best == null || Math.abs(s.id.length - target.length) < Math.abs(best.id.length - target.length)) {
+        if (
+          best == null ||
+          Math.abs(s.id.length - target.length) < Math.abs(best.id.length - target.length)
+        ) {
           best = s;
         }
       }
@@ -569,8 +637,7 @@ export function Settings({ visible = true }: { visible?: boolean }) {
     } else if (which === "rpdb") {
       if (trimmed) update({ rpdbKey: trimmed, showImdbBadge: false, showRtBadge: false });
       else update({ rpdbKey: trimmed });
-    }
-    else if (which === "fanart") update({ fanartKey: trimmed });
+    } else if (which === "fanart") update({ fanartKey: trimmed });
     else if (which === "tvdb") update({ tvdbKey: trimmed });
     else if (which === "rd") update({ rdKey: trimmed });
     else if (which === "tb") update({ tbKey: trimmed });
@@ -588,8 +655,12 @@ export function Settings({ visible = true }: { visible?: boolean }) {
   useEffect(() => {
     if (!activeGroup) return;
     const run = () => activeGroup.children.forEach((child) => preloadSettingsSection(child));
-    const ric = (window as { requestIdleCallback?: (cb: () => void) => number }).requestIdleCallback;
-    if (ric) { const h = ric(run); return () => (window as { cancelIdleCallback?: (h: number) => void }).cancelIdleCallback?.(h); }
+    const ric = (window as { requestIdleCallback?: (cb: () => void) => number })
+      .requestIdleCallback;
+    if (ric) {
+      const h = ric(run);
+      return () => (window as { cancelIdleCallback?: (h: number) => void }).cancelIdleCallback?.(h);
+    }
     const tid = window.setTimeout(run, 200);
     return () => window.clearTimeout(tid);
   }, [activeGroup]);
@@ -602,169 +673,175 @@ export function Settings({ visible = true }: { visible?: boolean }) {
 
   return (
     <SettingsActiveContext.Provider value={{ setActive: handleNav, openPage }}>
-    <PageActionsProvider value={{ reg: pageActions, setReg: setPageActions }}>
-    <SubTabsProvider value={{ section: active, reg: subReg, setReg: setSubReg }}>
-    <div ref={shellRef} className="harbor-settings-shell flex h-full flex-col bg-canvas">
-      <div
-        data-tauri-drag-region
-        className="hset-top-space shrink-0"
-        style={{ blockSize: "var(--hset-chrome-h, 92px)" }}
-      />
-      <div className="hset-grid" data-browse-open={compact && browseOpen ? "" : undefined}>
-        <SettingsTools query={query} setQuery={(value) => {
-          setQuery(value);
-          if (compact && value.trim()) setBrowseOpen(true);
-        }} onSubmit={handleNav} />
-        <div className="hset-heading">
-          <div className="hset-content">
-            <h1 ref={titleRef} tabIndex={-1} className="hset-title">
-              {t(landingGroup?.label ?? SECTION_META[active].label)}
-            </h1>
-          </div>
-          <button
-            ref={browseRef}
-            type="button"
-            className="hset-browse-toggle"
-            aria-expanded={browseOpen}
-            aria-controls="hset-page-navigation"
-            onClick={() => setBrowseOpen((open) => !open)}
-          >
-            {browseOpen ? t("Close pages") : t("Browse pages")}
-          </button>
-        </div>
-        <SettingsSidebar
-          active={active}
-          activeTab={subReg?.value ?? null}
-          meta={SECTION_META}
-          query={query}
-          onSelect={selectFromRail}
-          onJump={handleNav}
-        />
-        <main ref={scrollRef} inert={compact && browseOpen} className="hset-main" data-hset-wide={wide ? "" : undefined}>
-        <div className="hset-content">
-          <Suspense
-            fallback={
-              <div
-                className="h-64 rounded-md bg-elevated"
-                aria-label={t("Loading settings")}
+      <PageActionsProvider value={{ reg: pageActions, setReg: setPageActions }}>
+        <SubTabsProvider value={{ section: active, reg: subReg, setReg: setSubReg }}>
+          <div ref={shellRef} className="harbor-settings-shell flex h-full flex-col bg-canvas">
+            <div
+              data-tauri-drag-region
+              className="hset-top-space shrink-0"
+              style={{ blockSize: "var(--hset-chrome-h, 92px)" }}
+            />
+            <div className="hset-grid" data-browse-open={compact && browseOpen ? "" : undefined}>
+              <SettingsTools
+                query={query}
+                setQuery={(value) => {
+                  setQuery(value);
+                  if (compact && value.trim()) setBrowseOpen(true);
+                }}
+                onSubmit={handleNav}
               />
-            }
-          >
-          {landingGroup && (
-            <SectionCards
-              sections={landingGroup.children}
-              meta={SECTION_META}
-              onOpen={(id) => handleNav(id)}
-            />
-          )}
-          <div
-            key={active}
-            className={`harbor-cascade flex flex-col ${landingGroup ? "hidden" : ""}`}
-          >
-          {active === "basics" && <BasicsPanel />}
+              <div className="hset-heading">
+                <div className="hset-content">
+                  <h1 ref={titleRef} tabIndex={-1} className="hset-title">
+                    {t(landingGroup?.label ?? SECTION_META[active].label)}
+                  </h1>
+                </div>
+                <button
+                  ref={browseRef}
+                  type="button"
+                  className="hset-browse-toggle"
+                  aria-expanded={browseOpen}
+                  aria-controls="hset-page-navigation"
+                  onClick={() => setBrowseOpen((open) => !open)}
+                >
+                  {browseOpen ? t("Close pages") : t("Browse pages")}
+                </button>
+              </div>
+              <SettingsSidebar
+                active={active}
+                activeTab={subReg?.value ?? null}
+                meta={SECTION_META}
+                query={query}
+                onSelect={selectFromRail}
+                onJump={handleNav}
+              />
+              <main
+                ref={scrollRef}
+                inert={compact && browseOpen}
+                className="hset-main"
+                data-hset-wide={wide ? "" : undefined}
+              >
+                <div className="hset-content">
+                  <Suspense
+                    fallback={
+                      <div
+                        className="h-64 rounded-md bg-elevated"
+                        aria-label={t("Loading settings")}
+                      />
+                    }
+                  >
+                    {landingGroup && (
+                      <SectionCards
+                        sections={landingGroup.children}
+                        meta={SECTION_META}
+                        onOpen={(id) => handleNav(id)}
+                      />
+                    )}
+                    <div
+                      key={active}
+                      className={`harbor-cascade flex flex-col ${landingGroup ? "hidden" : ""}`}
+                    >
+                      {active === "basics" && <BasicsPanel />}
 
-          {active === "account" && <AccountStub />}
+                      {active === "account" && <AccountStub />}
 
-          {active === "library" && (
-            <LibraryPanel
-              tmdbDraft={tmdbDraft}
-              omdbDraft={omdbDraft}
-              rpdbDraft={rpdbDraft}
-              fanartDraft={fanartDraft}
-              tvdbDraft={tvdbDraft}
-              setTmdbDraft={setTmdbDraft}
-              setOmdbDraft={setOmdbDraft}
-              setRpdbDraft={setRpdbDraft}
-              setFanartDraft={setFanartDraft}
-              setTvdbDraft={setTvdbDraft}
-              savedKey={savedKey}
-              saveKey={saveKey}
-            />
-          )}
+                      {active === "library" && (
+                        <LibraryPanel
+                          tmdbDraft={tmdbDraft}
+                          omdbDraft={omdbDraft}
+                          rpdbDraft={rpdbDraft}
+                          fanartDraft={fanartDraft}
+                          tvdbDraft={tvdbDraft}
+                          setTmdbDraft={setTmdbDraft}
+                          setOmdbDraft={setOmdbDraft}
+                          setRpdbDraft={setRpdbDraft}
+                          setFanartDraft={setFanartDraft}
+                          setTvdbDraft={setTvdbDraft}
+                          savedKey={savedKey}
+                          saveKey={saveKey}
+                        />
+                      )}
 
-          {active === "relay" && (
-            <RelaySection mode={relayMode} onModeChange={setRelayMode} />
-          )}
+                      {active === "relay" && (
+                        <RelaySection mode={relayMode} onModeChange={setRelayMode} />
+                      )}
 
-          {active === "streaming" && (
-            <StreamingSourcesPanel
-              rdDraft={rdDraft}
-              tbDraft={tbDraft}
-              adDraft={adDraft}
-              pmDraft={pmDraft}
-              dlDraft={dlDraft}
-              setRdDraft={setRdDraft}
-              setTbDraft={setTbDraft}
-              setAdDraft={setAdDraft}
-              setPmDraft={setPmDraft}
-              setDlDraft={setDlDraft}
-              savedKey={savedKey}
-              saveKey={saveKey}
-            />
-          )}
+                      {active === "streaming" && (
+                        <StreamingSourcesPanel
+                          rdDraft={rdDraft}
+                          tbDraft={tbDraft}
+                          adDraft={adDraft}
+                          pmDraft={pmDraft}
+                          dlDraft={dlDraft}
+                          setRdDraft={setRdDraft}
+                          setTbDraft={setTbDraft}
+                          setAdDraft={setAdDraft}
+                          setPmDraft={setPmDraft}
+                          setDlDraft={setDlDraft}
+                          savedKey={savedKey}
+                          saveKey={saveKey}
+                        />
+                      )}
 
-          {active === "streamFilters" && <StreamFiltersPanel />}
+                      {active === "streamFilters" && <StreamFiltersPanel />}
 
-          {active === "p2p" && <P2PPanel />}
+                      {active === "p2p" && <P2PPanel />}
 
-          {active === "plugins" && <PluginsPanel />}
+                      {active === "plugins" && <PluginsPanel />}
 
-          {active === "language" && <LanguagePanel />}
-          {active === "subtitles" && <SubtitlesPanel />}
+                      {active === "language" && <LanguagePanel />}
+                      {active === "subtitles" && <SubtitlesPanel />}
 
-          {active === "player" && <QualityPanel />}
+                      {active === "player" && <QualityPanel />}
 
-          {active === "mpv" && <MpvPanel />}
+                      {active === "mpv" && <MpvPanel />}
 
-          {active === "anime" && <AnimePanel />}
+                      {active === "anime" && <AnimePanel />}
 
-          {active === "shaders" && <ShadersPanel />}
+                      {active === "shaders" && <ShadersPanel />}
 
-          {active === "playerLayout" && <PlayerLayoutPanel />}
+                      {active === "playerLayout" && <PlayerLayoutPanel />}
 
-          {active === "hotkeys" && <HotkeysPanel />}
+                      {active === "hotkeys" && <HotkeysPanel />}
 
-          {active === "controllers" && <ControllersPanel />}
+                      {active === "controllers" && <ControllersPanel />}
 
+                      {active === "theme" && <ThemePanel />}
 
+                      {active === "badges" && <StreamBadgesPanel />}
+                      {active === "awardIcons" && <AwardIconsPanel />}
 
+                      {active === "webhooks" && <WebhooksPanel />}
 
+                      {active === "bug" && <BugReportPanel />}
+                      {active === "support" && <SupportPanel />}
 
+                      {active === "remotes" && <RemotesPanel />}
 
-          {active === "theme" && <ThemePanel />}
+                      {active === "tv" && <TvPanel />}
 
-          {active === "badges" && <StreamBadgesPanel />}
-          {active === "awardIcons" && <AwardIconsPanel />}
+                      {active === "bigPicture" && <BigPicturePanel />}
 
-          {active === "webhooks" && <WebhooksPanel />}
+                      {active === "storage" && <StoragePanel />}
 
-          {active === "bug" && <BugReportPanel />}
-          {active === "support" && <SupportPanel />}
+                      {active === "trackers" && <TrackersPanel />}
 
-          {active === "remotes" && <RemotesPanel />}
+                      {active === "updates" && <UpdatesPanel />}
 
-          {active === "tv" && <TvPanel />}
+                      {active === "advanced" && <AdvancedPanel />}
 
-          {active === "storage" && <StoragePanel />}
-
-          {active === "trackers" && <TrackersPanel />}
-
-          {active === "updates" && <UpdatesPanel />}
-
-          {active === "advanced" && <AdvancedPanel />}
-
-          {active === "licenses" && <LicensesPanel />}
-          {active === "icons" && <IconsPanel />}
+                      {active === "licenses" && <LicensesPanel />}
+                      {active === "icons" && <IconsPanel />}
+                    </div>
+                  </Suspense>
+                </div>
+                {pageActions && !chromeHidden && <SettingsFooter reg={pageActions} />}
+              </main>
+            </div>
+            <BackToTop scrollRef={scrollRef} />
           </div>
-          </Suspense>
-        </div>
-        {pageActions && !chromeHidden && <SettingsFooter reg={pageActions} />}
-        </main>
-      </div>
-      <BackToTop scrollRef={scrollRef} />
-    </div>
-    </SubTabsProvider>
-    </PageActionsProvider>
+        </SubTabsProvider>
+      </PageActionsProvider>
     </SettingsActiveContext.Provider>
   );
 }

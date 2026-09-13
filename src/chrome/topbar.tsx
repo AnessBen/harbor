@@ -131,19 +131,21 @@ export function Topbar({ connecting = false }: { connecting?: boolean } = {}) {
         />
       )}
       <div
+        {...dragProps}
+        data-harbor-topbar-content
+        className={`relative z-10 grid h-full grid-cols-[1fr_auto_1fr] items-center gap-3 px-4 sm:px-8 ${
+          hybridBar ? "pt-11" : ""
+        }`}
+      >
+        <div
           {...dragProps}
-          className={`relative z-10 grid h-full grid-cols-[1fr_auto_1fr] items-center gap-3 px-4 sm:px-8 ${
-            hybridBar ? "pt-11" : ""
-          }`}
+          data-harbor-topbar-leading
+          className={
+            sidebarHidden
+              ? "pointer-events-auto flex h-full min-w-0 items-center justify-start gap-3"
+              : `pointer-events-auto flex h-full min-w-0 items-center justify-start ${sidebarOffset}`
+          }
         >
-          <div
-            {...dragProps}
-            className={
-              sidebarHidden
-                ? "pointer-events-auto flex h-full min-w-0 items-center justify-start gap-3"
-                : `pointer-events-auto flex h-full min-w-0 items-center justify-start ${sidebarOffset}`
-            }
-          >
           {onLiveRoot && (
             <button
               onClick={() => setView("home")}
@@ -162,18 +164,19 @@ export function Topbar({ connecting = false }: { connecting?: boolean } = {}) {
               </span>
             </div>
           )}
-            {!onLiveRoot && !connecting && <BackChrome />}
-          </div>
-          <div
-            {...dragProps}
-            className={`pointer-events-auto min-w-0 max-w-full transition-[width] duration-200 ease-out ${searchWidth}`}
-          >
-            {!hideSearch && !kid && !hybridBar && <SearchPill />}
-          </div>
-          <div
-            {...dragProps}
-            className="pointer-events-auto flex h-full items-center justify-end gap-2"
-          >
+          {!onLiveRoot && !connecting && <BackChrome />}
+        </div>
+        <div
+          {...dragProps}
+          className={`pointer-events-auto min-w-0 max-w-full transition-[width] duration-200 ease-out ${searchWidth}`}
+        >
+          {!hideSearch && !kid && !hybridBar && <SearchPill />}
+        </div>
+        <div
+          {...dragProps}
+          data-harbor-topbar-actions
+          className="pointer-events-auto flex h-full items-center justify-end gap-2"
+        >
           {!inSettings && (
             <div className="hidden items-center gap-2 min-[900px]:flex">
               <RecordingPill />
@@ -184,20 +187,27 @@ export function Topbar({ connecting = false }: { connecting?: boolean } = {}) {
               {!onLiveRoot && !kid && <TogetherButton />}
             </div>
           )}
-            {IS_TAURI && !settings.useNativeTitleBar && !settings.hybridTitleBar && (
+          {IS_TAURI && !settings.useNativeTitleBar && !settings.hybridTitleBar && (
             <div className="ms-1 flex shrink-0 items-center gap-2">
               <Control label={t("chrome.minimize")} onClick={minimize}>
                 <WindowControlGlyph kind="minimize" />
               </Control>
-              <Control label={maxed ? t("chrome.restore") : t("chrome.maximize")} onClick={() => void toggleMaximize()}>
+              <Control
+                label={maxed ? t("chrome.restore") : t("chrome.maximize")}
+                onClick={() => void toggleMaximize()}
+              >
                 <WindowControlGlyph kind="maximize" maximized={maxed} />
               </Control>
-              <Control label={t("common.close")} onClick={kid ? () => setCloseConfirm(true) : close} danger>
+              <Control
+                label={t("common.close")}
+                onClick={kid ? () => setCloseConfirm(true) : close}
+                danger
+              >
                 <WindowControlGlyph kind="close" />
               </Control>
             </div>
-            )}
-          </div>
+          )}
+        </div>
       </div>
       {closeConfirm && (
         <CloseConfirmKids onConfirm={close} onCancel={() => setCloseConfirm(false)} />
@@ -206,7 +216,13 @@ export function Topbar({ connecting = false }: { connecting?: boolean } = {}) {
   );
 }
 
-function CloseConfirmKids({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: () => void }) {
+function CloseConfirmKids({
+  onConfirm,
+  onCancel,
+}: {
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
   const t = useT();
   return createPortal(
     <div
@@ -307,10 +323,14 @@ export function TogetherButton({
     live
       ? variant === "ghost"
         ? "text-ink hover:bg-white/12"
-        : glassControls ? "text-ink hover:text-ink" : "bg-elevated/70 text-ink hover:bg-elevated"
+        : glassControls
+          ? "text-ink hover:text-ink"
+          : "bg-elevated/70 text-ink hover:bg-elevated"
       : variant === "ghost"
         ? "text-ink-muted hover:bg-white/12 hover:text-ink"
-        : glassControls ? "text-ink-muted hover:text-ink" : "bg-elevated/70 text-ink-muted hover:bg-elevated hover:text-ink"
+        : glassControls
+          ? "text-ink-muted hover:text-ink"
+          : "bg-elevated/70 text-ink-muted hover:bg-elevated hover:text-ink"
   }`;
   const chrome = tabOpen
     ? `z-[51] harbor-together-surface border border-edge text-ink ${
@@ -341,8 +361,8 @@ export function TogetherButton({
                 <PresenceAvatar
                   key={p.id}
                   name={p.name}
-                  src={self ? selfAvatar : p.avatar ?? null}
-                  color={self ? selfColor ?? fallbackColor : p.color ?? fallbackColor}
+                  src={self ? selfAvatar : (p.avatar ?? null)}
+                  color={self ? (selfColor ?? fallbackColor) : (p.color ?? fallbackColor)}
                 />
               );
             })}
@@ -363,7 +383,15 @@ export function TogetherButton({
     <div ref={wrapRef} className="relative">
       {glassControls ? (
         <ThreeLiquidGlassSurface
-          radius={tabOpen ? (above ? "0 0 8px 8px" : "8px 8px 0 0") : variant === "ghost" ? "9999px" : "12px"}
+          radius={
+            tabOpen
+              ? above
+                ? "0 0 8px 8px"
+                : "8px 8px 0 0"
+              : variant === "ghost"
+                ? "9999px"
+                : "12px"
+          }
           shaderRadius={variant === "ghost" ? 1 : tabOpen ? 0.3 : 0.48}
           intensity={0.9}
           className={`relative inline-flex transition-colors duration-150 ${chrome} ${tabOpen ? "harbor-wt-tab" : ""}`}
@@ -415,6 +443,7 @@ function SearchPill() {
     <button
       type="button"
       data-tauri-drag-region="false"
+      data-harbor-search
       onClick={() => setOpen(true)}
       className={
         settings.liquidGlass

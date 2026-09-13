@@ -1,10 +1,4 @@
-import {
-  LoaderCircle,
-  Pencil,
-  Plus,
-  RefreshCw,
-  Trash2,
-} from "../icons";
+import { LoaderCircle, Pencil, Plus, RefreshCw, Trash2 } from "../icons";
 import { UiIcon } from "@/components/ui-icon";
 import {
   useCallback,
@@ -122,13 +116,17 @@ export function HomeServersTab() {
       } catch (cause) {
         const at = Date.now();
         markMediaServerInactive(connection.id);
-        updateMediaServerConnection(connection.id, {
-          lastSyncResult: {
-            ok: false,
-            message: cause instanceof Error ? cause.message : String(cause),
-            at,
+        updateMediaServerConnection(
+          connection.id,
+          {
+            lastSyncResult: {
+              ok: false,
+              message: cause instanceof Error ? cause.message : String(cause),
+              at,
+            },
           },
-        }, connection.profileId);
+          connection.profileId,
+        );
       } finally {
         setSyncingIds((current) => {
           const next = new Set(current);
@@ -167,144 +165,157 @@ export function HomeServersTab() {
             ? connection.lastSyncResult.message
             : null;
           const syncing = syncingIds.has(connection.id);
-          const legacyDays = connection.refreshInterval === "daily" ? 1
-            : connection.refreshInterval === "three-days" ? 3
-              : connection.refreshInterval === "weekly" ? 7 : null;
+          const legacyDays =
+            connection.refreshInterval === "daily"
+              ? 1
+              : connection.refreshInterval === "three-days"
+                ? 3
+                : connection.refreshInterval === "weekly"
+                  ? 7
+                  : null;
           const refreshInterval = legacyDays == null ? connection.refreshInterval : "custom";
           const refreshDays = legacyDays ?? connection.refreshEveryDays ?? 1;
           return (
             <div key={connection.id} role="group" aria-label={connection.name} className="mb-8">
               {[
-            <SettingRow
-              key={connection.id}
-              wide
-              label={
-                <span className="inline-flex min-w-0 flex-wrap items-center gap-2">
-                  <MediaServerBrand provider={connection.provider} name={connection.name} />
-                  <span className={`${QUAL} bg-elevated text-ink-subtle`}>
-                    {mediaServerProviderName(connection.provider)}
-                  </span>
-                  <span className={`inline-flex items-center gap-2 ${ROW_DESC}`}>
-                    <span className={`h-2 w-2 shrink-0 rounded-full ${statusDot}`} />
-                    {statusLabel}
-                  </span>
-                </span>
-              }
-              desc={
-                <>
-                  <span className="block">{connection.origin}</span>
-                  {syncSummary && (
-                    <span className="block">
-                      {syncSummary}
-                      {connection.lastSyncAt
-                        ? ` · ${new Date(connection.lastSyncAt).toLocaleString()}`
-                        : ""}
+                <SettingRow
+                  key={connection.id}
+                  wide
+                  label={
+                    <span className="inline-flex min-w-0 flex-wrap items-center gap-2">
+                      <MediaServerBrand provider={connection.provider} name={connection.name} />
+                      <span className={`${QUAL} bg-elevated text-ink-subtle`}>
+                        {mediaServerProviderName(connection.provider)}
+                      </span>
+                      <span className={`inline-flex items-center gap-2 ${ROW_DESC}`}>
+                        <span className={`h-2 w-2 shrink-0 rounded-full ${statusDot}`} />
+                        {statusLabel}
+                      </span>
                     </span>
-                  )}
-                </>
-              }
-              warn={connection.lastSyncResult?.ok === false ? connection.lastSyncResult.message : undefined}
-            >
-              <div className="flex flex-wrap items-center gap-2.5">
-                <BusyButton busy={syncing} onClick={() => void sync(connection)}>
-                  {syncing ? (
-                    <LoaderCircle className="animate-spin" size={18} />
-                  ) : (
-                    <RefreshCw size={18} />
-                  )}
-                  {t("Sync now")}
-                </BusyButton>
-                <SButton onClick={() => setEditing(connection)}>
-                  <Pencil size={18} />
-                  {t("Edit")}
-                </SButton>
-                <SButton
-                  onClick={() =>
-                    updateMediaServerConnection(connection.id, { enabled: !connection.enabled })
+                  }
+                  desc={
+                    <>
+                      <span className="block">{connection.origin}</span>
+                      {syncSummary && (
+                        <span className="block">
+                          {syncSummary}
+                          {connection.lastSyncAt
+                            ? ` · ${new Date(connection.lastSyncAt).toLocaleString()}`
+                            : ""}
+                        </span>
+                      )}
+                    </>
+                  }
+                  warn={
+                    connection.lastSyncResult?.ok === false
+                      ? connection.lastSyncResult.message
+                      : undefined
                   }
                 >
-                  {connection.enabled ? t("Disable") : t("Enable")}
-                </SButton>
-                <SButton variant="danger" disabled={syncing} onClick={() => setRemoveTarget(connection)}>
-                  <Trash2 size={18} />
-                  {t("Remove")}
-                </SButton>
-              </div>
-            </SettingRow>,
-            <SettingRow
-              key={`${connection.id}-quality`}
-              label={t("Streaming quality")}
-              desc={t(
-                "Caps what Harbor asks {name} to send. Original streams the file exactly as it is stored.",
-                { name: connection.name },
-              )}
-            >
-              <div className={DROPDOWN_SLOT}>
-                <Dropdown
-                  size="md"
-                  ariaLabel={`${t("Streaming quality")}: ${connection.name}`}
-                  value={connection.preferredQuality}
-                  onChange={(value) =>
-                    updateMediaServerConnection(connection.id, {
-                      preferredQuality: value as MediaServerConnection["preferredQuality"],
-                    })
-                  }
-                  options={MEDIA_SERVER_QUALITIES.map((quality) => ({
-                    value: quality.id,
-                    label: t(quality.label),
-                  }))}
-                />
-              </div>
-            </SettingRow>,
-            <SettingRow
-              key={`${connection.id}-refresh`}
-              label={t("Refresh this library")}
-              desc={t(
-                "How often Harbor re-reads the library index from {name}. Manual only refreshes when you press Sync now.",
-                { name: connection.name },
-              )}
-            >
-              <div className={DROPDOWN_SLOT}>
-                <Dropdown
-                  size="md"
-                  ariaLabel={`${t("Refresh this library")}: ${connection.name}`}
-                  value={refreshInterval}
-                  onChange={(value) =>
-                    updateMediaServerConnection(connection.id, {
-                      refreshInterval: value as MediaServerRefreshInterval,
-                      ...(value === "custom" ? { refreshEveryDays: refreshDays } : {}),
-                    })
-                  }
-                  options={[
-                    { value: "launch", label: t("Every launch") },
-                    { value: "custom", label: t("Every…") },
-                    { value: "manual", label: t("Manual") },
-                  ]}
-                />
-              </div>
-            </SettingRow>,
-            ...(refreshInterval === "custom"
-              ? [
-                  <SettingRow
-                    key={`${connection.id}-days`}
-                    label={t("Refresh every")}
-                    desc={t("Days to wait between automatic refreshes of this library.")}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <RefreshDaysField
-                        value={refreshDays}
-                        onChange={(days) =>
-                          updateMediaServerConnection(connection.id, {
-                            refreshInterval: "custom",
-                            refreshEveryDays: days,
-                          })
-                        }
-                      />
-                      <span className={ROW_DESC}>{t("days")}</span>
-                    </div>
-                  </SettingRow>,
-                ]
-              : []),
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    <BusyButton busy={syncing} onClick={() => void sync(connection)}>
+                      {syncing ? (
+                        <LoaderCircle className="animate-spin" size={18} />
+                      ) : (
+                        <RefreshCw size={18} />
+                      )}
+                      {t("Sync now")}
+                    </BusyButton>
+                    <SButton onClick={() => setEditing(connection)}>
+                      <Pencil size={18} />
+                      {t("Edit")}
+                    </SButton>
+                    <SButton
+                      onClick={() =>
+                        updateMediaServerConnection(connection.id, { enabled: !connection.enabled })
+                      }
+                    >
+                      {connection.enabled ? t("Disable") : t("Enable")}
+                    </SButton>
+                    <SButton
+                      variant="danger"
+                      disabled={syncing}
+                      onClick={() => setRemoveTarget(connection)}
+                    >
+                      <Trash2 size={18} />
+                      {t("Remove")}
+                    </SButton>
+                  </div>
+                </SettingRow>,
+                <SettingRow
+                  key={`${connection.id}-quality`}
+                  label={t("Streaming quality")}
+                  desc={t(
+                    "Caps what Harbor asks {name} to send. Original streams the file exactly as it is stored.",
+                    { name: connection.name },
+                  )}
+                >
+                  <div className={DROPDOWN_SLOT}>
+                    <Dropdown
+                      size="md"
+                      ariaLabel={`${t("Streaming quality")}: ${connection.name}`}
+                      value={connection.preferredQuality}
+                      onChange={(value) =>
+                        updateMediaServerConnection(connection.id, {
+                          preferredQuality: value as MediaServerConnection["preferredQuality"],
+                        })
+                      }
+                      options={MEDIA_SERVER_QUALITIES.map((quality) => ({
+                        value: quality.id,
+                        label: t(quality.label),
+                      }))}
+                    />
+                  </div>
+                </SettingRow>,
+                <SettingRow
+                  key={`${connection.id}-refresh`}
+                  label={t("Refresh this library")}
+                  desc={t(
+                    "How often Harbor re-reads the library index from {name}. Manual only refreshes when you press Sync now.",
+                    { name: connection.name },
+                  )}
+                >
+                  <div className={DROPDOWN_SLOT}>
+                    <Dropdown
+                      size="md"
+                      ariaLabel={`${t("Refresh this library")}: ${connection.name}`}
+                      value={refreshInterval}
+                      onChange={(value) =>
+                        updateMediaServerConnection(connection.id, {
+                          refreshInterval: value as MediaServerRefreshInterval,
+                          ...(value === "custom" ? { refreshEveryDays: refreshDays } : {}),
+                        })
+                      }
+                      options={[
+                        { value: "launch", label: t("Every launch") },
+                        { value: "custom", label: t("Every…") },
+                        { value: "manual", label: t("Manual") },
+                      ]}
+                    />
+                  </div>
+                </SettingRow>,
+                ...(refreshInterval === "custom"
+                  ? [
+                      <SettingRow
+                        key={`${connection.id}-days`}
+                        label={t("Refresh every")}
+                        desc={t("Days to wait between automatic refreshes of this library.")}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <RefreshDaysField
+                            value={refreshDays}
+                            onChange={(days) =>
+                              updateMediaServerConnection(connection.id, {
+                                refreshInterval: "custom",
+                                refreshEveryDays: days,
+                              })
+                            }
+                          />
+                          <span className={ROW_DESC}>{t("days")}</span>
+                        </div>
+                      </SettingRow>,
+                    ]
+                  : []),
               ]}
             </div>
           );
@@ -353,15 +364,22 @@ export function HomeServersTab() {
   );
 }
 
-function RefreshDaysField({ value, onChange }: { value: number; onChange: (days: number) => void }) {
+function RefreshDaysField({
+  value,
+  onChange,
+}: {
+  value: number;
+  onChange: (days: number) => void;
+}) {
   const t = useT();
   const [draft, setDraft] = useState(String(value));
   useEffect(() => setDraft(String(value)), [value]);
   const commit = () => {
     const parsed = Number(draft);
-    const next = draft.trim() && Number.isFinite(parsed)
-      ? Math.min(365, Math.max(1, Math.round(parsed)))
-      : value;
+    const next =
+      draft.trim() && Number.isFinite(parsed)
+        ? Math.min(365, Math.max(1, Math.round(parsed)))
+        : value;
     setDraft(String(next));
     if (next !== value) onChange(next);
   };
@@ -425,7 +443,9 @@ function HomeServerRemoveDialog({
       )}
       actions={
         <>
-          <SButton disabled={busy} onClick={onCancel}>{t("Cancel")}</SButton>
+          <SButton disabled={busy} onClick={onCancel}>
+            {t("Cancel")}
+          </SButton>
           <SButton variant="danger" disabled={busy} onClick={() => void remove()}>
             {busy && <LoaderCircle className="animate-spin" size={18} />}
             {busy ? t("Removing…") : t("Remove server")}
@@ -440,7 +460,11 @@ function HomeServerRemoveDialog({
         </span>
       </div>
       <p className={`max-w-[70ch] ${ROW_DESC}`}>{connection.origin}</p>
-      {error && <div role="alert"><RowNote>{error}</RowNote></div>}
+      {error && (
+        <div role="alert">
+          <RowNote>{error}</RowNote>
+        </div>
+      )}
     </SettingsModal>
   );
 }
@@ -616,10 +640,13 @@ function ConnectionEditor({
     plexAbort.current?.abort();
     onClose();
   };
-  useEffect(() => () => {
-    connectionAbort.current?.abort();
-    plexAbort.current?.abort();
-  }, []);
+  useEffect(
+    () => () => {
+      connectionAbort.current?.abort();
+      plexAbort.current?.abort();
+    },
+    [],
+  );
   useEffect(() => {
     setProvider(existing?.provider ?? "jellyfin");
     setOrigin(existing?.origin ?? "");
@@ -870,7 +897,11 @@ function ConnectionEditor({
             </FieldBlock>
           </>
         ))}
-      {error && <div role="alert"><RowNote>{error}</RowNote></div>}
+      {error && (
+        <div role="alert">
+          <RowNote>{error}</RowNote>
+        </div>
+      )}
     </SettingsModal>
   );
 }

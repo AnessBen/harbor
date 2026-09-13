@@ -16,7 +16,12 @@ export function PortCard({
   state?: "heading" | "done" | "current";
 }) {
   const { settings } = useSettings();
-  const poster = usePosterChain(settings.rpdbKey, meta.id, meta.poster, meta.type === "series" ? "series" : "movie");
+  const poster = usePosterChain(
+    settings.rpdbKey,
+    meta.id,
+    meta.poster,
+    meta.type === "series" ? "series" : "movie",
+  );
   const passive = state !== "heading";
   return (
     <button
@@ -26,7 +31,11 @@ export function PortCard({
       onMouseLeave={() => !passive && onHover?.(null)}
       onFocus={(e) => !passive && onHover?.(e.currentTarget.getBoundingClientRect())}
       onBlur={() => !passive && onHover?.(null)}
-      style={{ animationDelay: `${Math.min(index * 60, 480)}ms`, animationDuration: "420ms", animationFillMode: "both" }}
+      style={{
+        animationDelay: `${Math.min(index * 60, 480)}ms`,
+        animationDuration: "420ms",
+        animationFillMode: "both",
+      }}
       className="group flex w-full flex-col gap-2.5 text-start [transform-origin:center_bottom] motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 active:scale-[0.97]"
     >
       <span
@@ -44,7 +53,9 @@ export function PortCard({
           className="h-full w-full object-cover transition-transform duration-[520ms] ease-out [transition-delay:90ms] motion-safe:group-hover:will-change-transform motion-safe:group-hover:scale-[1.06] motion-reduce:transition-none"
         />
       </span>
-      <span className="line-clamp-1 text-[12.5px] font-medium text-ink-muted transition-colors group-hover:text-ink">{meta.name}</span>
+      <span className="line-clamp-1 text-[12.5px] font-medium text-ink-muted transition-colors group-hover:text-ink">
+        {meta.name}
+      </span>
     </button>
   );
 }

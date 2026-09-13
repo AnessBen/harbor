@@ -176,6 +176,8 @@ export type Settings = {
   controllerCursor: ControllerCursorId;
   controllerCursorImage: string;
   controllerCursorSize: number;
+  controllerCursorEnabled: boolean;
+  controllerCursorHideMs: number;
   controllerKeyboardSize: number;
   controllerRepeatMs: number;
   controllerInitialDelayMs: number;
@@ -202,6 +204,7 @@ export type Settings = {
   fullscreenRestorePosition: boolean;
   contentAdvisoryToast: boolean;
   contentAdvisoryTheme: "colored" | "monochrome";
+  contentAdvisoryShowIgnore: boolean;
   playerVolumeHud: boolean;
   playerVolumeHudPosition: "center" | "top" | "top-left" | "top-right";
   customPlaybackSpeeds: number[];
@@ -534,6 +537,7 @@ export type Settings = {
   pauseUnfocused: boolean;
   cwSnapshotRetentionDays: number;
   cwSnapshotFullQuality: boolean;
+  cwPreferEpisodeStill: boolean;
   streamFilterLevel: "strict" | "balanced" | "off";
   blockTrackers: boolean;
   homeRows: {
@@ -597,6 +601,7 @@ export type Settings = {
   webhooks: {
     discordUrl: string;
     telegramUrl: string;
+    desktopEnabled: boolean;
     notifyMovies: boolean;
     notifyTv: boolean;
     notifyAnime: boolean;
@@ -643,7 +648,7 @@ export type Settings = {
     name: string;
     enabled: boolean;
     trigger: WebhookTrigger;
-    channels: { discord: boolean; telegram: boolean };
+    channels: { discord: boolean; telegram: boolean; desktop: boolean };
   }>;
   downloadDir: string;
   downloadCreateFolders: boolean;
