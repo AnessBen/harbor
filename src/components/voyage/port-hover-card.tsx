@@ -90,7 +90,9 @@ export function PortHoverCard({ meta, anchor }: { meta: Meta; anchor: DOMRect })
     if (!el) return;
     const panel = document.querySelector("[data-voyage-panel]")?.getBoundingClientRect() ?? null;
     const rtl = document.documentElement.dir === "rtl";
-    setSpot(placeBeside(anchor, el.offsetHeight, panel, window.innerWidth, window.innerHeight, rtl));
+    setSpot(
+      placeBeside(anchor, el.offsetHeight, panel, window.innerWidth, window.innerHeight, rtl),
+    );
   }, [anchor, meta.id, credits]);
 
   const facts = [meta.releaseInfo, meta.runtime, ...(meta.genres ?? []).slice(0, 2)].filter(
@@ -122,7 +124,9 @@ export function PortHoverCard({ meta, anchor }: { meta: Meta; anchor: DOMRect })
         <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11.5px] tabular-nums text-ink-subtle">
           {facts.map((f, i) => (
             <span key={f} className="flex items-center gap-2">
-              {i > 0 && <span aria-hidden className="h-[3px] w-[3px] rounded-full bg-ink-subtle/60" />}
+              {i > 0 && (
+                <span aria-hidden className="h-[3px] w-[3px] rounded-full bg-ink-subtle/60" />
+              )}
               {f}
             </span>
           ))}
@@ -134,7 +138,9 @@ export function PortHoverCard({ meta, anchor }: { meta: Meta; anchor: DOMRect })
           )}
         </div>
         {meta.description && (
-          <p className="mt-2.5 line-clamp-4 text-[12.5px] leading-relaxed text-ink-muted">{meta.description}</p>
+          <p className="mt-2.5 line-clamp-4 text-[12.5px] leading-relaxed text-ink-muted">
+            {meta.description}
+          </p>
         )}
         {credits?.director && (
           <div className="mt-2.5 text-[11.5px] text-ink-subtle">
@@ -155,7 +161,9 @@ export function PortHoverCard({ meta, anchor }: { meta: Meta; anchor: DOMRect })
                 </span>
               )}
             </div>
-            {!waiting && <span className="min-w-0 truncate text-[11.5px] text-ink-muted">{names}</span>}
+            {!waiting && (
+              <span className="min-w-0 truncate text-[11.5px] text-ink-muted">{names}</span>
+            )}
           </div>
         )}
       </div>

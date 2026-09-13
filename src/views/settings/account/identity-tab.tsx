@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Check, ImagePlus, Palette } from "../icons";
 import { useProfiles } from "@/lib/profiles";
 import { useSettings } from "@/lib/settings";
@@ -7,11 +7,23 @@ import { useT } from "@/lib/i18n";
 import { currentAuthor, subscribeAuthor } from "@/lib/theme-auth";
 import { useAuth } from "@/lib/auth";
 import { nameEquals } from "@/lib/account/name-sync";
+import {
+  getNameSyncState,
+  retryNameSync,
+  subscribeNameSyncState,
+} from "@/lib/account/name-sync-state";
 import { navOwnsFocus } from "@/lib/keyboard-navigation/geometry";
 import { AvatarFan } from "@/components/avatar-picker/avatar-fan";
 import { AvatarCatalogModal } from "@/components/avatar-picker/avatar-catalog-modal";
 import { CustomColorPanel, HARBOR_COLOR_SWATCHES } from "../color-picker";
-import { ModalButton, SettingsModal, SettingRow, ROW_ACTION, ROW_ACTION_DANGER, ROW_ACTION_PRIMARY } from "../kit";
+import {
+  ModalButton,
+  SettingsModal,
+  SettingRow,
+  ROW_ACTION,
+  ROW_ACTION_DANGER,
+  ROW_ACTION_PRIMARY,
+} from "../kit";
 import { Section } from "../shared";
 import { ProfileAudioSetting } from "../profile-audio-setting";
 import { AvatarRing } from "./avatar-ring";
@@ -24,10 +36,14 @@ export function IdentityTab() {
   const { displayName, setDisplayName } = useTogether();
   const { activeProfile, updateProfile } = useProfiles();
   const [harborAuthor, setHarborAuthor] = useState(currentAuthor);
+  const nameSync = useSyncExternalStore(subscribeNameSyncState, getNameSyncState, getNameSyncState);
+  const syncPhase = nameSync.accountId === harborAuthor?.id ? nameSync.phase : "idle";
   useEffect(() => subscribeAuthor(() => setHarborAuthor(currentAuthor())), []);
 
   const [nameDraft, setNameDraft] = useState(displayName);
   const draftRef = useRef(displayName);
+  const previousNameRef = useRef(displayName);
+  const previousScopeRef = useRef({ accountId: harborAuthor?.id, profileId: activeProfile?.id });
   const [colorOpen, setColorOpen] = useState(false);
   const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -38,9 +54,19 @@ export function IdentityTab() {
   };
 
   useEffect(() => {
-    draftRef.current = displayName;
-    setNameDraft(displayName);
-  }, [displayName]);
+    // A late account read must not erase text still being edited in this field.
+    const scope = previousScopeRef.current;
+    if (
+      scope.accountId !== harborAuthor?.id ||
+      scope.profileId !== activeProfile?.id ||
+      nameEquals(draftRef.current, previousNameRef.current)
+    ) {
+      draftRef.current = displayName;
+      setNameDraft(displayName);
+    }
+    previousNameRef.current = displayName;
+    previousScopeRef.current = { accountId: harborAuthor?.id, profileId: activeProfile?.id };
+  }, [displayName, harborAuthor?.id, activeProfile?.id]);
 
   const pushIdentity = (patch: { harborColor?: string; harborAvatar?: string | null }) => {
     update(patch);
@@ -88,54 +114,82 @@ export function IdentityTab() {
         subtitle={t("Your avatar, name, and handle across Harbor.")}
       >
         <div className="hset-profile-identity flex items-center gap-6 py-3">
-          <AvatarRing src={effectiveAvatar} size={88} color={color} onClick={() => fileRef.current?.click()} />
+          <AvatarRing
+            src={effectiveAvatar}
+            size={88}
+            color={color}
+            onClick={() => fileRef.current?.click()}
+          />
           <div className="flex min-w-0 max-w-[560px] flex-1 flex-col gap-2">
             <div className="flex items-end gap-3">
-            <label className="flex min-w-0 max-w-[420px] flex-1 flex-col gap-2 text-[15.5px] leading-[22px] text-ink-muted">
-              <span>{t("Display name")}</span>
-              <span className="flex h-12 w-full min-w-0 items-center gap-3 rounded-[10px] border border-edge-soft bg-elevated px-3 transition-colors hover:border-edge focus-within:border-ink-muted">
-              <input
-                value={nameDraft}
-                maxLength={32}
-                aria-label={t("Display name")}
-                aria-describedby={harborAuthor?.handle ? "hset-profile-handle" : undefined}
-                onChange={(e) => setDraft(e.target.value)}
-                onBlur={commitName}
-                onKeyDown={(e) => {
-                  if (e.currentTarget.hasAttribute("data-search-editing") || navOwnsFocus(e.currentTarget)) return;
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    commitName();
-                    e.currentTarget.blur();
-                  }
-                  if (e.key === "Escape") {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setDraft(displayName);
-                    e.currentTarget.blur();
-                  }
-                }}
-                className="h-full min-w-0 flex-1 border-0 bg-transparent p-0 text-[17px] font-medium text-ink outline-none"
-              />
-              {harborAuthor?.handle && (
-                <span id="hset-profile-handle" dir="ltr" title={`@${harborAuthor.handle}`} className="max-w-[45%] shrink-0 truncate text-[14px] leading-5 text-ink-muted">
-                  @{harborAuthor.handle}
+              <label className="flex min-w-0 max-w-[420px] flex-1 flex-col gap-2 text-[15.5px] leading-[22px] text-ink-muted">
+                <span>{t("Display name")}</span>
+                <span className="flex h-12 w-full min-w-0 items-center gap-3 rounded-[10px] border border-edge-soft bg-elevated px-3 transition-colors hover:border-edge focus-within:border-ink-muted">
+                  <input
+                    value={nameDraft}
+                    maxLength={32}
+                    aria-label={t("Display name")}
+                    aria-describedby={[
+                      harborAuthor?.handle ? "hset-profile-handle" : "",
+                      "hset-name-sync",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                    onChange={(e) => setDraft(e.target.value)}
+                    onBlur={commitName}
+                    onKeyDown={(e) => {
+                      if (
+                        e.currentTarget.hasAttribute("data-search-editing") ||
+                        navOwnsFocus(e.currentTarget)
+                      )
+                        return;
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        commitName();
+                        e.currentTarget.blur();
+                      }
+                      if (e.key === "Escape") {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setDraft(displayName);
+                        e.currentTarget.blur();
+                      }
+                    }}
+                    className="h-full min-w-0 flex-1 border-0 bg-transparent p-0 text-[17px] font-medium text-ink outline-none"
+                  />
+                  {harborAuthor?.handle && (
+                    <span
+                      id="hset-profile-handle"
+                      dir="ltr"
+                      title={`@${harborAuthor.handle}`}
+                      className="max-w-[45%] shrink-0 truncate text-[14px] leading-5 text-ink-muted"
+                    >
+                      @{harborAuthor.handle}
+                    </span>
+                  )}
                 </span>
+              </label>
+              {(nameDirty || syncPhase === "error") && (
+                <button
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={nameDirty ? commitName : retryNameSync}
+                  className={`${ROW_ACTION_PRIMARY} shrink-0`}
+                >
+                  {t(nameDirty ? "Save" : "Try again")}
+                </button>
               )}
-              </span>
-            </label>
-            {nameDirty && (
-              <button
-                type="button"
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={commitName}
-                className={`${ROW_ACTION_PRIMARY} shrink-0`}
-              >
-                {t("Save")}
-              </button>
-            )}
             </div>
+            <p id="hset-name-sync" role="status" className="text-sm text-ink-muted">
+              {syncPhase === "error"
+                ? t("Could not sync your display name. Check your connection and try again.")
+                : syncPhase === "saving"
+                  ? t("Syncing display name…")
+                  : syncPhase === "saved" && !nameDirty
+                    ? t("Display name saved to your Harbor account.")
+                    : ""}
+            </p>
           </div>
         </div>
 
@@ -176,7 +230,9 @@ export function IdentityTab() {
           wide
           icon={<Palette size={18} strokeWidth={2} />}
           label={t("Your color")}
-          desc={t("Colors your name, your cursor in Watch Together, and the ring around your avatar.")}
+          desc={t(
+            "Colors your name, your cursor in Watch Together, and the ring around your avatar.",
+          )}
         >
           <div className="flex w-full flex-wrap items-center gap-2.5">
             {HARBOR_COLOR_SWATCHES.map((hex) => {

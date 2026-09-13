@@ -22,6 +22,7 @@ import { sanitizeBufferSize } from "@/lib/player/buffer-profile";
 import { sanitizeScreensaverMedia } from "@/lib/screensaver/media";
 import {
   sanitizeControllerCursor,
+  sanitizeControllerCursorHideMs,
   sanitizeControllerCursorImage,
   sanitizeControllerCursorSize,
 } from "@/lib/gamepad/cursor";
@@ -177,8 +178,7 @@ function parseStoredSettings(raw: string | null): Settings {
       _playbackSourcePreferenceV2?: boolean;
     };
     if (!parsed._playbackSourcePreferenceV1) {
-      parsed.playbackSourcePreference =
-        parsed.localPlaybackMode === "local" ? "local" : "online";
+      parsed.playbackSourcePreference = parsed.localPlaybackMode === "local" ? "local" : "online";
       parsed.preferredMediaServerId = null;
       parsed._playbackSourcePreferenceV1 = true;
     }
@@ -217,6 +217,9 @@ function parseStoredSettings(raw: string | null): Settings {
     }
     if (parsed.contentAdvisoryTheme !== "monochrome" && parsed.contentAdvisoryTheme !== "colored") {
       parsed.contentAdvisoryTheme = "colored";
+    }
+    if (typeof parsed.contentAdvisoryShowIgnore !== "boolean") {
+      parsed.contentAdvisoryShowIgnore = true;
     }
     if (!parsed._skipButtonHideSecV2) {
       if (
@@ -351,6 +354,11 @@ function parseStoredSettings(raw: string | null): Settings {
         typeof parsed.screensaverMediaId === "string" ? parsed.screensaverMediaId : null,
       controllerCursorImage: sanitizeControllerCursorImage(parsed.controllerCursorImage),
       controllerCursorSize: sanitizeControllerCursorSize(parsed.controllerCursorSize),
+      controllerCursorEnabled:
+        typeof parsed.controllerCursorEnabled === "boolean"
+          ? parsed.controllerCursorEnabled
+          : DEFAULT.controllerCursorEnabled,
+      controllerCursorHideMs: sanitizeControllerCursorHideMs(parsed.controllerCursorHideMs),
       fullscreenClockFormat: sanitizeFullscreenClockFormat(parsed.fullscreenClockFormat),
       fullscreenClockStyle: sanitizeFullscreenClockStyle(parsed.fullscreenClockStyle),
       fullscreenClockShowSeconds:
@@ -457,7 +465,16 @@ function parseStoredSettings(raw: string | null): Settings {
           anime: parsed.customCalendar?.mediaTypes?.anime !== false,
         },
       },
-      webhookRules: Array.isArray(parsed.webhookRules) ? parsed.webhookRules : [],
+      webhookRules: Array.isArray(parsed.webhookRules)
+        ? parsed.webhookRules.map((r) => ({
+            ...r,
+            channels: {
+              discord: r.channels?.discord ?? false,
+              telegram: r.channels?.telegram ?? false,
+              desktop: r.channels?.desktop ?? false,
+            },
+          }))
+        : [],
       customStreamFilters: Array.isArray(parsed.customStreamFilters)
         ? parsed.customStreamFilters
         : DEFAULT.customStreamFilters,

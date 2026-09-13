@@ -1,6 +1,13 @@
 import type { ReactNode } from "react";
 import { ROW_ACTION, ROW_ACTION_DANGER, ROW_ACTION_PRIMARY, ROW_DESC, ROW_TITLE } from "./kit";
-import { RowControl, RowDesc, RowText, RowTitle, useGroupHeadingVisible, useRegisterRowTitle } from "./shared";
+import {
+  RowControl,
+  RowDesc,
+  RowText,
+  RowTitle,
+  useGroupHeadingVisible,
+  useRegisterRowTitle,
+} from "./shared";
 
 export const S_TITLE = ROW_TITLE;
 export const S_DESC = ROW_DESC;

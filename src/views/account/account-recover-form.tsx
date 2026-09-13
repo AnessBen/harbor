@@ -70,21 +70,27 @@ export function AccountRecoverForm({
         : t("We sent a 6-digit code to your Discord DMs. It expires in 10 minutes.");
 
   const content = (
-    <div className={inline ? "flex min-w-0 flex-col gap-6 pt-4" : "flex flex-col gap-6 bg-surface p-6"}>
-      {!inline && <div className="flex items-start gap-3">
-        <button
-          type="button"
-          onClick={() => (mode === "key" ? onBack() : switchMode("key"))}
-          aria-label={t("Back")}
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-elevated hover:text-ink"
-        >
-          <ArrowLeft size={17} strokeWidth={2} />
-        </button>
-        <div className="flex flex-col">
-          <h2 className="text-[20px] font-semibold leading-7 tracking-tight text-ink">{heading}</h2>
-          <p className="mt-1 text-[15px] leading-[22px] text-ink-muted">{subheading}</p>
+    <div
+      className={inline ? "flex min-w-0 flex-col gap-6 pt-4" : "flex flex-col gap-6 bg-surface p-6"}
+    >
+      {!inline && (
+        <div className="flex items-start gap-3">
+          <button
+            type="button"
+            onClick={() => (mode === "key" ? onBack() : switchMode("key"))}
+            aria-label={t("Back")}
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-elevated hover:text-ink"
+          >
+            <ArrowLeft size={17} strokeWidth={2} />
+          </button>
+          <div className="flex flex-col">
+            <h2 className="text-[20px] font-semibold leading-7 tracking-tight text-ink">
+              {heading}
+            </h2>
+            <p className="mt-1 text-[15px] leading-[22px] text-ink-muted">{subheading}</p>
+          </div>
         </div>
-      </div>}
+      )}
 
       {mode === "key" && (
         <form
@@ -112,7 +118,14 @@ export function AccountRecoverForm({
           />
 
           {error && (
-            <p role={inline ? "alert" : undefined} className={inline ? "rounded-md bg-danger/10 px-3.5 py-3 text-[15.5px] leading-[22px] text-danger" : "text-[12.5px] text-danger"}>
+            <p
+              role={inline ? "alert" : undefined}
+              className={
+                inline
+                  ? "rounded-md bg-danger/10 px-3.5 py-3 text-[15.5px] leading-[22px] text-danger"
+                  : "text-[12.5px] text-danger"
+              }
+            >
               {error.kind === "built-in" ? t(error.key) : error.detail}
             </p>
           )}
@@ -120,23 +133,26 @@ export function AccountRecoverForm({
           <button
             type="submit"
             disabled={!keyReady || busy}
-            className={inline ? `${ROW_ACTION_PRIMARY} self-end justify-center` : "flex h-11 items-center justify-center gap-2 rounded-md bg-accent text-[14px] font-semibold text-canvas transition-all duration-150 hover:opacity-90 active:scale-[0.99] disabled:opacity-40 disabled:active:scale-100"}
+            className={
+              inline
+                ? `${ROW_ACTION_PRIMARY} self-end justify-center`
+                : "flex h-11 items-center justify-center gap-2 rounded-md bg-accent text-[14px] font-semibold text-canvas transition-all duration-150 hover:opacity-90 active:scale-[0.99] disabled:opacity-40 disabled:active:scale-100"
+            }
           >
             {busy && <Loader2 size={16} className="animate-spin" />}
             {t("Reset password")}
           </button>
-
         </form>
       )}
-
-
     </div>
   );
 
   if (!inline) return content;
   return (
     <div className="hset-account-auth relative w-full max-w-[560px] [&_.hset-section-title]:pe-14 [&_.harbor-settings-section>p]:pe-14 [&_label]:text-[16.5px] [&_label]:leading-6 [&_label~span]:text-[15.5px] [&_label~span]:leading-[22px] [&_input]:bg-elevated [&_input]:rounded-[10px]">
-      <Section title={heading} subtitle={subheading}>{content}</Section>
+      <Section title={heading} subtitle={subheading}>
+        {content}
+      </Section>
       <button
         type="button"
         onClick={() => (mode === "key" ? onBack() : switchMode("key"))}

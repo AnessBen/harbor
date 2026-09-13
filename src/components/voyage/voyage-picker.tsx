@@ -47,9 +47,7 @@ export function VoyagePicker({ voyage }: { voyage: Voyage }) {
         ))}
       </div>
 
-      {hover.meta && hover.anchor && (
-        <PortHoverCard meta={hover.meta} anchor={hover.anchor} />
-      )}
+      {hover.meta && hover.anchor && <PortHoverCard meta={hover.meta} anchor={hover.anchor} />}
 
       <div className="mt-1 flex items-center justify-between gap-2">
         <button

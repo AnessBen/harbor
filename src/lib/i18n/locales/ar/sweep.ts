@@ -122,7 +122,8 @@ const sweep: Record<string, string> = {
   "All times": "كل الأوقات",
   "All video": "كل الفيديو",
   "All-time bests": "الأفضل على الإطلاق",
-  "Also joins Harbor's Discord server.": "ينضم أيضًا إلى خادم Harbor على Discord.",
+  "Linking your Discord account also joins you to Harbor's Discord server, so the bot can send your Backup keys privately.":
+    "Linking your Discord account also joins you to Harbor's Discord server, so the bot can send your Backup keys privately.",
   "Always re-encode when casting": "أعد الترميز دائمًا عند البث",
   "Always stream P2P": "البث عبر P2P دائمًا",
   Amber: "كهرماني",
@@ -538,7 +539,8 @@ const sweep: Record<string, string> = {
   "Favour titles from where you are": "تفضيل الأعمال من منطقتك",
   "Favour titles from your region on Home": "تفضيل الأعمال من منطقتك في الرئيسية",
   Feishin: "Feishin",
-  "Fetches a small public test file over P2P, then reports UDP and HTTPS egress, DHT bootstrap and tracker reachability step by step.": "يجلب ملف اختبار عامًا صغيرًا عبر P2P، ثم يبلّغ خطوة بخطوة عن حركة UDP وHTTPS الصادرة، وتمهيد DHT، وإمكانية الوصول إلى التراكرات.",
+  "Fetches a small public test file over P2P, then reports UDP and HTTPS egress, DHT bootstrap and tracker reachability step by step.":
+    "يجلب ملف اختبار عامًا صغيرًا عبر P2P، ثم يبلّغ خطوة بخطوة عن حركة UDP وHTTPS الصادرة، وتمهيد DHT، وإمكانية الوصول إلى التراكرات.",
   "Filename hidden": "اسم الملف مخفي",
   "Filename shown": "اسم الملف ظاهر",
   "Files smaller than this are skipped when scanning a folder.":
@@ -623,7 +625,8 @@ const sweep: Record<string, string> = {
   HELP: "مساعدة",
   HIDIVE: "HIDIVE",
   "Hall of Fame": "قاعة المشاهير",
-  "Handles P2P playback and transcoding for this machine.": "يتولّى تشغيل P2P وإعادة الترميز على هذا الجهاز.",
+  "Handles P2P playback and transcoding for this machine.":
+    "يتولّى تشغيل P2P وإعادة الترميز على هذا الجهاز.",
   "Harbor Rank": "تصنيف Harbor",
   "Harbor accepted that but returned no session. Try again.":
     "قَبِل Harbor ذلك لكنه لم يُعِد جلسة. حاول مرة أخرى.",
@@ -823,7 +826,8 @@ const sweep: Record<string, string> = {
   "Live TV source": "مصدر البث المباشر",
   "Live TV sources": "مصادر البث المباشر",
   "Live action": "تمثيل حي",
-  "Live state of Harbor's own P2P engine on this machine.": "الحالة الآنية لمحرك P2P الخاص بـ Harbor على هذا الجهاز.",
+  "Live state of Harbor's own P2P engine on this machine.":
+    "الحالة الآنية لمحرك P2P الخاص بـ Harbor على هذا الجهاز.",
   "Loading more collections...": "جارٍ تحميل مزيد من المجموعات...",
   "Loads a backup file and restores exactly what it contains, without touching the rest of your setup. Your Stremio sign-in on this device stays as is.":
     "يحمّل ملف نسخة احتياطية ويستعيد ما يحتويه بالضبط، دون المساس ببقية إعداداتك. يبقى تسجيل دخولك إلى Stremio على هذا الجهاز كما هو.",
@@ -1014,7 +1018,8 @@ const sweep: Record<string, string> = {
   "Open this page by scanning the code on your TV's setup screen.":
     "افتح هذه الصفحة بمسح الرمز الظاهر على شاشة إعداد تلفزيونك.",
   "OpenSubtitles API key": "مفتاح API لـ OpenSubtitles",
-  "Opens the folder holding the DHT cache and active transfer data.": "يفتح المجلد الذي يحتوي على ذاكرة DHT المؤقتة وبيانات النقل النشطة.",
+  "Opens the folder holding the DHT cache and active transfer data.":
+    "يفتح المجلد الذي يحتوي على ذاكرة DHT المؤقتة وبيانات النقل النشطة.",
   "Opens the free signup page": "يفتح صفحة التسجيل المجاني",
   "Opens your API settings page": "يفتح صفحة إعدادات API",
   "Optional. Add one to turn on automatic subtitle sync.":
@@ -1057,7 +1062,8 @@ const sweep: Record<string, string> = {
   "Paste your key": "الصق مفتاحك",
   "Paste your v3 API key": "الصق مفتاح API v3",
   Peacock: "Peacock",
-  "Peers, speed and progress on the player while a P2P stream plays. Sits top left, clear of the exit button.": "الأقران والسرعة والتقدم على المشغل أثناء بث P2P. يظهر أعلى اليسار بعيدًا عن زر الخروج.",
+  "Peers, speed and progress on the player while a P2P stream plays. Sits top left, clear of the exit button.":
+    "الأقران والسرعة والتقدم على المشغل أثناء بث P2P. يظهر أعلى اليسار بعيدًا عن زر الخروج.",
   "People from the week's hottest titles, weighted by what is being talked about.":
     "أشخاص من أبرز الأعمال هذا الأسبوع، مرجّحون بحسب ما يدور حوله الحديث.",
   Philo: "Philo",
@@ -1527,7 +1533,8 @@ const sweep: Record<string, string> = {
     "الخط المنقّط ضغط مستوٍ للمدى كله. المنحنى الذي يبقى مرتفعًا يُبقي الدرجات المتوسطة نابضة ويضغط الإضاءات العالية متأخرًا؛ أما المنحنى الأدنى فينحدر مبكرًا ويبدو ألطف.",
   "The editor is a working copy of the player. Click any control on it to move, resize, restyle or hide that control.":
     "المحرر نسخة عمل من المشغّل. انقر أي عنصر تحكم فيه لنقله أو تغيير حجمه أو نمطه أو إخفائه.",
-  "The engine listens on a local port and joins the DHT to find peers. Active transfers are the streams it currently has open.": "يستمع المحرك على منفذ محلي وينضم إلى DHT للعثور على الأقران. عمليات النقل النشطة هي البثوث المفتوحة حاليًا.",
+  "The engine listens on a local port and joins the DHT to find peers. Active transfers are the streams it currently has open.":
+    "يستمع المحرك على منفذ محلي وينضم إلى DHT للعثور على الأقران. عمليات النقل النشطة هي البثوث المفتوحة حاليًا.",
   "The key is saved on this device only.": "يُحفظ المفتاح على هذا الجهاز فقط.",
   "The label looks high (1080p / 4K) but doesn't match expected file size or release window. Often a CAM or TS rebadged. Try a Theater Capture stream or check the source list before committing.":
     "يبدو الوصف عاليًا (1080p / 4K) لكنه لا يطابق حجم الملف أو موعد الإصدار المتوقع. غالبًا نسخة CAM أو TS أُعيدت تسميتها. جرّب بثّ Theater Capture أو راجع قائمة المصادر قبل الاختيار.",

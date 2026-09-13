@@ -91,7 +91,12 @@ export class PluginWorker {
     });
   }
 
-  async call(method: string, args: unknown[], timeoutMs: number, signal?: AbortSignal): Promise<unknown> {
+  async call(
+    method: string,
+    args: unknown[],
+    timeoutMs: number,
+    signal?: AbortSignal,
+  ): Promise<unknown> {
     if (signal?.aborted) throw abortError();
     await this.ensure();
     const w = this.worker;
@@ -237,19 +242,20 @@ export class PluginWorker {
   private async acquireHttp(): Promise<void> {
     if (this.httpInflight >= MAX_CONCURRENT_HTTP) {
       await new Promise<void>((resolve) => this.httpQueue.push(resolve));
-    }
-    this.httpInflight++;
+    } else this.httpInflight++;
     if (globalHttpInflight >= MAX_GLOBAL_HTTP) {
       await new Promise<void>((resolve) => globalHttpQueue.push(resolve));
-    }
-    globalHttpInflight++;
+    } else globalHttpInflight++;
   }
 
   private releaseHttp(): void {
-    globalHttpInflight--;
-    globalHttpQueue.shift()?.();
-    this.httpInflight--;
-    this.httpQueue.shift()?.();
+    // Hand off reserved slots before admitting new arrivals.
+    const globalNext = globalHttpQueue.shift();
+    if (globalNext) globalNext();
+    else globalHttpInflight--;
+    const next = this.httpQueue.shift();
+    if (next) next();
+    else this.httpInflight--;
   }
 
   private onParse(id: string, html: string): void {

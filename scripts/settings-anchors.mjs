@@ -3,19 +3,38 @@ import path from "node:path";
 import { settingsSearchEntries } from "./settings-search-entries.mjs";
 
 const STR = '"((?:[^"\\\\]|\\\\.)*)"';
-const slug = (t) => "set-" + t.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-+|-+$)/g, "");
+const slug = (t) =>
+  "set-" +
+  t
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-+|-+$)/g, "");
 const unesc = (s) => s.replace(/\\(.)/g, "$1");
-const LEGACY = { trakt: "trackers", anilist: "trackers", mal: "trackers", simkl: "trackers", letterboxd: "trackers" };
+const LEGACY = {
+  trakt: "trackers",
+  anilist: "trackers",
+  mal: "trackers",
+  simkl: "trackers",
+  letterboxd: "trackers",
+};
 
 export function createSettingsAnchorAudit(ROOT) {
   const SRC = path.normalize(path.join(ROOT, "src"));
   const SETTINGS = path.join(SRC, "views", "settings");
   const ACCOUNT = path.join(SRC, "views", "account");
-  const PRIMITIVES = new Set(["shared.tsx", "kit.tsx", "ui.tsx"].map((n) => path.join(SETTINGS, n)));
+  const PRIMITIVES = new Set(
+    ["shared.tsx", "kit.tsx", "ui.tsx"].map((n) => path.join(SETTINGS, n)),
+  );
   const CHROME = new Set(
-    ["nav.tsx", "settings-sidebar.tsx", "jump-bar.tsx", "section-cards.tsx", "group-landing.tsx", "tab-registry.ts", "search-match.ts"].map((n) =>
-      path.join(SETTINGS, n),
-    ),
+    [
+      "nav.tsx",
+      "settings-sidebar.tsx",
+      "jump-bar.tsx",
+      "section-cards.tsx",
+      "group-landing.tsx",
+      "tab-registry.ts",
+      "search-match.ts",
+    ].map((n) => path.join(SETTINGS, n)),
   );
   const files = new Map();
   const read = (f) => {
@@ -30,7 +49,13 @@ export function createSettingsAnchorAudit(ROOT) {
     if (spec.startsWith("@/")) base = path.join(SRC, spec.slice(2));
     else if (spec.startsWith(".")) base = path.resolve(path.dirname(from), spec);
     else return null;
-    for (const c of [base, base + ".tsx", base + ".ts", path.join(base, "index.tsx"), path.join(base, "index.ts")]) {
+    for (const c of [
+      base,
+      base + ".tsx",
+      base + ".ts",
+      path.join(base, "index.tsx"),
+      path.join(base, "index.ts"),
+    ]) {
       if (fs.existsSync(c) && fs.statSync(c).isFile()) return path.normalize(c);
     }
     return null;
@@ -70,7 +95,9 @@ export function createSettingsAnchorAudit(ROOT) {
       }
       if (direct.length) out.push({ target, names: direct, at, len });
     };
-    for (const m of src.matchAll(/import\s+(type\s+)?(?:(\w+)\s*,?\s*)?(?:\{([^}]*)\})?\s*from\s+"([^"]+)"/g)) {
+    for (const m of src.matchAll(
+      /import\s+(type\s+)?(?:(\w+)\s*,?\s*)?(?:\{([^}]*)\})?\s*from\s+"([^"]+)"/g,
+    )) {
       if (m[1]) continue;
       const names = m[2] ? [m[2]] : [];
       if (m[3]) {
@@ -129,7 +156,9 @@ export function createSettingsAnchorAudit(ROOT) {
     const names = { Section: "Section", SettingGroup: "SettingGroup" };
     for (const m of src.matchAll(/\b(Section|SettingGroup)\s+as\s+(\w+)/g)) names[m[2]] = m[1];
     const out = [];
-    for (const m of src.matchAll(new RegExp("<(/?)(" + Object.keys(names).join("|") + ")\\b", "g"))) {
+    for (const m of src.matchAll(
+      new RegExp("<(/?)(" + Object.keys(names).join("|") + ")\\b", "g"),
+    )) {
       const kind = names[m[2]];
       if (m[1] === "/") {
         out.push({ close: true, kind, idx: m.index });
@@ -145,10 +174,13 @@ export function createSettingsAnchorAudit(ROOT) {
       const title = t ? unesc(t[1]) : d ? d[1].trim() : null;
       out.push({ open: true, kind, title, dyn: !t, idx: m.index, selfClose: /\/\s*$/.test(head) });
     }
-    const id = (title, dyn, idx) => out.push({ open: true, kind: "id", title, dyn, idx, selfClose: true });
-    for (const m of src.matchAll(new RegExp("id=\\{settingsAnchor\\(\\s*(?:t\\(\\s*)?" + STR, "g"))) id(unesc(m[1]), false, m.index);
+    const id = (title, dyn, idx) =>
+      out.push({ open: true, kind: "id", title, dyn, idx, selfClose: true });
+    for (const m of src.matchAll(new RegExp("id=\\{settingsAnchor\\(\\s*(?:t\\(\\s*)?" + STR, "g")))
+      id(unesc(m[1]), false, m.index);
     for (const m of src.matchAll(/id=\{settingsAnchor\(\s*`([^`]*)`/g)) id(m[1], true, m.index);
-    for (const m of src.matchAll(/id=\{settingsAnchor\(\s*([a-zA-Z_][\w.]*)\s*\)/g)) id(m[1], true, m.index);
+    for (const m of src.matchAll(/id=\{settingsAnchor\(\s*([a-zA-Z_][\w.]*)\s*\)/g))
+      id(m[1], true, m.index);
     out.sort((a, b) => a.idx - b.idx);
     tokens.set(file, out);
     return out;
@@ -203,9 +235,15 @@ export function createSettingsAnchorAudit(ROOT) {
       for (const f of fileList) {
         const s = read(f);
         if (prop) {
-          const m = s.match(new RegExp("\\b" + name + "\\b[^;]*?\\b" + prop + ":\\s*(?:t\\(\\s*)?" + STR, "s"));
+          const m = s.match(
+            new RegExp("\\b" + name + "\\b[^;]*?\\b" + prop + ":\\s*(?:t\\(\\s*)?" + STR, "s"),
+          );
           if (m) found.push(unesc(m[1]));
-        } else for (const m of s.matchAll(new RegExp("\\b" + name + "\\s*=\\s*(?:t\\(\\s*)?" + STR, "g"))) found.push(unesc(m[1]));
+        } else
+          for (const m of s.matchAll(
+            new RegExp("\\b" + name + "\\s*=\\s*(?:t\\(\\s*)?" + STR, "g"),
+          ))
+            found.push(unesc(m[1]));
       }
       return found;
     }
@@ -220,21 +258,34 @@ export function createSettingsAnchorAudit(ROOT) {
       if (comp) {
         for (const f of fileList) {
           const s = read(f);
-          for (const m of s.matchAll(new RegExp("<" + comp[1] + "\\b[^>]*?(?<![A-Za-z])" + expr + "=\\{t\\(\\s*" + STR, "gs"))) found.push(unesc(m[1]));
-          for (const m of s.matchAll(new RegExp("<" + comp[1] + "\\b[^>]*?(?<![A-Za-z])" + expr + "=" + STR, "gs"))) found.push(unesc(m[1]));
+          for (const m of s.matchAll(
+            new RegExp(
+              "<" + comp[1] + "\\b[^>]*?(?<![A-Za-z])" + expr + "=\\{t\\(\\s*" + STR,
+              "gs",
+            ),
+          ))
+            found.push(unesc(m[1]));
+          for (const m of s.matchAll(
+            new RegExp("<" + comp[1] + "\\b[^>]*?(?<![A-Za-z])" + expr + "=" + STR, "gs"),
+          ))
+            found.push(unesc(m[1]));
         }
         if (found.length) return found;
       }
     }
     for (const f of fileList) {
-      for (const m of read(f).matchAll(new RegExp("(?<![A-Za-z])" + last + ":\\s*(?:t\\(\\s*)?" + STR, "g"))) found.push(unesc(m[1]));
+      for (const m of read(f).matchAll(
+        new RegExp("(?<![A-Za-z])" + last + ":\\s*(?:t\\(\\s*)?" + STR, "g"),
+      ))
+        found.push(unesc(m[1]));
     }
     return found;
   }
 
   const registry = read(path.join(SETTINGS, "tab-registry.ts"));
   const tabsOf = {};
-  for (const m of registry.matchAll(/^  (\w+): \[([\s\S]*?)^  \],/gm)) tabsOf[m[1]] = [...m[2].matchAll(/\{ id: "([\w-]+)"/g)].map((x) => x[1]);
+  for (const m of registry.matchAll(/^  (\w+): \[([\s\S]*?)^  \],/gm))
+    tabsOf[m[1]] = [...m[2].matchAll(/\{ id: "([\w-]+)"/g)].map((x) => x[1]);
 
   const shell = read(path.join(SRC, "views", "settings.tsx"));
   const sections = {};
@@ -264,7 +315,9 @@ export function createSettingsAnchorAudit(ROOT) {
     const info = sections[sec];
     if (regionCache.has(sec)) return regionCache.get(sec);
     const src = read(info.root);
-    const marks = [...src.matchAll(/\b(?:tab|active) === "([\w-]+)"\s*(&&|\?)\s*[(<]/g)].map((m) => ({ id: m[1], start: m.index, tern: m[2] === "?" }));
+    const marks = [...src.matchAll(/\b(?:tab|active) === "([\w-]+)"\s*(&&|\?)\s*[(<]/g)].map(
+      (m) => ({ id: m[1], start: m.index, tern: m[2] === "?" }),
+    );
     const out = [];
     marks.forEach((mk, i) => {
       const fnEnd = src.slice(mk.start).search(/\r?\n\}/);
@@ -293,7 +346,8 @@ export function createSettingsAnchorAudit(ROOT) {
     const groups = [...model.matchAll(/id: "([\w-]+)",\s*title: "([^"]+)"/g)];
     const group = groups.find((g) => g[2] === title);
     if (!group) return null;
-    for (const m of claimed[1].matchAll(/(\w+): \[([^\]]*)\]/g)) if (m[2].includes('"' + group[1] + '"')) return m[1];
+    for (const m of claimed[1].matchAll(/(\w+): \[([^\]]*)\]/g))
+      if (m[2].includes('"' + group[1] + '"')) return m[1];
     return "watching";
   }
 
@@ -308,7 +362,8 @@ export function createSettingsAnchorAudit(ROOT) {
     const src = read(info.root);
     const viaUsages = (names) => {
       const found = new Set();
-      for (const n of names) for (const m of src.matchAll(new RegExp("<" + n + "\\b", "g"))) found.add(at(m.index));
+      for (const n of names)
+        for (const m of src.matchAll(new RegExp("<" + n + "\\b", "g"))) found.add(at(m.index));
       found.delete(null);
       return found.size === 1 ? [...found][0] : null;
     };
@@ -321,7 +376,11 @@ export function createSettingsAnchorAudit(ROOT) {
     let f = file;
     while (f && info.parents.get(f) !== info.root) f = info.parents.get(f);
     if (!f) return null;
-    return viaUsages(importEdges(info.root).filter((e) => e.target === f).flatMap((e) => e.names));
+    return viaUsages(
+      importEdges(info.root)
+        .filter((e) => e.target === f)
+        .flatMap((e) => e.names),
+    );
   }
 
   const usageCache = new Map();
@@ -334,7 +393,8 @@ export function createSettingsAnchorAudit(ROOT) {
       for (const f of sections[sec].files) {
         if (f === file) continue;
         const s = read(f);
-        for (const m of s.matchAll(new RegExp("<" + comp + "\\b", "g"))) out.push({ comp, file: f, idx: m.index, chain: chainAt(f, m.index) });
+        for (const m of s.matchAll(new RegExp("<" + comp + "\\b", "g")))
+          out.push({ comp, file: f, idx: m.index, chain: chainAt(f, m.index) });
       }
     }
     usageCache.set(key, out);
@@ -371,7 +431,11 @@ export function createSettingsAnchorAudit(ROOT) {
   }
 
   const nav = read(path.join(SETTINGS, "nav.tsx"));
-  const entries = settingsSearchEntries(nav).map((e, i) => ({ ...e, index: i, line: lineOf(nav, e.range[0]) }));
+  const entries = settingsSearchEntries(nav).map((e, i) => ({
+    ...e,
+    index: i,
+    line: lineOf(nav, e.range[0]),
+  }));
 
   function derive(section, anchor, label) {
     const sec = LEGACY[section] ?? section;
@@ -385,10 +449,17 @@ export function createSettingsAnchorAudit(ROOT) {
     const exists = target ? info.anchors.has(target) : true;
     const esc = anchor ? anchor.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") : "";
     const propNear = (h) =>
-      !!anchor && new RegExp('(?<![A-Za-z])(?:title|label)=\\{t\\("' + esc + '"\\)').test(read(h.file).slice(Math.max(0, h.idx - 600), h.idx));
+      !!anchor &&
+      new RegExp('(?<![A-Za-z])(?:title|label)=\\{t\\("' + esc + '"\\)').test(
+        read(h.file).slice(Math.max(0, h.idx - 600), h.idx),
+      );
     const inChain =
-      !target || !staticChains.length || staticChains.some((h) => h.chain.some((c) => slug(c.title) === target)) || own.some(propNear);
-    const tabAt = (h) => (h ? tabOf(sec, h.via ? h.via.file : h.file, h.via ? h.via.idx : h.idx) : null);
+      !target ||
+      !staticChains.length ||
+      staticChains.some((h) => h.chain.some((c) => slug(c.title) === target)) ||
+      own.some(propNear);
+    const tabAt = (h) =>
+      h ? tabOf(sec, h.via ? h.via.file : h.file, h.via ? h.via.idx : h.idx) : null;
     let tab = tabAt(target ? own.find((h) => h.chain.some((c) => slug(c.title) === target)) : null);
     if (!tab && target && info.anchors.has(target)) {
       const a = info.anchors.get(target)[0];
@@ -397,8 +468,19 @@ export function createSettingsAnchorAudit(ROOT) {
     }
     if (!tab) tab = tabAt(own.find((h) => h.chain.length) ?? own[0]);
     if (!tab && sec === "tv" && anchor) tab = tvTab(anchor);
-    const innermost = staticChains.length ? staticChains[0].chain[staticChains[0].chain.length - 1].title : null;
-    return { sec, exists, inChain, tab, innermost, other, ownFound: own.length > 0, tabs: info.tabs };
+    const innermost = staticChains.length
+      ? staticChains[0].chain[staticChains[0].chain.length - 1].title
+      : null;
+    return {
+      sec,
+      exists,
+      inChain,
+      tab,
+      innermost,
+      other,
+      ownFound: own.length > 0,
+      tabs: info.tabs,
+    };
   }
 
   const problems = [];
@@ -409,16 +491,39 @@ export function createSettingsAnchorAudit(ROOT) {
       problems.push({ kind: "unknown section", detail: `${where} -> ${e.section}` });
       continue;
     }
-    if (e.anchor && !d.exists) problems.push({ kind: "heading missing", detail: `${where} -> "${e.anchor}" is not a heading on the ${d.sec} page` });
-    else if (e.anchor && !d.inChain) problems.push({ kind: "heading wrong", detail: `${where} -> "${e.anchor}" but the control sits under "${d.innermost}"` });
+    if (e.anchor && !d.exists)
+      problems.push({
+        kind: "heading missing",
+        detail: `${where} -> "${e.anchor}" is not a heading on the ${d.sec} page`,
+      });
+    else if (e.anchor && !d.inChain)
+      problems.push({
+        kind: "heading wrong",
+        detail: `${where} -> "${e.anchor}" but the control sits under "${d.innermost}"`,
+      });
     const elsewhere = d.other.filter((h) => h.chain.length && h.chain.every((c) => !c.dyn));
     if (!d.ownFound && elsewhere.length) {
       const o = elsewhere[0];
-      problems.push({ kind: "page wrong", detail: `${where} is on the ${o.sec} page under "${o.chain[o.chain.length - 1].title}"` });
+      problems.push({
+        kind: "page wrong",
+        detail: `${where} is on the ${o.sec} page under "${o.chain[o.chain.length - 1].title}"`,
+      });
     }
-    if (e.tab && !d.tabs.includes(e.tab)) problems.push({ kind: "tab unknown", detail: `${where} -> tab "${e.tab}" is not a ${d.sec} tab` });
-    else if (e.tab && d.tab && d.tab !== e.tab) problems.push({ kind: "tab wrong", detail: `${where} -> tab "${e.tab}" but the control is on "${d.tab}"` });
-    else if (!e.tab && d.tab) problems.push({ kind: "tab missing", detail: `${where} lives on the "${d.tab}" tab but carries no tab` });
+    if (e.tab && !d.tabs.includes(e.tab))
+      problems.push({
+        kind: "tab unknown",
+        detail: `${where} -> tab "${e.tab}" is not a ${d.sec} tab`,
+      });
+    else if (e.tab && d.tab && d.tab !== e.tab)
+      problems.push({
+        kind: "tab wrong",
+        detail: `${where} -> tab "${e.tab}" but the control is on "${d.tab}"`,
+      });
+    else if (!e.tab && d.tab)
+      problems.push({
+        kind: "tab missing",
+        detail: `${where} lives on the "${d.tab}" tab but carries no tab`,
+      });
   }
 
   return { entries, sections, problems, derive, rel };

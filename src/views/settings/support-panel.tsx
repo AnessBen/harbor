@@ -30,12 +30,44 @@ const ELF_PERKS = [
 const CHARITY_NAVIGATOR = "https://www.charitynavigator.org/";
 
 const CHARITIES = [
-  { name: "St. Jude Children's Research Hospital", url: "https://www.stjude.org", icon: stJudeIcon, blurb: "Childhood cancer research and treatment. Families are never billed for care, travel, housing, or food." },
-  { name: "National Pediatric Cancer Foundation", url: "https://nationalpcf.org", icon: nationalPcfIcon, blurb: "Funds research into less toxic, more targeted treatments for childhood cancer." },
-  { name: "Electronic Frontier Foundation", url: "https://www.eff.org", icon: effIcon, blurb: "Defends privacy, free expression, and the open internet, in the courts and in the code." },
-  { name: "Internet Archive", url: "https://archive.org/donate", icon: internetArchiveIcon, blurb: "Keeps the web's memory alive. Harbor would be poorer without it." },
-  { name: "Doctors Without Borders", url: "https://www.doctorswithoutborders.org/", icon: msfIcon, blurb: "Emergency medical care in crisis zones, independent of politics." },
-  { name: "Against Malaria Foundation", url: "https://www.againstmalaria.com/", icon: amfIcon, blurb: "Insecticide-treated nets. One of the most cost-effective interventions measured." },
+  {
+    name: "St. Jude Children's Research Hospital",
+    url: "https://www.stjude.org",
+    icon: stJudeIcon,
+    blurb:
+      "Childhood cancer research and treatment. Families are never billed for care, travel, housing, or food.",
+  },
+  {
+    name: "National Pediatric Cancer Foundation",
+    url: "https://nationalpcf.org",
+    icon: nationalPcfIcon,
+    blurb: "Funds research into less toxic, more targeted treatments for childhood cancer.",
+  },
+  {
+    name: "Electronic Frontier Foundation",
+    url: "https://www.eff.org",
+    icon: effIcon,
+    blurb:
+      "Defends privacy, free expression, and the open internet, in the courts and in the code.",
+  },
+  {
+    name: "Internet Archive",
+    url: "https://archive.org/donate",
+    icon: internetArchiveIcon,
+    blurb: "Keeps the web's memory alive. Harbor would be poorer without it.",
+  },
+  {
+    name: "Doctors Without Borders",
+    url: "https://www.doctorswithoutborders.org/",
+    icon: msfIcon,
+    blurb: "Emergency medical care in crisis zones, independent of politics.",
+  },
+  {
+    name: "Against Malaria Foundation",
+    url: "https://www.againstmalaria.com/",
+    icon: amfIcon,
+    blurb: "Insecticide-treated nets. One of the most cost-effective interventions measured.",
+  },
 ];
 
 const LEAD_IMG = "h-[22px] w-[22px] shrink-0 object-contain";
@@ -43,19 +75,15 @@ const CHARITY_IMG = "h-9 w-9 shrink-0 rounded-[9px] object-cover";
 
 function OutArrow() {
   return (
-    <ArrowUpRight size={18} strokeWidth={2.2} className="shrink-0 text-ink-subtle rtl:-scale-x-100" />
+    <ArrowUpRight
+      size={18}
+      strokeWidth={2.2}
+      className="shrink-0 text-ink-subtle rtl:-scale-x-100"
+    />
   );
 }
 
-function OpenButton({
-  label,
-  url,
-  primary,
-}: {
-  label: string;
-  url: string;
-  primary?: boolean;
-}) {
+function OpenButton({ label, url, primary }: { label: string; url: string; primary?: boolean }) {
   return (
     <SButton variant={primary ? "primary" : "secondary"} onClick={() => openUrl(url)}>
       {label}
@@ -83,10 +111,14 @@ export function SupportPanel() {
     <>
       <Section
         title={t("Who keeps this running")}
-        subtitle={t("Harbor's backend runs on ElfHosted. They run our servers at no cost to the community.")}
+        subtitle={t(
+          "Harbor's backend runs on ElfHosted. They run our servers at no cost to the community.",
+        )}
       >
         <Prose>
-          {t("Keeping Harbor's backend online costs real money, and ElfHosted covers it so the community does not have to. Becoming a subscriber is the best way to keep that going, and it is not a donation. You get proper infrastructure for your own setup, and Harbor stays funded at the same time.")}
+          {t(
+            "Keeping Harbor's backend online costs real money, and ElfHosted covers it so the community does not have to. Becoming a subscriber is the best way to keep that going, and it is not a donation. You get proper infrastructure for your own setup, and Harbor stays funded at the same time.",
+          )}
         </Prose>
         <ul className="flex max-w-[70ch] flex-col gap-2.5">
           {ELF_PERKS.map((perk) => (
@@ -99,7 +131,9 @@ export function SupportPanel() {
         <SettingRow
           wide
           label={t("ElfHosted plans")}
-          desc={t("Month to month, cancel anytime, and you can try the whole thing for $1 for a week.")}
+          desc={t(
+            "Month to month, cancel anytime, and you can try the whole thing for $1 for a week.",
+          )}
         >
           <div className="flex w-full flex-wrap items-end justify-between gap-x-6 gap-y-4">
             <div className="flex flex-wrap items-center gap-2.5">
@@ -118,10 +152,14 @@ export function SupportPanel() {
 
       <Section
         title={t("Built on Stremio")}
-        subtitle={t("Harbor would not be possible without Stremio. It is the foundation everything here is built on.")}
+        subtitle={t(
+          "Harbor would not be possible without Stremio. It is the foundation everything here is built on.",
+        )}
       >
         <Prose>
-          {t("Harbor speaks Stremio's addon protocol, and the whole ecosystem of addons grows out of their work. Stremio is funded by its community, and supporters who chip in get early access to experimental features. If you have it to spare, send some their way too.")}
+          {t(
+            "Harbor speaks Stremio's addon protocol, and the whole ecosystem of addons grows out of their work. Stremio is funded by its community, and supporters who chip in get early access to experimental features. If you have it to spare, send some their way too.",
+          )}
         </Prose>
         <Callout
           icon={
@@ -149,21 +187,29 @@ export function SupportPanel() {
         subtitle={t("Short version: don't. Harbor takes no donations.")}
       >
         <Prose>
-          {t("If you were going to send something, send it to ElfHosted or Stremio above, or to one of the charities below. They all do more good with it.")}
+          {t(
+            "If you were going to send something, send it to ElfHosted or Stremio above, or to one of the charities below. They all do more good with it.",
+          )}
         </Prose>
       </Section>
 
       <Section
         title={t("Badges for giving")}
-        subtitle={t("Support ElfHosted or Stremio, or give to any charity below, and the badge lands on your profile.")}
+        subtitle={t(
+          "Support ElfHosted or Stremio, or give to any charity below, and the badge lands on your profile.",
+        )}
       >
         <SRow
-          leading={<img src={badgeIconUrl("donator")} alt="" draggable={false} className={LEAD_IMG} />}
+          leading={
+            <img src={badgeIconUrl("donator")} alt="" draggable={false} className={LEAD_IMG} />
+          }
           title={t("Charity")}
           description={t("For donating to a charity.")}
         />
         <SRow
-          leading={<img src={badgeIconUrl("top_donator")} alt="" draggable={false} className={LEAD_IMG} />}
+          leading={
+            <img src={badgeIconUrl("top_donator")} alt="" draggable={false} className={LEAD_IMG} />
+          }
           title={t("Charity $100+")}
           description={t("For giving more than $100 to charity.")}
         />
@@ -176,7 +222,9 @@ export function SupportPanel() {
 
       <Section
         title={t("If you would rather give it away")}
-        subtitle={t("No affiliation, no referral links, and Harbor gets nothing from these. They are just places where money goes further than it does here.")}
+        subtitle={t(
+          "No affiliation, no referral links, and Harbor gets nothing from these. They are just places where money goes further than it does here.",
+        )}
       >
         {CHARITIES.map((c) => (
           <SRow
@@ -190,7 +238,9 @@ export function SupportPanel() {
           />
         ))}
         <SRow
-          leading={<img src={charityNavigatorIcon} alt="" draggable={false} className={CHARITY_IMG} />}
+          leading={
+            <img src={charityNavigatorIcon} alt="" draggable={false} className={CHARITY_IMG} />
+          }
           leadSize="lg"
           title={t("Charity Navigator")}
           description={t("Look any of them up before you give, or find a cause of your own.")}

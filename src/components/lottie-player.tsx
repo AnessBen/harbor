@@ -1,6 +1,7 @@
 import lottie, { type AnimationItem } from "lottie-web";
 import { useEffect, useRef } from "react";
 import { observeWithin } from "@/lib/visibility";
+import { useReducedMotion } from "@/lib/use-reduced-motion";
 
 type Props = {
   data: object;
@@ -11,6 +12,7 @@ type Props = {
 };
 
 export function LottiePlayer({ data, className, loop = true, autoplay = true, speed = 1 }: Props) {
+  const reducedMotion = useReducedMotion();
   const ref = useRef<HTMLDivElement | null>(null);
   const animRef = useRef<AnimationItem | null>(null);
 
@@ -25,8 +27,8 @@ export function LottiePlayer({ data, className, loop = true, autoplay = true, sp
       animationData: data,
     });
     animRef.current = anim;
-    const total = Math.max(1, Math.floor(anim.totalFrames));
-    const stepMs = 1000 / ((anim.frameRate || 30) * speed);
+    let ready = anim.isLoaded;
+    let complete = false;
     let frame = 0;
     let timer = 0;
     let inView = false;
@@ -37,9 +39,11 @@ export function LottiePlayer({ data, className, loop = true, autoplay = true, sp
       timer = 0;
     };
     const step = () => {
+      const total = Math.max(1, Math.floor(anim.totalFrames));
       frame += 1;
       if (frame >= total) {
         if (!loop) {
+          complete = true;
           halt();
           anim.goToAndStop(total - 1, true);
           return;
@@ -49,10 +53,24 @@ export function LottiePlayer({ data, className, loop = true, autoplay = true, sp
       anim.goToAndStop(frame, true);
     };
     const sync = () => {
-      if (autoplay && inView && !document.hidden) {
+      if (
+        ready &&
+        !complete &&
+        autoplay &&
+        !reducedMotion &&
+        inView &&
+        !document.hidden &&
+        speed > 0
+      ) {
+        const stepMs = 1000 / ((anim.frameRate || 30) * speed);
         if (!timer) timer = window.setInterval(step, stepMs);
       } else halt();
     };
+    const onReady = () => {
+      ready = true;
+      sync();
+    };
+    anim.addEventListener("DOMLoaded", onReady);
     const stop = observeWithin(el, "0px", (e) => {
       inView = e.isIntersecting;
       sync();
@@ -62,10 +80,11 @@ export function LottiePlayer({ data, className, loop = true, autoplay = true, sp
       halt();
       stop();
       document.removeEventListener("visibilitychange", sync);
+      anim.removeEventListener("DOMLoaded", onReady);
       anim.destroy();
       animRef.current = null;
     };
-  }, [data, loop, autoplay, speed]);
+  }, [data, loop, autoplay, speed, reducedMotion]);
 
   return <div ref={ref} className={className} aria-hidden />;
 }

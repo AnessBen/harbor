@@ -47,10 +47,20 @@ function Shell({
   return (
     <div className="hset-account-auth animate-lift-in relative w-full max-w-[560px] [&_label]:text-[16.5px] [&_label]:leading-6 [&_label~span]:text-[15.5px] [&_label~span]:leading-[22px] [&_input]:bg-elevated [&_input]:rounded-[10px]">
       {heading ? (
-        <div className={dismissible ? "[&_.hset-section-title]:pe-14 [&_.harbor-settings-section>p]:pe-14" : undefined}>
-          <Section title={heading} subtitle={subtitle}>{children}</Section>
+        <div
+          className={
+            dismissible
+              ? "[&_.hset-section-title]:pe-14 [&_.harbor-settings-section>p]:pe-14"
+              : undefined
+          }
+        >
+          <Section title={heading} subtitle={subtitle}>
+            {children}
+          </Section>
         </div>
-      ) : children}
+      ) : (
+        children
+      )}
       {dismissible && (
         <button
           type="button"
@@ -162,68 +172,77 @@ export function AccountAuthForm({
     );
   }
 
-  const heading =
-    mode === "register" ? t("Create your Harbor account") : t("Sign in to Harbor");
+  const heading = mode === "register" ? t("Create your Harbor account") : t("Sign in to Harbor");
   const subtitle =
     mode === "register"
       ? t("One free account for your handle, themes, and sync.")
       : t("Sign in to pick up where you left off.");
 
   return (
-    <Shell inline={inline} closing={closing} onDismiss={close} heading={heading} subtitle={subtitle} dismissible={!!onClose}>
-      {!inline && <div className="flex items-start gap-4 px-6 pt-6">
-        <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <h2 className="text-[20px] font-semibold leading-7 tracking-tight text-ink">
-            {heading}
-          </h2>
-          <p className="text-[15px] leading-[22px] text-ink-muted">
-            {subtitle}
-          </p>
+    <Shell
+      inline={inline}
+      closing={closing}
+      onDismiss={close}
+      heading={heading}
+      subtitle={subtitle}
+      dismissible={!!onClose}
+    >
+      {!inline && (
+        <div className="flex items-start gap-4 px-6 pt-6">
+          <div className="flex min-w-0 flex-1 flex-col gap-1">
+            <h2 className="text-[20px] font-semibold leading-7 tracking-tight text-ink">
+              {heading}
+            </h2>
+            <p className="text-[15px] leading-[22px] text-ink-muted">{subtitle}</p>
+          </div>
+          {onClose && (
+            <button
+              type="button"
+              onClick={close}
+              aria-label={t("Close")}
+              className="grid h-11 w-11 shrink-0 place-items-center rounded-md text-ink-muted transition-colors hover:bg-elevated hover:text-ink"
+            >
+              <X size={16} />
+            </button>
+          )}
         </div>
-        {onClose && (
-          <button
-            type="button"
-            onClick={close}
-            aria-label={t("Close")}
-            className="grid h-11 w-11 shrink-0 place-items-center rounded-md text-ink-muted transition-colors hover:bg-elevated hover:text-ink"
-          >
-            <X size={16} />
-          </button>
-        )}
-      </div>}
+      )}
 
-      <div className={inline ? "flex min-w-0 flex-col gap-6 pt-4" : "flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-6"}>
+      <div
+        className={
+          inline
+            ? "flex min-w-0 flex-col gap-6 pt-4"
+            : "flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-6"
+        }
+      >
         {!inline && mode === "register" && <AccountValueProps />}
 
-        <div
-            ref={switchRef}
-            className="relative flex items-center gap-1 rounded-md bg-canvas p-1"
-          >
-            <span
-              ref={thumbRef}
-              aria-hidden
-              className="pointer-events-none absolute rounded-[4px] bg-ink opacity-0"
-            />
-            {MODES.map((m, i) => (
-              <button
-                key={m.id}
-                type="button"
-                aria-pressed={mode === m.id}
-                ref={(el) => {
-                  modeRefs.current[i] = el;
-                }}
-                onClick={() => {
-                  setMode(m.id);
-                  setError(null);
-                }}
-                className={`relative z-10 h-11 flex-1 rounded-[4px] text-[15px] font-semibold transition-colors duration-200 ${
-                  mode === m.id ? "text-canvas" : "text-ink-muted hover:text-ink"
-                }`}
-              >
-                {t(m.label)}
-              </button>
-            ))}
-          </div>
+        <div ref={switchRef} className="relative flex items-center gap-1 rounded-md bg-canvas p-1">
+          <span
+            ref={thumbRef}
+            aria-hidden
+            className="pointer-events-none absolute rounded-[4px] bg-ink opacity-0"
+          />
+          {MODES.map((m, i) => (
+            <button
+              key={m.id}
+              type="button"
+              aria-pressed={mode === m.id}
+              ref={(el) => {
+                modeRefs.current[i] = el;
+              }}
+              onClick={() => {
+                setMode(m.id);
+                setError(null);
+              }}
+              className={`relative z-10 h-11 flex-1 rounded-[4px] text-[15px] font-semibold transition-colors duration-200 ${
+                mode === m.id ? "text-canvas" : "text-ink-muted hover:text-ink"
+              }`}
+            >
+              {t(m.label)}
+            </button>
+          ))}
+        </div>
 
         <form
           onSubmit={(e) => {
@@ -257,20 +276,37 @@ export function AccountAuthForm({
                 setView("recover");
                 setError(null);
               }}
-              className={inline ? "-mt-1 min-h-11 self-end text-[15px] font-medium text-ink-muted transition-colors hover:text-ink" : "-mt-1 min-h-11 self-end text-[14px] font-medium text-ink-muted transition-colors hover:text-ink"}
+              className={
+                inline
+                  ? "-mt-1 min-h-11 self-end text-[15px] font-medium text-ink-muted transition-colors hover:text-ink"
+                  : "-mt-1 min-h-11 self-end text-[14px] font-medium text-ink-muted transition-colors hover:text-ink"
+              }
             >
               {t("Forgot password?")}
             </button>
           )}
 
           {error && (
-            <p role="alert" className={inline ? "rounded-md bg-danger/10 px-3.5 py-3 text-[15.5px] leading-[22px] text-danger" : "rounded-md bg-danger/10 px-3.5 py-2.5 text-[14px] leading-snug text-danger"}>
+            <p
+              role="alert"
+              className={
+                inline
+                  ? "rounded-md bg-danger/10 px-3.5 py-3 text-[15.5px] leading-[22px] text-danger"
+                  : "rounded-md bg-danger/10 px-3.5 py-2.5 text-[14px] leading-snug text-danger"
+              }
+            >
               {error.kind === "built-in" ? t(error.key) : error.detail}
             </p>
           )}
 
           {mode === "register" && (
-            <p className={inline ? "flex items-start gap-2.5 text-[15.5px] leading-[22px] text-ink-muted" : "flex items-start gap-2 rounded-md bg-canvas px-3.5 py-3 text-[14px] leading-[21px] text-ink-muted"}>
+            <p
+              className={
+                inline
+                  ? "flex items-start gap-2.5 text-[15.5px] leading-[22px] text-ink-muted"
+                  : "flex items-start gap-2 rounded-md bg-canvas px-3.5 py-3 text-[14px] leading-[21px] text-ink-muted"
+              }
+            >
               <KeyRound size={13} className="mt-0.5 shrink-0" />
               {t(
                 "We'll show a one-time recovery key right after you sign up. Save it: it's the only way back in if you forget your password.",
@@ -282,7 +318,11 @@ export function AccountAuthForm({
             <button
               type="submit"
               disabled={!ready || busy}
-              className={inline ? ROW_ACTION_PRIMARY : "harbor-press-pop flex min-h-11 items-center justify-center gap-2 rounded-md bg-ink px-4 py-2 text-[15px] font-semibold text-canvas transition-opacity duration-150 hover:opacity-90 disabled:opacity-40"}
+              className={
+                inline
+                  ? ROW_ACTION_PRIMARY
+                  : "harbor-press-pop flex min-h-11 items-center justify-center gap-2 rounded-md bg-ink px-4 py-2 text-[15px] font-semibold text-canvas transition-opacity duration-150 hover:opacity-90 disabled:opacity-40"
+              }
             >
               {busy && <Loader2 size={16} className="animate-spin" />}
               {t(active.action)}

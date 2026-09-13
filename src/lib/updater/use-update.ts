@@ -24,6 +24,7 @@ import {
 } from "./experimental-access";
 import {
   betaReturnSupported,
+  discoverBetaReturnContext,
   parseBetaReturnTargets,
   readBetaReturnContext,
   returnedToExactVersion,
@@ -276,6 +277,8 @@ export async function checkForUpdate(manual = false): Promise<void> {
   let candidate: UpdateHandle | null = null;
   try {
     if (selected === "experimental") {
+      await refreshBetaReturnContext();
+      if (!currentRequest(request, selected)) return;
       if (!(await verifyExperimentalAction(request, selected))) return;
       const [probe, raw] = await Promise.all([probeHandoff(), readExperimentalManifest()]);
       if (!currentRequest(request, selected)) return;
@@ -413,6 +416,23 @@ export async function checkForUpdate(manual = false): Promise<void> {
   } finally {
     if (candidate) void candidate.close().catch(() => {});
     if (request === revision && selected !== selectedUpdateChannel()) clearStagedUpdate();
+  }
+}
+
+async function refreshBetaReturnContext(): Promise<void> {
+  if (!IS_TAURI) return;
+  try {
+    const [{ getVersion }, probe] = await Promise.all([
+      import("@tauri-apps/api/app"),
+      probeHandoff(),
+    ]);
+    if (!probe || !betaReturnSupported(probe)) return;
+    const installed = await getVersion();
+    if (readBetaReturnContext(installed)) return;
+    if (await discoverBetaReturnContext(installed, probe.platformKey, readExperimentalManifest))
+      set({});
+  } catch {
+    // Keep recovery unavailable on network/storage failure; never invent a target.
   }
 }
 
@@ -890,6 +910,7 @@ let started = false;
 export function startUpdateWatcher(): void {
   if (started || !IS_TAURI) return;
   started = true;
+  void refreshBetaReturnContext();
   subscribeExperimentalAccess(() => {
     if (!currentExperimentalAccess()) revokeExperimentalAccess();
   });

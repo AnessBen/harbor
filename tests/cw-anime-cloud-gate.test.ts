@@ -93,7 +93,7 @@ test("every CW rail excludes cloud anime items", () => {
   assert.match(home, /items\.filter\(\(i\) => !ANIME_CLOUD_ID\.test\(i\._id\)\)/);
   assert.match(cwHook, /items\.filter\(\(i\) => !ANIME_CLOUD_ID\.test\(i\._id\)\)/);
   assert.match(mobileRow, /items\.filter\(\(i\) => !ANIME_CLOUD_ID\.test\(i\._id\)\)/);
-  assert.match(shows, /!ANIME_CLOUD_ID\.test\(i\._id\) && isCwMember/);
+  assert.match(shows, /!ANIME_CLOUD_ID\.test\(i\._id\) &&\s+isCwMember/);
   assert.match(anime, /libItems\.filter\(\(i\) => !ANIME_CLOUD_ID\.test\(i\._id\)\)/);
 });
 
@@ -104,8 +104,14 @@ test("anime room sources local CW entries", () => {
 });
 
 test("home and anime room absorb legacy cloud anime items into local CW", () => {
-  assert.match(home, /if \(!settings\.cwPerProfile\) absorbCloudAnimeCw\(view\);/);
-  assert.match(anime, /if \(!settings\.cwPerProfile\) absorbCloudAnimeCw\(li\);/);
+  assert.match(home, /if \(!hideSharedCw\) absorbCloudAnimeCw\(view\);/);
+  assert.match(anime, /if \(!hideSharedCw\) absorbCloudAnimeCw\(li\);/);
+  for (const source of [home, anime]) {
+    assert.match(
+      source,
+      /settings\.cwPerProfile &&\s*anyProfileSharesStremioWith\(activeProfile, profiles\)/,
+    );
+  }
   const absorb = read("src/lib/anime-cw-absorb.ts");
   assert.match(absorb, /if \(existing && existing\.t >= t\) continue;/);
   assert.match(absorb, /if \(i\.removed && !i\.temp\) continue;/);

@@ -31,9 +31,19 @@ export function HarborAccountPanel() {
     return (
       <>
         {authOpen ? (
-          <AccountAuthForm inline initialMode={authMode} onRecovery={setReveal} onClose={() => setAuthOpen(false)} />
+          <AccountAuthForm
+            inline
+            initialMode={authMode}
+            onRecovery={setReveal}
+            onClose={() => setAuthOpen(false)}
+          />
         ) : (
-          <SignedOutHero onSignIn={(mode) => { setAuthMode(mode); setAuthOpen(true); }} />
+          <SignedOutHero
+            onSignIn={(mode) => {
+              setAuthMode(mode);
+              setAuthOpen(true);
+            }}
+          />
         )}
         {reveal && <RecoveryReveal code={reveal} onDone={() => setReveal(null)} />}
       </>

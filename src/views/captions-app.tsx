@@ -26,7 +26,12 @@ export function CaptionsApp() {
     let off: (() => void) | null = null;
     void (async () => {
       const un = await listen<Cue>("captions://cue", (e) => {
-        if (!dead) setCue({ text: e.payload.text ?? "", lang: e.payload.lang ?? null, paused: Boolean(e.payload.paused) });
+        if (!dead)
+          setCue({
+            text: e.payload.text ?? "",
+            lang: e.payload.lang ?? null,
+            paused: Boolean(e.payload.paused),
+          });
       });
       const unText = await listen<string>("captions://text", (e) => {
         if (!dead) setCue((c) => ({ ...c, text: typeof e.payload === "string" ? e.payload : "" }));
@@ -98,7 +103,9 @@ export function CaptionsApp() {
       e.clientY > window.innerHeight - edge
     )
       return;
-    void getCurrentWindow().startDragging().catch(() => {});
+    void getCurrentWindow()
+      .startDragging()
+      .catch(() => {});
   }, []);
 
   const shown = cue.text || last;
@@ -130,9 +137,19 @@ export function CaptionsApp() {
             title={big ? t("Shrink") : t("Expand")}
             className={CHROME_BTN}
           >
-            {big ? <Minimize2 size={13} strokeWidth={2.2} /> : <Maximize2 size={13} strokeWidth={2.2} />}
+            {big ? (
+              <Minimize2 size={13} strokeWidth={2.2} />
+            ) : (
+              <Maximize2 size={13} strokeWidth={2.2} />
+            )}
           </button>
-          <button type="button" onClick={close} aria-label={t("Close")} title={t("Close")} className={CHROME_BTN}>
+          <button
+            type="button"
+            onClick={close}
+            aria-label={t("Close")}
+            title={t("Close")}
+            className={CHROME_BTN}
+          >
             <X size={14} strokeWidth={2.4} />
           </button>
         </div>
@@ -152,7 +169,9 @@ export function CaptionsApp() {
                 {shown}
               </p>
             ) : (
-              <p className="text-center text-[14px] text-white/55">{t("Waiting for the next line")}</p>
+              <p className="text-center text-[14px] text-white/55">
+                {t("Waiting for the next line")}
+              </p>
             )}
           </div>
         </div>

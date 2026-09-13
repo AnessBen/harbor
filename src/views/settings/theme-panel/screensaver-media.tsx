@@ -70,7 +70,12 @@ export function ScreensaverMediaManager() {
           />
         ))}
         <div className="flex flex-wrap items-center gap-2">
-          <button type="button" onClick={() => void add()} disabled={busy} className={ROW_ACTION_PRIMARY}>
+          <button
+            type="button"
+            onClick={() => void add()}
+            disabled={busy}
+            className={ROW_ACTION_PRIMARY}
+          >
             <Plus size={18} strokeWidth={2.2} />
             {t("Add video, GIF, or image")}
           </button>
@@ -124,7 +129,12 @@ function MediaRow({
           {t("Use")}
         </button>
       )}
-      <button type="button" onClick={onRemove} aria-label={t("Remove")} className={ROW_ACTION_DANGER}>
+      <button
+        type="button"
+        onClick={onRemove}
+        aria-label={t("Remove")}
+        className={ROW_ACTION_DANGER}
+      >
         <Trash2 size={18} strokeWidth={2.2} />
       </button>
     </div>

@@ -1,4 +1,8 @@
-import { experimentalChannelVersion, experimentalPayloadVersion } from "./experimental";
+import {
+  experimentalChannelVersion,
+  experimentalPayloadVersion,
+  parseExperimentalRelease,
+} from "./experimental";
 import type { HandoffPlan, HandoffProbe } from "./handoff";
 import { UPDATE_CHANNEL_KEY } from "./channel";
 
@@ -92,6 +96,7 @@ export function readBetaReturnContext(installed?: string): BetaReturnContext | n
       value.platformKey !== "windows-x86_64"
     )
       return null;
+    if (installed && value.version !== installed) return null;
     const targets = parseBetaReturnTargets(value.returnToBeta, value.version, value.platformKey);
     return targets.length ? { ...value, targets } : null;
   } catch {
@@ -112,6 +117,41 @@ export function saveBetaReturnContext(
   const raw = JSON.stringify({ version, experimentalVersion, buildId, platformKey, returnToBeta });
   localStorage.setItem(`${BETA_RETURN_KEY}.${version}`, raw);
   localStorage.setItem(BETA_RETURN_KEY, raw);
+}
+
+// Standalone installs have no pre-install journal. Recover only an explicit
+// approval for this installed version, confirmed by its immutable manifest.
+export async function discoverBetaReturnContext(
+  installed: string,
+  platformKey: string,
+  readManifest: (path?: string) => Promise<unknown>,
+): Promise<BetaReturnContext | null> {
+  const existing = readBetaReturnContext(installed);
+  if (existing?.platformKey === platformKey) return existing;
+  const latest = parseExperimentalRelease(await readManifest(), platformKey);
+  if (!latest || latest.version !== installed) return null;
+  if (!/^[A-Za-z0-9][\w.-]{0,79}$/.test(latest.buildId) || latest.buildId.includes(".."))
+    return null;
+  const approved = parseExperimentalRelease(
+    await readManifest(`experimental/${installed}/${latest.buildId}/manifest.json`),
+    platformKey,
+  );
+  if (
+    !approved ||
+    approved.version !== installed ||
+    approved.buildId !== latest.buildId ||
+    approved.experimentalVersion !== latest.experimentalVersion ||
+    !parseBetaReturnTargets(approved.returnToBeta, installed, platformKey).length
+  )
+    return null;
+  saveBetaReturnContext(
+    installed,
+    approved.experimentalVersion,
+    approved.buildId,
+    platformKey,
+    approved.returnToBeta,
+  );
+  return readBetaReturnContext(installed);
 }
 
 export function returnedToExactVersion(installed: string | null, target: string): boolean {

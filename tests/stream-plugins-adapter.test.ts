@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { parseSizeBytes, syntheticFilename, toStreams } from "../src/lib/streams/plugins/adapter.ts";
+import {
+  parseSizeBytes,
+  syntheticFilename,
+  toStreams,
+} from "../src/lib/streams/plugins/adapter.ts";
 import type { StreamPluginRequest } from "../src/lib/streams/plugins/types.ts";
 import { parseStream } from "../src/lib/streams/parser/parser-stream.ts";
 import { applyTrust } from "../src/lib/streams/trust.ts";
@@ -42,7 +46,15 @@ const ctx = (req: StreamPluginRequest) => ({
 
 test("provider labels get a parser line that survives the strict trust filter", () => {
   const streams = toStreams(
-    [{ name: "Provider", title: "Auto Quality Stream", url: "https://cdn.example.com/v.m3u8", quality: "1080p", size: "1.4 GB" }],
+    [
+      {
+        name: "Provider",
+        title: "Auto Quality Stream",
+        url: "https://cdn.example.com/v.m3u8",
+        quality: "1080p",
+        size: "1.4 GB",
+      },
+    ],
     ctx(movie),
   );
   assert.equal(streams.length, 1);
@@ -77,7 +89,7 @@ test("a plugin filename that already names the title is kept as is", () => {
   assert.equal(s.behaviorHints?.filename, "The.Matrix.1999.2160p.WEB-DL.x265.mkv");
 });
 
-test("headers are allowlisted, referer must match the stream host, and playback goes through the proxy", () => {
+test("provider headers are retained for the original server, unsafe headers are removed, and playback uses the proxy", () => {
   const [s] = toStreams(
     [
       {
@@ -88,6 +100,9 @@ test("headers are allowlisted, referer must match the stream host, and playback 
           Cookie: "a=b",
           Range: "bytes=0-",
           "X-Secret": "nope",
+          "X-Harbor-Auth": "must-not-pass",
+          Host: "wrong.example",
+          Connection: "keep-alive",
           "user-agent": "UA",
         },
       },
@@ -97,9 +112,30 @@ test("headers are allowlisted, referer must match the stream host, and playback 
   assert.deepEqual(s.behaviorHints?.proxyHeaders?.request, {
     Referer: "https://cdn.example.com/",
     Cookie: "a=b",
+    Range: "bytes=0-",
+    "X-Secret": "nope",
     "User-Agent": "UA",
   });
   assert.equal(s.behaviorHints?.notWebReady, true);
+});
+
+test("unrelated public-suffix and hosted-tenant domains cannot supply stream origin headers", () => {
+  for (const [host, other] of [
+    ["cdn.alpha.co.uk", "beta.co.uk"],
+    ["alpha.github.io", "beta.github.io"],
+    ["alpha.pages.dev", "beta.pages.dev"],
+  ]) {
+    const [stream] = toStreams(
+      [
+        {
+          url: `https://${host}/v.mp4`,
+          headers: { Referer: `https://${other}/`, Origin: `https://${other}` },
+        },
+      ],
+      ctx(movie),
+    );
+    assert.equal(stream.behaviorHints?.proxyHeaders, undefined);
+  }
 });
 
 test("magnets become torrent streams and junk is dropped", () => {

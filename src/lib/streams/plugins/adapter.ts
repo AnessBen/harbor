@@ -1,11 +1,20 @@
 import { assertSafeUrl } from "@/lib/manga/plugins/host-http";
+import { sameSiteHost } from "@/lib/same-site-host";
 import { infoHashFromSources, parseMagnet } from "@/lib/torrent/magnet";
 import type { Stream, StreamSubtitle } from "../types";
 import type { PluginStream, StreamPluginRequest } from "./types";
 
 const MAX_STREAMS = 150;
 const MAX_TEXT = 400;
-const HEADER_DENY = new Set(["host", "content-length", "connection", "transfer-encoding", "keep-alive", "te", "upgrade"]);
+const HEADER_DENY = new Set([
+  "host",
+  "content-length",
+  "connection",
+  "transfer-encoding",
+  "keep-alive",
+  "te",
+  "upgrade",
+]);
 const MAX_HEADERS = 24;
 const STOP_WORDS = new Set(["the", "and", "of", "a", "an", "to", "in", "on", "for", "vs", "with"]);
 
@@ -19,7 +28,10 @@ export type AdapterContext = {
 
 function clean(v: unknown, max = MAX_TEXT): string | undefined {
   if (v == null) return undefined;
-  const s = String(v).replace(/[\x00-\x1f\x7f]/g, "").trim();
+  const s = String(v)
+    // eslint-disable-next-line no-control-regex -- Strip protocol control characters from plugin text.
+    .replace(/[\x00-\x1f\x7f]/g, "")
+    .trim();
   if (!s || s.includes("[object")) return undefined;
   return s.slice(0, max);
 }
@@ -42,13 +54,6 @@ function hostOf(url: string): string {
   }
 }
 
-function sameSite(a: string, b: string): boolean {
-  if (!a || !b) return false;
-  if (a === b) return true;
-  const tail = (h: string) => h.split(".").slice(-2).join(".");
-  return tail(a) === tail(b);
-}
-
 function headerName(key: string): string {
   return key.replace(/(^|-)([a-z])/g, (_, sep: string, ch: string) => sep + ch.toUpperCase());
 }
@@ -60,9 +65,10 @@ function pickHeaders(raw: unknown, url: string | undefined): Record<string, stri
   for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
     const key = k.trim().toLowerCase();
     if (!/^[a-z0-9-]+$/.test(key) || HEADER_DENY.has(key) || key.startsWith("x-harbor")) continue;
+    // eslint-disable-next-line no-control-regex -- Header values must not retain CR, LF, NUL or DEL.
     const value = typeof v === "string" ? v.replace(/[\x00-\x1f\x7f]/g, "").trim() : "";
     if (!value || value.includes(",")) continue;
-    if ((key === "referer" || key === "origin") && !sameSite(hostOf(value), host)) continue;
+    if ((key === "referer" || key === "origin") && !sameSiteHost(hostOf(value), host)) continue;
     out[headerName(key)] = value.slice(0, 2000);
     if (Object.keys(out).length >= MAX_HEADERS) break;
   }
@@ -77,7 +83,16 @@ export function parseSizeBytes(v: unknown): number | undefined {
   const n = parseFloat(m[1].replace(",", "."));
   if (!Number.isFinite(n)) return undefined;
   const unit = m[2].toLowerCase();
-  const mult = unit === "tb" ? 1024 ** 4 : unit === "gb" ? 1024 ** 3 : unit === "mb" ? 1024 ** 2 : unit === "kb" ? 1024 : 1;
+  const mult =
+    unit === "tb"
+      ? 1024 ** 4
+      : unit === "gb"
+        ? 1024 ** 3
+        : unit === "mb"
+          ? 1024 ** 2
+          : unit === "kb"
+            ? 1024
+            : 1;
   return Math.round(n * mult);
 }
 
@@ -101,7 +116,11 @@ function pad(n: number): string {
   return n < 10 ? `0${n}` : String(n);
 }
 
-export function syntheticFilename(req: StreamPluginRequest, quality?: string, language?: string): string {
+export function syntheticFilename(
+  req: StreamPluginRequest,
+  quality?: string,
+  language?: string,
+): string {
   const parts = [req.title.replace(/[/\\]/g, " ").trim()];
   if (req.type === "movie" && req.year) parts.push(`(${req.year})`);
   if (req.type === "series" && req.season != null && req.episode != null) {
@@ -147,8 +166,14 @@ function oneStream(item: unknown, ctx: AdapterContext): Stream | null {
   if (!item || typeof item !== "object") return null;
   const o = item as PluginStream & Record<string, unknown>;
   let url = safeHttp(o.url);
-  let infoHash = typeof o.infoHash === "string" && /^[0-9a-f]{40}$/i.test(o.infoHash) ? o.infoHash.toLowerCase() : undefined;
-  const fileIdx = typeof o.fileIdx === "number" && Number.isInteger(o.fileIdx) && o.fileIdx >= 0 ? o.fileIdx : undefined;
+  let infoHash =
+    typeof o.infoHash === "string" && /^[0-9a-f]{40}$/i.test(o.infoHash)
+      ? o.infoHash.toLowerCase()
+      : undefined;
+  const fileIdx =
+    typeof o.fileIdx === "number" && Number.isInteger(o.fileIdx) && o.fileIdx >= 0
+      ? o.fileIdx
+      : undefined;
   const rawUrl = typeof o.url === "string" ? o.url.trim() : "";
   let magnetSources: string[] = [];
   if (!url && /^magnet:/i.test(rawUrl)) {
@@ -177,13 +202,23 @@ function oneStream(item: unknown, ctx: AdapterContext): Stream | null {
   const description = clean(o.description, MAX_TEXT);
   const filename = clean(o.filename, 300);
   const size = parseSizeBytes(o.size);
-  const seeders = typeof o.seeders === "number" && Number.isFinite(o.seeders) ? Math.max(0, Math.round(o.seeders)) : undefined;
+  const seeders =
+    typeof o.seeders === "number" && Number.isFinite(o.seeders)
+      ? Math.max(0, Math.round(o.seeders))
+      : undefined;
   const headers = pickHeaders(o.headers, url);
   const bingeGroup = clean(o.bingeGroup, 120);
-  const expiresAt = typeof o.expiresAt === "number" && Number.isFinite(o.expiresAt) ? o.expiresAt : undefined;
+  const expiresAt =
+    typeof o.expiresAt === "number" && Number.isFinite(o.expiresAt) ? o.expiresAt : undefined;
 
   const haystack = `${name} ${title} ${filename ?? ""} ${description ?? ""}`;
-  const line = filename && mentionsTitle(filename, ctx.req.title) ? filename : mentionsTitle(haystack, ctx.req.title) && /\b(19|20)\d{2}\b|\bS\d{1,2}E\d{1,3}\b|\d{3,4}p/i.test(haystack) ? undefined : syntheticFilename(ctx.req, quality, language);
+  const line =
+    filename && mentionsTitle(filename, ctx.req.title)
+      ? filename
+      : mentionsTitle(haystack, ctx.req.title) &&
+          /\b(19|20)\d{2}\b|\bS\d{1,2}E\d{1,3}\b|\d{3,4}p/i.test(haystack)
+        ? undefined
+        : syntheticFilename(ctx.req, quality, language);
 
   const sizeText = size ? ` ${(size / 1024 ** 3).toFixed(2)} GB` : "";
   const extraLine = [quality, language, provider].filter(Boolean).join(" ");
@@ -223,7 +258,7 @@ export function toStreams(raw: unknown, ctx: AdapterContext): Stream[] {
   const list = Array.isArray(raw)
     ? raw
     : raw && typeof raw === "object" && Array.isArray((raw as { streams?: unknown }).streams)
-      ? ((raw as { streams: unknown[] }).streams)
+      ? (raw as { streams: unknown[] }).streams
       : [];
   const out: Stream[] = [];
   for (const item of list) {

@@ -256,7 +256,8 @@ function PosterBody({
     if (!inView || qMult === 0) return;
     const el = rootRef.current;
     if (!el) return;
-    return observeResize(el, (box) => {
+    return observeResize(el, () => {
+      const box = el.getBoundingClientRect();
       if (box.width <= 0) return;
       const need = Math.max(box.width, box.height * RATIO_AR[ratio]);
       // Capped at 2. An Android TV WebView reports devicePixelRatio 4 because it is
@@ -411,7 +412,11 @@ function PosterBody({
     >
       <div aria-hidden style={{ paddingTop: ASPECT_PAD[ratio] }} />
       {showShimmer && (
-        <span aria-hidden className="harbor-shimmer absolute inset-0" data-idle={inView ? undefined : ""} />
+        <span
+          aria-hidden
+          className="harbor-shimmer absolute inset-0"
+          data-idle={inView ? undefined : ""}
+        />
       )}
       {displayed && displayed !== current && displayedSrc && (
         <img

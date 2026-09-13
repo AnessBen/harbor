@@ -4,7 +4,10 @@ import { assertSafeUrl } from "@/lib/manga/plugins/host-http";
 import { PluginWorker } from "@/lib/manga/plugins/worker-host";
 import { normalizeRepoUrl } from "@/lib/streams/plugins/manifest";
 import { PluginError } from "@/lib/streams/plugins/types";
-import { looksLikeAndroidExtensionRepo, looksLikeStremioAddon } from "@/lib/streams/plugins/manifest";
+import {
+  looksLikeAndroidExtensionRepo,
+  looksLikeStremioAddon,
+} from "@/lib/streams/plugins/manifest";
 import { ebookKind } from "./kinds/ebook";
 import { mangaKind } from "./kinds/manga";
 import { streamKind } from "./kinds/stream";
@@ -60,7 +63,11 @@ function ensureWired(): void {
 
 export function usePluginKindsVersion(): number {
   ensureWired();
-  return useSyncExternalStore(subscribePluginKinds, () => version, () => version);
+  return useSyncExternalStore(
+    subscribePluginKinds,
+    () => version,
+    () => version,
+  );
 }
 
 export function useStreamPluginCount(): number {
@@ -124,7 +131,9 @@ export async function detectRepoKind(rawUrl: string): Promise<{ kind: PluginKind
   } catch {
     throw new PluginError("not-a-repo");
   }
-  const json = (parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {}) as Record<string, unknown>;
+  const json = (
+    parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {}
+  ) as Record<string, unknown>;
   if (looksLikeAndroidExtensionRepo(json, parsed)) throw new PluginError("android-extensions");
   if (looksLikeStremioAddon(json)) throw new PluginError("stremio-addon");
   if (Array.isArray(json.scrapers)) return { kind: "stream", url };
@@ -134,9 +143,9 @@ export async function detectRepoKind(rawUrl: string): Promise<{ kind: PluginKind
   const type = typeof json.type === "string" ? json.type : "";
   if (type === "stream" || type === "manga" || type === "ebook") return { kind: type, url };
   if (Array.isArray(json.plugins)) {
-    const first = json.plugins.find((p) => p && typeof p === "object" && typeof (p as { entry?: unknown }).entry === "string") as
-      | { entry: string }
-      | undefined;
+    const first = json.plugins.find(
+      (p) => p && typeof p === "object" && typeof (p as { entry?: unknown }).entry === "string",
+    ) as { entry: string } | undefined;
     if (first) {
       try {
         const probed = await probeKind(new URL(first.entry, url).href);

@@ -113,11 +113,15 @@ export function tmdbBrandRankingCached(kind: BrandKind, scope: BrandScope = "top
   return hit?.[kind] ?? [];
 }
 
-export function tmdbBrandRanking(kind: BrandKind, scope: BrandScope = "top"): Promise<BrandSummary[]> {
+export function tmdbBrandRanking(
+  kind: BrandKind,
+  scope: BrandScope = "top",
+): Promise<BrandSummary[]> {
   const cached = tmdbBrandRankingCached(kind, scope);
   if (cached.length > 0) return Promise.resolve(cached);
   if (!rankedPromise[scope]) {
-    const load = scope === "top" ? import("./brand-index-top.json?raw") : import("./brand-index.json?raw");
+    const load =
+      scope === "top" ? import("./brand-index-top.json?raw") : import("./brand-index.json?raw");
     rankedPromise[scope] = load.then((m) => {
       const index = JSON.parse(m.default) as BrandIndex;
       const r: Ranked = {
@@ -181,9 +185,11 @@ export async function tmdbBrandDetails(
   const running = detailsInflight.get(cacheKey);
   if (running) return running;
   const p = withSlot(async () => {
-    const raw = await get<RawDetails>(key, kind === "network" ? `network/${id}` : `company/${id}`, {}).catch(
-      () => null,
-    );
+    const raw = await get<RawDetails>(
+      key,
+      kind === "network" ? `network/${id}` : `company/${id}`,
+      {},
+    ).catch(() => null);
     const value: BrandDetails | null = raw?.name
       ? {
           id,
@@ -207,8 +213,22 @@ export async function tmdbBrandDetails(
 }
 
 type RawCredits = {
-  cast?: Array<{ id?: number; name?: string; profile_path?: string | null; order?: number; character?: string; roles?: Array<{ character?: string }> }>;
-  crew?: Array<{ id?: number; name?: string; profile_path?: string | null; job?: string; department?: string; jobs?: Array<{ job?: string }> }>;
+  cast?: Array<{
+    id?: number;
+    name?: string;
+    profile_path?: string | null;
+    order?: number;
+    character?: string;
+    roles?: Array<{ character?: string }>;
+  }>;
+  crew?: Array<{
+    id?: number;
+    name?: string;
+    profile_path?: string | null;
+    job?: string;
+    department?: string;
+    jobs?: Array<{ job?: string }>;
+  }>;
 };
 
 type RawTitle = {
@@ -247,7 +267,15 @@ function tally(
     cur.weight += weight;
     return;
   }
-  people.set(id, { id, name, character, profilePath: profile ?? null, order: 0, titles: 1, weight });
+  people.set(id, {
+    id,
+    name,
+    character,
+    profilePath: profile ?? null,
+    order: 0,
+    titles: 1,
+    weight,
+  });
 }
 
 function rankPeople(map: Map<number, BrandPerson & { weight: number }>): BrandPerson[] {
@@ -267,7 +295,10 @@ function toTitle(meta: Meta, tmdbId: number, d: RawTitle, mediaType: "movie" | "
     tmdbId,
     imdbId: d.imdb_id ?? d.external_ids?.imdb_id ?? null,
     year: yearOf(d.release_date ?? d.first_air_date),
-    rating: typeof d.vote_average === "number" && d.vote_average > 0 ? Math.round(d.vote_average * 10) / 10 : null,
+    rating:
+      typeof d.vote_average === "number" && d.vote_average > 0
+        ? Math.round(d.vote_average * 10) / 10
+        : null,
     votes: d.vote_count ?? 0,
     revenue: d.revenue ?? 0,
     budget: d.budget ?? 0,
@@ -277,7 +308,11 @@ function toTitle(meta: Meta, tmdbId: number, d: RawTitle, mediaType: "movie" | "
     onAir: d.status === "Returning Series",
     collection:
       col?.id && col.name
-        ? { id: col.id, name: col.name, backdrop: col.backdrop_path ? `${IMG}/original${col.backdrop_path}` : null }
+        ? {
+            id: col.id,
+            name: col.name,
+            backdrop: col.backdrop_path ? `${IMG}/original${col.backdrop_path}` : null,
+          }
         : null,
   };
 }
@@ -315,20 +350,42 @@ export async function tmdbBrandStats(
     const base = { [kind === "network" ? "with_networks" : "with_companies"]: String(id) };
     const dateKey = mediaType === "movie" ? "primary_release_date" : "first_air_date";
     const [popular, grossing, earliest] = await Promise.all([
-      withSlot(() => tmdbDiscover(key, mediaType, { ...base, sort_by: "popularity.desc", "vote_count.gte": "50" }).catch(() => [])),
+      withSlot(() =>
+        tmdbDiscover(key, mediaType, {
+          ...base,
+          sort_by: "popularity.desc",
+          "vote_count.gte": "50",
+        }).catch(() => []),
+      ),
       mediaType === "movie"
-        ? withSlot(() => tmdbDiscover(key, "movie", { ...base, sort_by: "revenue.desc", "vote_count.gte": "100" }).catch(() => []))
+        ? withSlot(() =>
+            tmdbDiscover(key, "movie", {
+              ...base,
+              sort_by: "revenue.desc",
+              "vote_count.gte": "100",
+            }).catch(() => []),
+          )
         : Promise.resolve([] as Meta[]),
-      withSlot(() => tmdbDiscover(key, mediaType, { ...base, sort_by: `${dateKey}.asc`, "vote_count.gte": "20" }).catch(() => [])),
+      withSlot(() =>
+        tmdbDiscover(key, mediaType, {
+          ...base,
+          sort_by: `${dateKey}.asc`,
+          "vote_count.gte": "20",
+        }).catch(() => []),
+      ),
     ]);
     const metaById = new Map<number, Meta>();
     for (const m of [...popular, ...grossing, ...earliest]) {
       const n = tmdbIdOf(m);
       if (Number.isFinite(n) && n > 0 && !metaById.has(n)) metaById.set(n, m);
     }
-    const wanted = [...new Set([...popular.slice(0, SAMPLE), ...grossing.slice(0, SAMPLE), ...earliest.slice(0, 1)].map(tmdbIdOf))].filter(
-      (n) => metaById.has(n),
-    );
+    const wanted = [
+      ...new Set(
+        [...popular.slice(0, SAMPLE), ...grossing.slice(0, SAMPLE), ...earliest.slice(0, 1)].map(
+          tmdbIdOf,
+        ),
+      ),
+    ].filter((n) => metaById.has(n));
     const details = await Promise.all(
       wanted.map((tid) =>
         withSlot(() =>
@@ -347,34 +404,64 @@ export async function tmdbBrandStats(
       const meta = metaById.get(wanted[i]);
       if (!d || !meta) return;
       titles.push(toTitle(meta, wanted[i], d, mediaType));
-      for (const g of d.genres ?? []) if (g.name) genreCounts.set(g.name, (genreCounts.get(g.name) ?? 0) + 1);
+      for (const g of d.genres ?? [])
+        if (g.name) genreCounts.set(g.name, (genreCounts.get(g.name) ?? 0) + 1);
       const credits = d.credits ?? d.aggregate_credits;
       for (const m of (credits?.cast ?? []).slice(0, 8)) {
         const order = typeof m.order === "number" ? m.order : 8;
-        tally(faces, m.id, m.name, m.profile_path, Math.max(1, 8 - order), m.character ?? m.roles?.[0]?.character ?? "");
+        tally(
+          faces,
+          m.id,
+          m.name,
+          m.profile_path,
+          Math.max(1, 8 - order),
+          m.character ?? m.roles?.[0]?.character ?? "",
+        );
       }
       for (const m of credits?.crew ?? []) {
         const job = m.job ?? m.jobs?.[0]?.job ?? "";
         const maker =
-          job === "Director" || job === "Creator" || job === "Series Director" || (mediaType === "tv" && job === "Writer");
+          job === "Director" ||
+          job === "Creator" ||
+          job === "Series Director" ||
+          (mediaType === "tv" && job === "Writer");
         if (!maker) continue;
-        tally(makers, m.id, m.name, m.profile_path, job === "Director" || job === "Creator" ? 3 : 1, job);
+        tally(
+          makers,
+          m.id,
+          m.name,
+          m.profile_path,
+          job === "Director" || job === "Creator" ? 3 : 1,
+          job,
+        );
       }
     });
     const rated = titles.filter((x) => x.rating !== null && x.votes >= 100);
-    const grossed = titles.filter((x) => x.revenue > 0).sort((a, b) => b.revenue - a.revenue).slice(0, SAMPLE);
+    const grossed = titles
+      .filter((x) => x.revenue > 0)
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, SAMPLE);
     const firstId = earliest[0] ? tmdbIdOf(earliest[0]) : null;
-    const franchiseMap = new Map<number, { id: number; name: string; backdrop: string | null; count: number }>();
+    const franchiseMap = new Map<
+      number,
+      { id: number; name: string; backdrop: string | null; count: number }
+    >();
     for (const x of titles) {
       if (!x.collection) continue;
       const cur = franchiseMap.get(x.collection.id);
       if (cur) cur.count += 1;
       else franchiseMap.set(x.collection.id, { ...x.collection, count: 1 });
     }
-    const runtimes = titles.map((x) => x.runtime).filter((r): r is number => typeof r === "number" && r > 0);
-    const acclaimed = titles.filter((x) => x.rating !== null && x.votes >= 500).sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
+    const runtimes = titles
+      .map((x) => x.runtime)
+      .filter((r): r is number => typeof r === "number" && r > 0);
+    const acclaimed = titles
+      .filter((x) => x.rating !== null && x.votes >= 500)
+      .sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
     const stats: BrandStats = {
-      rating: rated.length ? Math.round((rated.reduce((s, x) => s + (x.rating ?? 0), 0) / rated.length) * 10) / 10 : null,
+      rating: rated.length
+        ? Math.round((rated.reduce((s, x) => s + (x.rating ?? 0), 0) / rated.length) * 10) / 10
+        : null,
       genres: [...genreCounts.entries()]
         .sort((a, b) => b[1] - a[1])
         .slice(0, 3)
@@ -385,10 +472,18 @@ export async function tmdbBrandStats(
       grossing: grossed,
       first: firstId !== null ? (titles.find((x) => x.tmdbId === firstId) ?? null) : null,
       franchises: [...franchiseMap.values()].sort((a, b) => b.count - a.count),
-      longest: mediaType === "tv" ? [...titles].filter((x) => x.episodes > 0).sort((a, b) => b.episodes - a.episodes).slice(0, 12) : [],
+      longest:
+        mediaType === "tv"
+          ? [...titles]
+              .filter((x) => x.episodes > 0)
+              .sort((a, b) => b.episodes - a.episodes)
+              .slice(0, 12)
+          : [],
       onAir: titles.filter((x) => x.onAir).length,
       totalGross: grossed.reduce((s, x) => s + x.revenue, 0),
-      avgRuntime: runtimes.length ? Math.round(runtimes.reduce((s, r) => s + r, 0) / runtimes.length) : null,
+      avgRuntime: runtimes.length
+        ? Math.round(runtimes.reduce((s, r) => s + r, 0) / runtimes.length)
+        : null,
       mostAcclaimed: acclaimed[0] ?? null,
     };
     if (titles.length > 0) await cacheSet(cacheKey, { at: Date.now(), value: stats });

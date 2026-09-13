@@ -132,7 +132,8 @@ const sweep: Record<string, string> = {
   "All times": "Любое время",
   "All video": "Всё видео",
   "All-time bests": "Лучшее за всё время",
-  "Also joins Harbor's Discord server.": "Также присоединяет к серверу Harbor в Discord.",
+  "Linking your Discord account also joins you to Harbor's Discord server, so the bot can send your Backup keys privately.":
+    "Linking your Discord account also joins you to Harbor's Discord server, so the bot can send your Backup keys privately.",
   "Always re-encode when casting": "Всегда перекодировать при трансляции",
   "Always stream P2P": "Всегда воспроизводить через P2P",
   Amber: "Янтарный",
@@ -581,7 +582,8 @@ const sweep: Record<string, string> = {
   "Favour titles from where you are": "Предпочитать названия из вашего региона",
   "Favour titles from your region on Home": "Предпочитать названия из вашего региона на Главной",
   Feishin: "Feishin",
-  "Fetches a small public test file over P2P, then reports UDP and HTTPS egress, DHT bootstrap and tracker reachability step by step.": "Загружает небольшой публичный тестовый файл по P2P и по шагам сообщает об исходящем трафике UDP и HTTPS, старте DHT и доступности трекеров.",
+  "Fetches a small public test file over P2P, then reports UDP and HTTPS egress, DHT bootstrap and tracker reachability step by step.":
+    "Загружает небольшой публичный тестовый файл по P2P и по шагам сообщает об исходящем трафике UDP и HTTPS, старте DHT и доступности трекеров.",
   "Filename hidden": "Имя файла скрыто",
   "Filename shown": "Имя файла показано",
   "Files smaller than this are skipped when scanning a folder.":
@@ -674,7 +676,8 @@ const sweep: Record<string, string> = {
   HELP: "Справка",
   HIDIVE: "HIDIVE",
   HTML5: "HTML5",
-  "Handles P2P playback and transcoding for this machine.": "Отвечает за P2P-воспроизведение и перекодирование на этом компьютере.",
+  "Handles P2P playback and transcoding for this machine.":
+    "Отвечает за P2P-воспроизведение и перекодирование на этом компьютере.",
   "Harbor accepted that but returned no session. Try again.":
     "Harbor принял данные, но не вернул сессию. Попробуйте ещё раз.",
   "Harbor account linked as {name}": "Аккаунт Harbor привязан как {name}",
@@ -882,7 +885,8 @@ const sweep: Record<string, string> = {
   "Live TV source": "Источник прямого эфира",
   "Live TV sources": "Источники прямого эфира",
   "Live action": "Игровое кино",
-  "Live state of Harbor's own P2P engine on this machine.": "Текущее состояние собственного P2P-движка Harbor на этом компьютере.",
+  "Live state of Harbor's own P2P engine on this machine.":
+    "Текущее состояние собственного P2P-движка Harbor на этом компьютере.",
   "Loading more collections...": "Загрузка ещё коллекций...",
   "Loads a backup file and restores exactly what it contains, without touching the rest of your setup. Your Stremio sign-in on this device stays as is.":
     "Загружает файл резервной копии и восстанавливает ровно то, что в нём есть, не затрагивая остальные настройки. Вход в Stremio на этом устройстве остаётся прежним.",
@@ -1086,7 +1090,8 @@ const sweep: Record<string, string> = {
   "Open this page by scanning the code on your TV's setup screen.":
     "Откройте эту страницу, отсканировав код на экране настройки телевизора.",
   "OpenSubtitles API key": "API-ключ OpenSubtitles",
-  "Opens the folder holding the DHT cache and active transfer data.": "Открывает папку с кешем DHT и данными активных передач.",
+  "Opens the folder holding the DHT cache and active transfer data.":
+    "Открывает папку с кешем DHT и данными активных передач.",
   "Opens the free signup page": "Открывает страницу бесплатной регистрации",
   "Opens your API settings page": "Открывает страницу настроек API",
   "Optional. Add one to turn on automatic subtitle sync.":
@@ -1130,7 +1135,8 @@ const sweep: Record<string, string> = {
   "Paste your key": "Вставьте свой ключ",
   "Paste your v3 API key": "Вставьте свой API-ключ v3",
   Peacock: "Peacock",
-  "Peers, speed and progress on the player while a P2P stream plays. Sits top left, clear of the exit button.": "Пиры, скорость и прогресс в плеере во время воспроизведения P2P-потока. Слева вверху, не перекрывая кнопку выхода.",
+  "Peers, speed and progress on the player while a P2P stream plays. Sits top left, clear of the exit button.":
+    "Пиры, скорость и прогресс в плеере во время воспроизведения P2P-потока. Слева вверху, не перекрывая кнопку выхода.",
   "People from the week's hottest titles, weighted by what is being talked about.":
     "Люди из самых популярных названий недели, с учётом того, о чём сейчас говорят.",
   Philo: "Philo",
@@ -1631,7 +1637,8 @@ const sweep: Record<string, string> = {
     "Пунктир – это равномерное сжатие всего диапазона. Кривая, идущая высоко, сохраняет сочность средних тонов и сжимает света в конце; более низкая кривая спадает раньше и выглядит мягче.",
   "The editor is a working copy of the player. Click any control on it to move, resize, restyle or hide that control.":
     "Редактор – это рабочая копия плеера. Нажмите на любой элемент, чтобы переместить, изменить размер, оформление или скрыть его.",
-  "The engine listens on a local port and joins the DHT to find peers. Active transfers are the streams it currently has open.": "Движок слушает локальный порт и подключается к DHT для поиска пиров. Активные передачи – это потоки, открытые сейчас.",
+  "The engine listens on a local port and joins the DHT to find peers. Active transfers are the streams it currently has open.":
+    "Движок слушает локальный порт и подключается к DHT для поиска пиров. Активные передачи – это потоки, открытые сейчас.",
   "The key is saved on this device only.": "Ключ сохраняется только на этом устройстве.",
   "The label looks high (1080p / 4K) but doesn't match expected file size or release window. Often a CAM or TS rebadged. Try a Theater Capture stream or check the source list before committing.":
     "Заявленное качество высокое (1080p / 4K), но не соответствует ожидаемому размеру файла или дате выхода. Часто это переименованный CAM или TS. Попробуйте поток Theater Capture или проверьте список источников, прежде чем выбирать.",

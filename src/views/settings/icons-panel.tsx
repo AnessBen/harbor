@@ -15,8 +15,16 @@ import wavingCat from "@/assets/artists/wave.svg";
 type Glob = Record<string, string>;
 type LazyGlob = Record<string, () => Promise<unknown>>;
 
-const NAV_URL = import.meta.glob("../../assets/nav-icons/*.svg", { eager: true, query: "?url", import: "default" }) as Glob;
-const UI_ALL = import.meta.glob("../../assets/ui-icons/*.svg", { eager: true, query: "?url", import: "default" }) as Glob;
+const NAV_URL = import.meta.glob("../../assets/nav-icons/*.svg", {
+  eager: true,
+  query: "?url",
+  import: "default",
+}) as Glob;
+const UI_ALL = import.meta.glob("../../assets/ui-icons/*.svg", {
+  eager: true,
+  query: "?url",
+  import: "default",
+}) as Glob;
 const NOT_OURS = ["help", "remindme"];
 const UI_URL: Glob = Object.fromEntries(
   Object.entries(UI_ALL).filter(([key]) => {
@@ -63,10 +71,7 @@ const PLAYER_URL: Glob = {
   "/player-icons/volume.svg": "/player-icons/volume.svg",
 };
 
-const SVG_RAW = import.meta.glob([
-  "../../assets/nav-icons/*.svg",
-  "../../assets/ui-icons/*.svg",
-], {
+const SVG_RAW = import.meta.glob(["../../assets/nav-icons/*.svg", "../../assets/ui-icons/*.svg"], {
   query: "?raw",
   import: "default",
 }) as LazyGlob;
@@ -159,7 +164,9 @@ function IconTile({
     <button
       type="button"
       className="hset-icon-tile aria-disabled:cursor-wait aria-disabled:opacity-60"
-      onClick={() => { if (!disabled) onSave(item.key, item.name); }}
+      onClick={() => {
+        if (!disabled) onSave(item.key, item.name);
+      }}
       aria-disabled={disabled}
       aria-busy={pending}
       aria-label={t("Save {name} as SVG", { name: pretty(item.name) })}
@@ -172,7 +179,11 @@ function IconTile({
           style={{ maskImage: `url("${item.url}")`, WebkitMaskImage: `url("${item.url}")` }}
         />
         <span className="hset-icon-save" aria-hidden>
-          {saved ? <Check size={14} strokeWidth={2.75} /> : <Download size={14} strokeWidth={2.25} />}
+          {saved ? (
+            <Check size={14} strokeWidth={2.75} />
+          ) : (
+            <Download size={14} strokeWidth={2.25} />
+          )}
         </span>
       </span>
       <span className="hset-icon-name">{pretty(item.name)}</span>
@@ -184,14 +195,20 @@ function IconSet({ glob, download }: { glob: Glob; download: AssetDownload }) {
   const items = useMemo(() => entries(glob), [glob]);
   const save = useCallback(
     (key: string, name: string) => {
-      void download.save(key, `${name}.svg`, async () => {
-        const load = SVG_RAW[key];
-        if (load) return (await load()) as string;
-        if (!key.startsWith("/")) throw new Error("Icon source unavailable");
-        const res = await fetch(key);
-        if (!res.ok) throw new Error("Icon source unavailable");
-        return res.text();
-      }, ["svg"], "SVG");
+      void download.save(
+        key,
+        `${name}.svg`,
+        async () => {
+          const load = SVG_RAW[key];
+          if (load) return (await load()) as string;
+          if (!key.startsWith("/")) throw new Error("Icon source unavailable");
+          const res = await fetch(key);
+          if (!res.ok) throw new Error("Icon source unavailable");
+          return res.text();
+        },
+        ["svg"],
+        "SVG",
+      );
     },
     [download.save],
   );
@@ -209,7 +226,13 @@ function IconSet({ glob, download }: { glob: Glob; download: AssetDownload }) {
           />
         ))}
       </div>
-      <AssetDownloadFeedback status={download.status && items.some((it) => it.key === download.status?.id) ? download.status : null} />
+      <AssetDownloadFeedback
+        status={
+          download.status && items.some((it) => it.key === download.status?.id)
+            ? download.status
+            : null
+        }
+      />
     </>
   );
 }
@@ -239,14 +262,18 @@ function AnimationTile({
   useEffect(() => {
     if (!inView || data || failed) return;
     let alive = true;
-    void load().then((mod) => {
-      if (!alive) return;
-      const m = mod as { default?: object };
-      setData(m.default ?? (mod as object));
-    }).catch(() => {
-      if (alive) setFailed(true);
-    });
-    return () => { alive = false; };
+    void load()
+      .then((mod) => {
+        if (!alive) return;
+        const m = mod as { default?: object };
+        setData(m.default ?? (mod as object));
+      })
+      .catch(() => {
+        if (alive) setFailed(true);
+      });
+    return () => {
+      alive = false;
+    };
   }, [inView, data, failed, load]);
 
   const loading = !data && !failed;
@@ -273,18 +300,30 @@ function AnimationTile({
     >
       <span className="hset-anim-stage">
         {data && inView ? (
-          <LottiePlayer data={data} className="h-full w-full" autoplay={!reducedMotion} loop={!reducedMotion} />
+          <LottiePlayer
+            data={data}
+            className="h-full w-full"
+            autoplay={!reducedMotion}
+            loop={!reducedMotion}
+          />
         ) : (
           <span className="hset-anim-idle" aria-hidden />
         )}
         {data && (
           <span className="hset-icon-save" aria-hidden>
-            {saved ? <Check size={14} strokeWidth={2.75} /> : <Download size={14} strokeWidth={2.25} />}
+            {saved ? (
+              <Check size={14} strokeWidth={2.75} />
+            ) : (
+              <Download size={14} strokeWidth={2.25} />
+            )}
           </span>
         )}
       </span>
       <span className="hset-icon-name">{pretty(name)}</span>
-      <span role="status" className={`min-h-[17px] text-[12px] leading-[17px] ${failed ? "text-danger" : "text-ink-subtle"}`}>
+      <span
+        role="status"
+        className={`min-h-[17px] text-[12px] leading-[17px] ${failed ? "text-danger" : "text-ink-subtle"}`}
+      >
         {failed ? t("Load failed. Retry") : loading ? t("Loading…") : ""}
       </span>
     </button>
@@ -295,7 +334,13 @@ function AnimationSet({ glob, download }: { glob: LazyGlob; download: AssetDownl
   const keys = useMemo(() => Object.keys(glob).sort(), [glob]);
   const save = useCallback(
     (path: string, name: string, data: object) => {
-      void download.save(path, `${name}.json`, async () => JSON.stringify(data), ["json"], "Lottie");
+      void download.save(
+        path,
+        `${name}.json`,
+        async () => JSON.stringify(data),
+        ["json"],
+        "Lottie",
+      );
     },
     [download.save],
   );
@@ -314,7 +359,9 @@ function AnimationSet({ glob, download }: { glob: LazyGlob; download: AssetDownl
           />
         ))}
       </div>
-      <AssetDownloadFeedback status={download.status && keys.includes(download.status.id) ? download.status : null} />
+      <AssetDownloadFeedback
+        status={download.status && keys.includes(download.status.id) ? download.status : null}
+      />
     </>
   );
 }
@@ -344,14 +391,26 @@ function AuthorCard({
         <span className="hset-author-name">{name}</span>
         <span className="hset-author-links">
           {links.map((l) => (
-            <button key={l.url} type="button" onClick={() => void openUrl(l.url)} className="hset-author-link">
+            <button
+              key={l.url}
+              type="button"
+              onClick={() => void openUrl(l.url)}
+              className="hset-author-link"
+            >
               {l.label}
               <ArrowUpRight size={13} strokeWidth={2.25} aria-hidden />
             </button>
           ))}
         </span>
       </div>
-      <img src={avatar} alt="" width={64} height={64} draggable={false} className="size-16 shrink-0 select-none rounded-full object-cover" />
+      <img
+        src={avatar}
+        alt=""
+        width={64}
+        height={64}
+        draggable={false}
+        className="size-16 shrink-0 select-none rounded-full object-cover"
+      />
     </div>
   );
 }
@@ -362,11 +421,14 @@ export function IconsPanel() {
 
   return (
     <>
-      <Section
-        title={t("Who drew our Art")}
-      >
+      <Section title={t("Who drew our Art")}>
         <div className="hset-authors">
-          <AuthorCard avatar={abiyyuAvatar} name="Abiyyu Suryowibisono" role="Icons, illustrations, and the cat" links={ABIYYU_LINKS} />
+          <AuthorCard
+            avatar={abiyyuAvatar}
+            name="Abiyyu Suryowibisono"
+            role="Icons, illustrations, and the cat"
+            links={ABIYYU_LINKS}
+          />
           <AuthorCard
             avatar={stassAvatar}
             name="stass_motion"
@@ -383,28 +445,41 @@ export function IconsPanel() {
         <IconSet glob={NAV_URL} download={download} />
       </Section>
 
-      <Section title={t("Interface")} subtitle={t("Buttons, states, and the things that live on a card.")}>
+      <Section
+        title={t("Interface")}
+        subtitle={t("Buttons, states, and the things that live on a card.")}
+      >
         <IconSet glob={UI_URL} download={download} />
       </Section>
 
       <Section
         title={t("Player")}
-        subtitle={t("The chrome abiyyu drew for the player: transport, subtitles, shaders, and the rest.")}
+        subtitle={t(
+          "The chrome abiyyu drew for the player: transport, subtitles, shaders, and the rest.",
+        )}
       >
         <IconSet glob={PLAYER_URL} download={download} />
       </Section>
 
-      <Section title={t("Navigation animations")} subtitle={t("What the sidebar icons do when you land on them.")}>
+      <Section
+        title={t("Navigation animations")}
+        subtitle={t("What the sidebar icons do when you land on them.")}
+      >
         <AnimationSet glob={LOTTIE_NAV} download={download} />
       </Section>
 
-      <Section title={t("Everything else that moves")} subtitle={t("Loaders, boats, and the bits between screens.")}>
+      <Section
+        title={t("Everything else that moves")}
+        subtitle={t("Loaders, boats, and the bits between screens.")}
+      >
         <AnimationSet glob={LOTTIE_MAIN} download={download} />
       </Section>
 
       <Section
         title={t("Harbor and the installer")}
-        subtitle={t("The Big Picture opener and the boat that builds itself while Harbor installs.")}
+        subtitle={t(
+          "The Big Picture opener and the boat that builds itself while Harbor installs.",
+        )}
       >
         <AnimationSet glob={LOTTIE_APP} download={download} />
       </Section>
@@ -431,7 +506,8 @@ export function IconsPanel() {
                 className="underline decoration-current/40 underline-offset-2 hover:decoration-current"
               >
                 Kenney Input Prompts
-              </a>{" (CC0)."}
+              </a>
+              {" (CC0)."}
             </p>
           </div>
           <img
