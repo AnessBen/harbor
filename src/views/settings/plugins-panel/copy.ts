@@ -52,7 +52,9 @@ export function healthErrorText(t: T, error: string): string {
   const timeout = /timed out/i.exec(error);
   if (timeout) {
     const secs = /(\d+)\s*(?:ms|s)/.exec(error);
-    return t("Timed out after {n} seconds.", { n: secs ? Math.round(Number(secs[1]) / (error.includes("ms") ? 1000 : 1)) || 30 : 30 });
+    return t("Timed out after {n} seconds.", {
+      n: secs ? Math.round(Number(secs[1]) / (error.includes("ms") ? 1000 : 1)) || 30 : 30,
+    });
   }
   if (/did not start|initError|not-stream-plugin|SyntaxError/i.test(error)) {
     return t("Could not start: {error}", { error });
@@ -66,7 +68,7 @@ export function stateCopy(t: T, p: PluginView): StateCopy {
       return {
         desc: null,
         warn: null,
-        lock: /^min:/.test(p.error ?? "")
+        lock: (p.error ?? "").startsWith("min:")
           ? t("Needs Harbor {version} or newer.", { version: (p.error ?? "").slice(4) })
           : t("This file is not a stream plugin."),
       };
