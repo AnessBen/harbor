@@ -16,6 +16,7 @@ import {
   type FieldStatus,
 } from "./webhooks-panel/webhook-field";
 import { TelegramComposedField } from "./webhooks-panel/telegram-field";
+import { DesktopNotifyField } from "./webhooks-panel/desktop-field";
 
 const idleStatus: FieldStatus = { state: "idle", message: null };
 
@@ -78,9 +79,11 @@ export function WebhooksPanel() {
   const { isConnected: traktConnected } = useTrakt();
   const [discordStatus, setDiscordStatus] = useState<FieldStatus>(idleStatus);
   const [telegramStatus, setTelegramStatus] = useState<FieldStatus>(idleStatus);
-  const inFlightRef = useRef<{ discord: boolean; telegram: boolean }>({
+  const [desktopStatus, setDesktopStatus] = useState<FieldStatus>(idleStatus);
+  const inFlightRef = useRef<{ discord: boolean; telegram: boolean; desktop: boolean }>({
     discord: false,
     telegram: false,
+    desktop: false,
   });
 
   const setUrl = (which: "discordUrl" | "telegramUrl", v: string) =>
@@ -99,14 +102,25 @@ export function WebhooksPanel() {
 
   const send = async (kind: WebhookKind) => {
     if (inFlightRef.current[kind]) return;
-    const url = kind === "discord" ? settings.webhooks.discordUrl : settings.webhooks.telegramUrl;
-    const setStatus = kind === "discord" ? setDiscordStatus : setTelegramStatus;
-    if (!url) return;
+    const url =
+      kind === "discord"
+        ? settings.webhooks.discordUrl
+        : kind === "telegram"
+          ? settings.webhooks.telegramUrl
+          : "";
+    const setStatus =
+      kind === "discord"
+        ? setDiscordStatus
+        : kind === "telegram"
+          ? setTelegramStatus
+          : setDesktopStatus;
+    if (kind === "desktop" ? !settings.webhooks.desktopEnabled : !url) return;
     inFlightRef.current[kind] = true;
     setStatus({ state: "busy", message: t("Sending…") });
-    const service = kind === "discord" ? "Discord" : "Telegram";
+    const service =
+      kind === "discord" ? "Discord" : kind === "telegram" ? "Telegram" : "your desktop";
     const testPayload: WebhookPayload = {
-      text: t("Harbor test message ({service}). If you can read this, your webhook is wired up.", {
+      text: t("Harbor test message ({service}). If you can read this, it's wired up.", {
         service,
       }),
       items: [],
@@ -115,7 +129,9 @@ export function WebhooksPanel() {
       const res = await fireWebhook(kind, url, testPayload);
       setStatus({
         state: res.ok ? "ok" : "error",
-        message: res.ok ? t("Sent. Check your channel.") : (res.error ?? t("Failed")),
+        message: res.ok
+          ? t(kind === "desktop" ? "Sent. Check your notifications." : "Sent. Check your channel.")
+          : (res.error ?? t("Failed")),
       });
     } finally {
       inFlightRef.current[kind] = false;
@@ -139,9 +155,15 @@ export function WebhooksPanel() {
         <Section
           title={t("Where alerts go")}
           subtitle={t(
-            "Get release alerts in Discord or Telegram. Connect a destination, then choose the sources and rules for your alerts.",
+            "Connect Discord or Telegram, or turn on desktop notifications, and Harbor alerts you when something you follow is about to drop. Hit Send test to send yourself a sample first.",
           )}
         >
+          <DesktopNotifyField
+            enabled={settings.webhooks.desktopEnabled}
+            onChange={(v) => update({ webhooks: { ...settings.webhooks, desktopEnabled: v } })}
+            onTest={() => send("desktop")}
+            status={desktopStatus}
+          />
           <WebhookField
             label={t("Discord webhook URL")}
             logo={<DiscordMark />}
@@ -181,9 +203,7 @@ export function WebhooksPanel() {
 
           <Section
             title={t("Media types")}
-            subtitle={t(
-              "Choose which types of releases to include in calendar alerts.",
-            )}
+            subtitle={t("Choose which types of releases to include in calendar alerts.")}
           >
             <ToggleRow
               label={t("Movies")}
@@ -214,6 +234,7 @@ export function WebhooksPanel() {
           canDiscord={!!settings.webhooks.discordUrl}
           canTelegram={!!settings.webhooks.telegramUrl}
           onSetUp={() => setTab("destinations")}
+          canDesktop={settings.webhooks.desktopEnabled}
         />
       )}
     </div>
