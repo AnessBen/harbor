@@ -21,7 +21,7 @@ export function AdSkipTab() {
       {settings.adSkipEnabled && (
         <ToggleRow
           label={t("Always show the report button")}
-          sub={t("Show the report button on every torrent stream, not just likely new releases.")}
+          sub={t("Show the report button on every P2P stream, not just likely new releases.")}
           value={settings.adReportAlwaysShow}
           onChange={(v) => update({ adReportAlwaysShow: v })}
         />

@@ -63,9 +63,9 @@ export function LocalEngineSection() {
   const strictRemote = !!settings.remoteStreamServerUrl && settings.remoteStreamServerStrict;
   const selfTestReasonId = useId();
   const selfTestLockReason = settings.torrentsDisabled
-    ? t("Enable torrent streaming to run the local engine self-test.")
+    ? t("Enable P2P streaming to run the local engine self-test.")
     : strictRemote
-      ? t("Self-test is disabled while strict remote streaming is on. It downloads a test torrent over peer-to-peer on this machine.")
+      ? t("Self-test is disabled while strict remote streaming is on. It downloads a small test file over peer-to-peer on this machine.")
       : undefined;
   const [status, setStatus] = useState<EngineStatus | null>(null);
   const [running, setRunning] = useState(false);
@@ -147,9 +147,9 @@ export function LocalEngineSection() {
           wide
           icon={<Activity size={18} strokeWidth={1.9} />}
           label={t("Engine status")}
-          desc={t("Live state of Harbor's own torrent engine on this machine.")}
+          desc={t("Live state of Harbor's own P2P engine on this machine.")}
           tip={t(
-            "The engine listens on a local port and joins the DHT to find peers. Active torrents are the streams it currently has open.",
+            "The engine listens on a local port and joins the DHT to find peers. Active transfers are the streams it currently has open.",
           )}
         >
           <div className="flex w-full flex-col gap-3">
@@ -159,7 +159,7 @@ export function LocalEngineSection() {
                 {pillLabel}
               </span>
               <Stat label={t("Port")} value={status?.port ? String(status.port) : t("n/a")} />
-              <Stat label={t("Active torrents")} value={String(status?.active_torrents ?? 0)} />
+              <Stat label={t("Active transfers")} value={String(status?.active_torrents ?? 0)} />
               {status?.dht_tier ? (
                 <Stat
                   label={t("DHT")}
@@ -188,7 +188,7 @@ export function LocalEngineSection() {
         <ToggleRow
           label={t("Show P2P status chip")}
           sub={t(
-            "Peers, speed and progress on the player while a torrent streams. Sits top left, clear of the exit button.",
+            "Peers, speed and progress on the player while a P2P stream plays. Sits top left, clear of the exit button.",
           )}
           leading={<Gauge size={18} strokeWidth={2.2} />}
           value={settings.playerP2pChip}
@@ -198,7 +198,7 @@ export function LocalEngineSection() {
         <ToggleRow
           label={t("Keep downloading after you leave")}
           sub={t(
-            "When off, a torrent stops the moment you close or switch the stream, so nothing keeps downloading in the background. Turn on to let it keep going after you leave; manage or pause those from the Downloads tab.",
+            "When off, a P2P transfer stops the moment you close or switch the stream, so nothing keeps downloading in the background. Turn on to let it keep going after you leave; manage or pause those from the Downloads tab.",
           )}
           leading={<Download size={18} strokeWidth={2.2} />}
           value={settings.keepStreamDownloadsInBackground}
@@ -206,9 +206,9 @@ export function LocalEngineSection() {
         />
 
         <ToggleRow
-          label={t("Only start the torrent engine when needed")}
+          label={t("Only start the P2P engine when needed")}
           sub={t(
-            "Harbor normally starts its torrent engine at launch so the first P2P stream connects faster. That keeps a DHT node running and talking to the network even when you are not watching anything. Turn this on if you are on a metered or limited connection: the engine then starts the first time you actually play a torrent. Takes effect next launch.",
+            "Harbor normally starts its P2P engine at launch so the first P2P stream connects faster. That keeps a DHT node running and talking to the network even when you are not watching anything. Turn this on if you are on a metered or limited connection: the engine then starts the first time you actually play a P2P stream. Takes effect next launch.",
           )}
           leading={<Timer size={18} strokeWidth={2.2} />}
           value={settings.deferTorrentEngine}
@@ -223,7 +223,7 @@ export function LocalEngineSection() {
             ? <span id={selfTestReasonId}>{selfTestLockReason}</span>
             : t("Checks that this network can reach trackers and peers.")}
           tip={t(
-            "Fetches a small public test torrent, then reports UDP and HTTPS egress, DHT bootstrap and tracker reachability step by step.",
+            "Fetches a small public test file over P2P, then reports UDP and HTTPS egress, DHT bootstrap and tracker reachability step by step.",
           )}
           lockReason={selfTestLockReason}
         >

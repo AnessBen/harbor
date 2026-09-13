@@ -1649,7 +1649,7 @@ const SETTINGS_OPTIONS: SettingsOption[] = [
     ],
   },
   {
-    label: "Only start the torrent engine when needed",
+    label: "Only start the P2P engine when needed",
     section: "p2p",
     tab: "engine",
     anchorTitle: "Local engine",
@@ -2180,7 +2180,7 @@ const SETTINGS_OPTIONS: SettingsOption[] = [
     ],
   },
   {
-    label: "Local torrent engine",
+    label: "Local P2P engine",
     section: "p2p",
     tab: "engine",
     anchorTitle: "Local engine",
@@ -4517,7 +4517,7 @@ const SETTINGS_OPTIONS: SettingsOption[] = [
     ],
   },
   {
-    label: "Show torrent name",
+    label: "Show release name",
     section: "streaming",
     tab: "picker",
     anchorTitle: "Picker details",
@@ -4829,7 +4829,7 @@ const SETTINGS_OPTIONS: SettingsOption[] = [
     keywords: ["clear cache", "wipe cache", "free space", "delete files", "confirm clear"],
   },
   {
-    label: "Direct torrent streaming",
+    label: "Direct P2P streaming",
     section: "p2p",
     tab: "engine",
     anchorTitle: "Power tools & diagnostics",
@@ -9723,7 +9723,7 @@ const SETTINGS_OPTIONS: SettingsOption[] = [
     ],
   },
   {
-    label: "Disable torrents entirely",
+    label: "Disable P2P entirely",
     section: "p2p",
     tab: "engine",
     anchorTitle: "Power tools & diagnostics",

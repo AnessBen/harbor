@@ -200,7 +200,7 @@ export function ServerAddressSection() {
               </span>
             </span>
           }
-          desc={t("Handles torrent playback and transcoding for this machine.")}
+          desc={t("Handles P2P playback and transcoding for this machine.")}
         >
           {running ? (
             <>

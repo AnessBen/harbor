@@ -360,7 +360,7 @@ const coverage: Record<string, string> = {
   Actions: "Tindakan",
   Active: "Aktif",
   "Active and reachable": "Aktif dan dapat dijangkau",
-  "Active torrents": "Torrent aktif",
+  "Active transfers": "Transfer aktif",
   Activity: "Aktivitas",
   Actor: "Aktor",
   Actors: "Para aktor",

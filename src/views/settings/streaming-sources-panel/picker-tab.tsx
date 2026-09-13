@@ -32,7 +32,7 @@ export function PickerTab() {
           wide
           label={t("Prefer these sources")}
           desc={t(
-            "Both shows direct, debrid, and peer-to-peer results together. Direct/debrid keeps torrents out of the way unless nothing else is available. P2P puts torrents first.",
+            "Both shows direct, debrid, and peer-to-peer results together. Direct/debrid keeps P2P results out of the way unless nothing else is available. P2P puts them first.",
           )}
         >
           <Segmented<StreamMode>
@@ -57,7 +57,7 @@ export function PickerTab() {
           onChange={(v) => update({ pickerRefreshNextToBack: v })}
         />
         <ToggleRow
-          label={t("Show torrent name")}
+          label={t("Show release name")}
           sub={t("Show release filenames in the Condensed picker and Big Picture.")}
           value={settings.pickerShowFilename}
           onChange={(v) => update({ pickerShowFilename: v })}

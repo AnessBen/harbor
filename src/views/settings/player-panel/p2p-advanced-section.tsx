@@ -321,38 +321,38 @@ export function P2PPowerToolsSection() {
         "Low-level knobs for the peer-to-peer engine, plus quick ways to grab debug info when a stream misbehaves.",
       )}
     >
-      <SettingGroup label={t("Torrent streaming")}>
+      <SettingGroup label={t("P2P streaming")}>
         <ToggleRow
-          label={t("Disable torrents entirely")}
+          label={t("Disable P2P entirely")}
           sub={t(
-            "Harbor will not start the torrent engine, contact trackers, or run DHT. Use this if you only want debrid and direct links. Turn off to re-enable torrent streaming.",
+            "Harbor will not start the P2P engine, contact trackers, or run DHT. Use this if you only want debrid and direct links. Turn off to re-enable P2P streaming.",
           )}
           leading={<Ban size={18} strokeWidth={2.2} />}
           value={settings.torrentsDisabled}
           onChange={(v) => update({ torrentsDisabled: v })}
-          note={torrentEnginePolicyPending ? t("Applying torrent setting…") : undefined}
+          note={torrentEnginePolicyPending ? t("Applying P2P setting…") : undefined}
           warn={
             torrentEnginePolicyError
-              ? t("Harbor could not apply the torrent setting. Reopen Harbor to try again.")
+              ? t("Harbor could not apply the P2P setting. Reopen Harbor to try again.")
               : settings.torrentsDisabled
               ? t(
-                  "Torrents are disabled. Uncached streams will not play unless they come from a debrid service or a direct link. To use torrents, toggle this off.",
+                  "P2P is disabled. Uncached streams will not play unless they come from a debrid service or a direct link. To use P2P, toggle this off.",
                 )
               : undefined
           }
         />
 
         <ToggleRow
-          label={t("Local torrent streaming")}
+          label={t("Local P2P streaming")}
           sub={t(
-            "Let Harbor stream torrents from this device when a debrid link is unavailable. Turn off to prevent local torrent playback. A configured remote server can still stream torrents.",
+            "Let Harbor stream over P2P from this device when a debrid link is unavailable. Turn off to prevent local P2P playback. A configured remote server can still stream them.",
           )}
           leading={<Zap size={18} strokeWidth={2.2} />}
           value={settings.directTorrentStream}
           onChange={(v) => update({ directTorrentStream: v })}
           lockReason={
             settings.torrentsDisabled
-              ? t("Disabled because torrents are disabled above")
+              ? t("Disabled because P2P is disabled above")
               : strictRemote
                 ? t("Disabled while strict remote streaming is on")
                 : undefined
@@ -369,7 +369,7 @@ export function P2PPowerToolsSection() {
           onChange={(v) => update({ p2pAutoConsent: v })}
           note={
             settings.torrentsDisabled
-              ? t("Nothing left to confirm while torrents are disabled.")
+              ? t("Nothing left to confirm while P2P is disabled.")
               : undefined
           }
         />
@@ -381,7 +381,7 @@ export function P2PPowerToolsSection() {
           label={t("Copy diagnostics")}
           desc={t("Engine status and your P2P settings as JSON, ready to paste into a bug report.")}
           tip={t(
-            "Copy diagnostics grabs the engine status and your P2P settings as JSON, handy to paste into a bug report. The engine folder holds the DHT cache (dht.json) and active torrent data.",
+            "Copy diagnostics grabs the engine status and your P2P settings as JSON, handy to paste into a bug report. The engine folder holds the DHT cache (dht.json) and active transfer data.",
           )}
         >
           <button type="button" onClick={() => void copyDiagnostics()} className={ROW_ACTION}>
@@ -398,7 +398,7 @@ export function P2PPowerToolsSection() {
           <SettingRow
             icon={<FolderOpen size={18} strokeWidth={1.9} />}
             label={t("Reveal engine folder")}
-            desc={t("Opens the folder holding the DHT cache and active torrent data.")}
+            desc={t("Opens the folder holding the DHT cache and active transfer data.")}
           >
             <button
               type="button"

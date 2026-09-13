@@ -60,8 +60,7 @@ const system: Record<string, string> = {
   "Premiumize API key": "Premiumize API 密钥",
   "API token": "API 令牌",
   "API key": "API 密钥",
-  "Faster and quieter than torrents if you already pay for Usenet. Configure on the addon page, paste the manifest URL it returns.":
-    "如果你已订阅 Usenet，它比种子下载更快、更省心。请在插件页面进行配置，然后粘贴其返回的 manifest URL。",
+  "Faster and quieter than P2P if you already pay for Usenet. Configure on the addon page, paste the manifest URL it returns.": "如果你已订阅 Usenet，它比 P2P 更快、更省心。请在插件页面进行配置，然后粘贴其返回的 manifest URL。",
   "Choose file": "选择文件",
   "Spins up a tiny server on Cloudflare's free Workers tier. Stays online forever (or until you stop it). Friends connect by URL.":
     "在 Cloudflare 免费 Workers 套餐上启动一个微型服务器。它会一直在线，直到你将其停止。好友可通过 URL 连接。",
@@ -540,8 +539,7 @@ const system: Record<string, string> = {
     "一个基础 RPDB 兼容服务器地址（仍会发送您的 RPDB 密钥），或使用以下格式的完整 URL 模板",
   "The number is bytes divided by the time they actually took to arrive. Cloudflare is a single origin, so on a very fast line this can read lower than a multi-server test like speedtest.net.":
     "该数值用字节数除以数据实际到达所用时间得出。Cloudflare 是单一源站，因此在网速极快时，结果可能低于 speedtest.net 这类多服务器测试。",
-  "Used to check cache and unrestrict links. Harbor never adds or removes torrents on its own.":
-    "用于检查缓存和解除链接限制。Harbor 绝不会自行添加或移除种子。",
+  "Used to check cache and unrestrict links. Harbor never adds or removes anything on your account on its own.": "用于检查缓存和解除链接限制。Harbor 绝不会自行在你的账户中添加或移除任何内容。",
   "EU-hosted, fast cache check. Same read-only usage as the others.":
     "服务器位于欧盟，可快速检查缓存。与其他服务一样，仅进行只读操作。",
   "Couldn't save that background. Your local storage is full. Try a smaller crop or clear cached data.":

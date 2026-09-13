@@ -450,8 +450,7 @@ const coverage: Record<string, string> = {
   "Not quit without long notice": "Non dimetterti senza un lungo preavviso",
   "Not right?": "Non è così?",
   "Not share their confidential info": "Non divulgare le sue informazioni riservate",
-  "Nothing left to confirm while torrents are disabled.":
-    "Non resta nulla da confermare finché i torrent sono disattivati.",
+  "Nothing left to confirm while P2P is disabled.": "Non resta nulla da confermare finché il P2P è disattivato.",
   "Nothing until next year begins": "Nessuna retribuzione fino all'inizio dell'anno successivo",
   Notifications: "Notifiche",
   OK: "OK",
@@ -606,8 +605,7 @@ const coverage: Record<string, string> = {
   "Show forum threads and comments from AniList on anime detail pages.":
     "Mostra nelle pagine dei dettagli degli anime le discussioni del forum e i commenti di AniList.",
   "Show others' drawings": "Mostra i disegni degli altri",
-  "Show the report button on every torrent stream, not just likely new releases.":
-    "Mostra il pulsante di segnalazione su ogni stream torrent, non solo sulle probabili nuove uscite.",
+  "Show the report button on every P2P stream, not just likely new releases.": "Mostra il pulsante di segnalazione su ogni stream P2P, non solo sulle probabili nuove uscite.",
   "Showing first {shown} of {total} channels. Use search or a category to narrow down.":
     "Sono mostrati i primi {shown} di {total} canali. Usa la ricerca o una categoria per restringere i risultati.",
   "Showing last synced ranking": "Mostra l'ultima classifica sincronizzata",

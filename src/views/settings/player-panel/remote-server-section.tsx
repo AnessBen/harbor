@@ -95,7 +95,7 @@ export function RemoteServerSection() {
     <Section
       title={t("Remote streaming server")}
       subtitle={t(
-        "Point Harbor at a streaming server on another machine, like the Stremio service on a home server. Torrents download and stream from that machine instead of this one.",
+        "Point Harbor at a streaming server on another machine, like the Stremio service on a home server. P2P streams download and play from that machine instead of this one.",
       )}
     >
       <SettingGroup label={t("Connection")}>
@@ -143,7 +143,7 @@ export function RemoteServerSection() {
         {saved && (
           <ToggleRow
             label={t("Use exclusively (never fall back to local)")}
-            sub={t("If the remote server is unavailable, stop playback instead of streaming torrents from this device.")}
+            sub={t("If the remote server is unavailable, stop playback instead of streaming over P2P from this device.")}
             value={settings.remoteStreamServerStrict}
             onChange={(v) => update({ remoteStreamServerStrict: v })}
           />

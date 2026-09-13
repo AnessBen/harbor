@@ -309,11 +309,11 @@ const SKIPPING: Credit[] = [
 ];
 
 const DEBRID: Credit[] = [
-  { name: "Real-Debrid", blurb: "Cached torrent resolution and direct download links.", url: "https://real-debrid.com", logo: realdebridLogo },
-  { name: "Premiumize", blurb: "Cached torrent resolution and cloud library access.", url: "https://www.premiumize.me", logo: premiumizeLogo },
-  { name: "AllDebrid", blurb: "Cached torrent resolution and direct download links.", url: "https://alldebrid.com", logo: alldebridLogo },
-  { name: "TorBox", blurb: "Cached torrent resolution and cloud library access.", url: "https://torbox.app", logo: torboxLogo },
-  { name: "Debrid-Link", blurb: "Cached torrent resolution and direct download links.", url: "https://debrid-link.com", logo: debridlinkLogo },
+  { name: "Real-Debrid", blurb: "Cached source resolution and direct download links.", url: "https://real-debrid.com", logo: realdebridLogo },
+  { name: "Premiumize", blurb: "Cached source resolution and cloud library access.", url: "https://www.premiumize.me", logo: premiumizeLogo },
+  { name: "AllDebrid", blurb: "Cached source resolution and direct download links.", url: "https://alldebrid.com", logo: alldebridLogo },
+  { name: "TorBox", blurb: "Cached source resolution and cloud library access.", url: "https://torbox.app", logo: torboxLogo },
+  { name: "Debrid-Link", blurb: "Cached source resolution and direct download links.", url: "https://debrid-link.com", logo: debridlinkLogo },
 ];
 
 const SERVERS: Credit[] = [

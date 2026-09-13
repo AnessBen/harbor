@@ -190,7 +190,7 @@ export function PlayModePanel() {
         <ToggleRow
           label={t("Download the whole file while streaming")}
           sub={t(
-            "Buffers the whole file in the background as you watch, even while paused, so big remuxes pre-load and you can scrub a cached file with no re-buffering. Works for debrid and torrent streams. Uses more disk and bandwidth; cleared when you switch or close.",
+            "Buffers the whole file in the background as you watch, even while paused, so big remuxes pre-load and you can scrub a cached file with no re-buffering. Works for debrid and P2P streams. Uses more disk and bandwidth; cleared when you switch or close.",
           )}
           value={settings.torrentFullDownload}
           onChange={(v) => update({ torrentFullDownload: v })}

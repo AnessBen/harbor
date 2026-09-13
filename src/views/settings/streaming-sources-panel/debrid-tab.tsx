@@ -76,7 +76,7 @@ export function DebridTab({
               {t("Get yours at")}{" "}
               <ExtLink href="https://real-debrid.com/apitoken">real-debrid.com/apitoken</ExtLink>.{" "}
               {t(
-                "Used to check cache and unrestrict links. Harbor never adds or removes torrents on its own.",
+                "Used to check cache and unrestrict links. Harbor never adds or removes anything on your account on its own.",
               )}
             </>
           }
@@ -99,7 +99,7 @@ export function DebridTab({
               {t("Get yours at")}{" "}
               <ExtLink href="https://torbox.app/settings">torbox.app/settings</ExtLink>.{" "}
               {t(
-                "Same read-only usage as Real-Debrid. Also lets you queue uncached torrents from the play picker.",
+                "Same read-only usage as Real-Debrid. Also lets you queue uncached sources from the play picker.",
               )}
             </>
           }
@@ -181,7 +181,7 @@ export function DebridTab({
       <Section
         title={t("Usenet")}
         subtitle={t(
-          "Faster and quieter than torrents if you already pay for Usenet. Configure on the addon page, paste the manifest URL it returns.",
+          "Faster and quieter than P2P if you already pay for Usenet. Configure on the addon page, paste the manifest URL it returns.",
         )}
       >
         <ManualAddonCard

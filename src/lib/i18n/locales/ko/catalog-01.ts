@@ -186,7 +186,7 @@ const catalog01: Record<string, string> = {
   Actions: "작업",
   Active: "활성",
   "Active and reachable": "활성 상태 및 연결 가능",
-  "Active torrents": "활성 토렌트",
+  "Active transfers": "활성 전송",
   Activity: "활동",
   "Actor, title, genre": "배우, 제목, 장르",
   "Actual size on screen": "화면의 실제 크기",

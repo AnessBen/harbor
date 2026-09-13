@@ -325,7 +325,7 @@ export function PlayerLayoutPanel() {
         <ToggleRow
           label={t("Show P2P status chip")}
           sub={t(
-            "Peers, speed and progress on the player while a torrent streams. Sits top left, clear of the exit button.",
+            "Peers, speed and progress on the player while a P2P stream plays. Sits top left, clear of the exit button.",
           )}
           value={settings.playerP2pChip}
           onChange={(v) => update({ playerP2pChip: v })}
