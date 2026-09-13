@@ -142,7 +142,8 @@ export async function loadPickerBg(): Promise<{ image: string | null; dim: numbe
   ]);
   const parsed = dim === null ? NaN : Number(dim);
   if (!Number.isFinite(parsed)) return { image, dim: 55 };
-  const pct = parsed > 0 && parsed <= 1 ? parsed * 100 : parsed;
+  // Current sliders store whole percentages: a saved 1 must remain 1%, not 100%.
+  const pct = parsed > 0 && parsed < 1 ? parsed * 100 : parsed;
   return { image, dim: Math.min(100, Math.max(0, Math.round(pct))) };
 }
 
