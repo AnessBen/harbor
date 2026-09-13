@@ -4,7 +4,7 @@ import { useProfiles } from "@/lib/profiles";
 import { PickerBackground } from "./picker-background";
 import { useSettings } from "@/lib/settings";
 import { useT } from "@/lib/i18n";
-import { Segmented } from "../shared";
+import { ROW_DESC, Segmented } from "../shared";
 import { SettingGroup, SettingRow } from "../kit";
 
 const INTERVALS = [
@@ -25,36 +25,43 @@ export function StartupDefaults() {
   const defaultId = settings.defaultProfileId ?? "";
 
   return (
-    <SettingGroup label={t("Startup & default")}>
-      <SettingRow
-        wide
-        icon={<Clock size={18} strokeWidth={2} />}
-        label={t("Who's watching")}
-        desc={t("Choose when Harbor asks you to pick a profile. Timed prompts appear when you return to Harbor.")}
-      >
-        <Segmented<Interval>
-          value={interval}
-          options={INTERVALS.map((o) => ({ ...o, label: t(o.label) }))}
-          onChange={(v) => update({ profilePromptInterval: v })}
-        />
-      </SettingRow>
-      <PickerBackground />
-      <SettingRow
-        icon={<UserCheck size={18} strokeWidth={2} />}
-        label={t("Start as")}
-        desc={t("Open this profile at launch. Timed prompts can still appear later. Profiles with a PIN cannot be a default.")}
-      >
-        <div className="w-[280px] max-w-full">
-          <Dropdown
-            value={defaultId}
-            onChange={(v) => update({ defaultProfileId: v })}
-            options={[
-              { value: "", label: t("No default profile") },
-              ...profiles.filter((p) => !p.passwordHash).map((p) => ({ value: p.id, label: p.name })),
-            ]}
+    <>
+      <SettingGroup label={t("Startup & default")}>
+        <SettingRow
+          wide
+          icon={<Clock size={18} strokeWidth={2} />}
+          label={t("Who's watching")}
+          desc={t("Choose when Harbor asks you to pick a profile. Timed prompts appear when you return to Harbor.")}
+        >
+          <Segmented<Interval>
+            value={interval}
+            options={INTERVALS.map((o) => ({ ...o, label: t(o.label) }))}
+            onChange={(v) => update({ profilePromptInterval: v })}
           />
-        </div>
-      </SettingRow>
-    </SettingGroup>
+        </SettingRow>
+        <SettingRow
+          icon={<UserCheck size={18} strokeWidth={2} />}
+          label={t("Start as")}
+          desc={t("Open this profile at launch. Timed prompts can still appear later. Profiles with a PIN cannot be a default.")}
+        >
+          <div className="w-[280px] max-w-full">
+            <Dropdown
+              value={defaultId}
+              onChange={(v) => update({ defaultProfileId: v })}
+              options={[
+                { value: "", label: t("No default profile") },
+                ...profiles.filter((p) => !p.passwordHash).map((p) => ({ value: p.id, label: p.name })),
+              ]}
+            />
+          </div>
+        </SettingRow>
+      </SettingGroup>
+      <SettingGroup label={t("Who's watching background")}>
+        <p className={`max-w-[70ch] ${ROW_DESC}`}>
+          {t("Shown behind the profile picker only. It does not change the app theme or wallpaper.")}
+        </p>
+        <PickerBackground />
+      </SettingGroup>
+    </>
   );
 }

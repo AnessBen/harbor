@@ -3798,6 +3798,13 @@ html[data-theme-card="crunch"][dir="rtl"] .harbor-profile-dropdown {
   color: var(--color-ink-muted);
 }
 
+.hset-row-lead[data-size="lg"] {
+  inline-size: 36px;
+  min-inline-size: 36px;
+  block-size: 36px;
+  align-self: center;
+}
+
 .hset-row-title {
   display: flex;
   align-items: center;

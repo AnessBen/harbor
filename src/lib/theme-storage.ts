@@ -141,7 +141,9 @@ export async function loadPickerBg(): Promise<{ image: string | null; dim: numbe
     themeKvGet(PICKER_DIM_KEY).catch(() => null),
   ]);
   const parsed = dim === null ? NaN : Number(dim);
-  return { image, dim: Number.isFinite(parsed) ? parsed : 55 };
+  if (!Number.isFinite(parsed)) return { image, dim: 55 };
+  const pct = parsed > 0 && parsed <= 1 ? parsed * 100 : parsed;
+  return { image, dim: Math.min(100, Math.max(0, Math.round(pct))) };
 }
 
 export async function savePickerBg(data: string | null): Promise<boolean> {

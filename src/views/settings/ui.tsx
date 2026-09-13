@@ -45,6 +45,7 @@ export function SRow({
   title,
   description,
   leading,
+  leadSize,
   trailing,
   onClick,
   disabled,
@@ -54,6 +55,7 @@ export function SRow({
   title: ReactNode;
   description?: ReactNode;
   leading?: ReactNode;
+  leadSize?: "lg";
   trailing?: ReactNode;
   onClick?: () => void;
   disabled?: boolean;
@@ -63,7 +65,7 @@ export function SRow({
   useRegisterRowTitle(title);
   const body = (
     <>
-      <RowText lead={leading}>
+      <RowText lead={leading} leadSize={leadSize}>
         <RowTitle>
           <span className="min-w-0">{title}</span>
         </RowTitle>

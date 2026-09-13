@@ -2,6 +2,13 @@ import { ArrowUpRight, Check } from "./icons";
 import type { ReactNode } from "react";
 import elfLogo from "@/assets/elfhosted.svg";
 import stremioLogo from "@/assets/stremio.png";
+import amfIcon from "@/assets/support/amf.png";
+import charityNavigatorIcon from "@/assets/support/charity-navigator.png";
+import effIcon from "@/assets/support/eff.png";
+import internetArchiveIcon from "@/assets/support/internet-archive.png";
+import msfIcon from "@/assets/support/msf.png";
+import nationalPcfIcon from "@/assets/support/nationalpcf.png";
+import stJudeIcon from "@/assets/support/stjude.png";
 import { useT } from "@/lib/i18n";
 import { openUrl } from "@/lib/window";
 import { badgeIconUrl } from "@/views/profile/badge-catalog";
@@ -23,15 +30,16 @@ const ELF_PERKS = [
 const CHARITY_NAVIGATOR = "https://www.charitynavigator.org/";
 
 const CHARITIES = [
-  { name: "St. Jude Children's Research Hospital", url: "https://www.stjude.org", blurb: "Childhood cancer research and treatment. Families are never billed for care, travel, housing, or food." },
-  { name: "National Pediatric Cancer Foundation", url: "https://nationalpcf.org", blurb: "Funds research into less toxic, more targeted treatments for childhood cancer." },
-  { name: "Electronic Frontier Foundation", url: "https://www.eff.org", blurb: "Defends privacy, free expression, and the open internet, in the courts and in the code." },
-  { name: "Internet Archive", url: "https://archive.org/donate", blurb: "Keeps the web's memory alive. Harbor would be poorer without it." },
-  { name: "Doctors Without Borders", url: "https://www.doctorswithoutborders.org/", blurb: "Emergency medical care in crisis zones, independent of politics." },
-  { name: "Against Malaria Foundation", url: "https://www.againstmalaria.com/", blurb: "Insecticide-treated nets. One of the most cost-effective interventions measured." },
+  { name: "St. Jude Children's Research Hospital", url: "https://www.stjude.org", icon: stJudeIcon, blurb: "Childhood cancer research and treatment. Families are never billed for care, travel, housing, or food." },
+  { name: "National Pediatric Cancer Foundation", url: "https://nationalpcf.org", icon: nationalPcfIcon, blurb: "Funds research into less toxic, more targeted treatments for childhood cancer." },
+  { name: "Electronic Frontier Foundation", url: "https://www.eff.org", icon: effIcon, blurb: "Defends privacy, free expression, and the open internet, in the courts and in the code." },
+  { name: "Internet Archive", url: "https://archive.org/donate", icon: internetArchiveIcon, blurb: "Keeps the web's memory alive. Harbor would be poorer without it." },
+  { name: "Doctors Without Borders", url: "https://www.doctorswithoutborders.org/", icon: msfIcon, blurb: "Emergency medical care in crisis zones, independent of politics." },
+  { name: "Against Malaria Foundation", url: "https://www.againstmalaria.com/", icon: amfIcon, blurb: "Insecticide-treated nets. One of the most cost-effective interventions measured." },
 ];
 
 const LEAD_IMG = "h-[22px] w-[22px] shrink-0 object-contain";
+const CHARITY_IMG = "h-9 w-9 shrink-0 rounded-[9px] object-cover";
 
 function OutArrow() {
   return (
@@ -173,6 +181,8 @@ export function SupportPanel() {
         {CHARITIES.map((c) => (
           <SRow
             key={c.url}
+            leading={<img src={c.icon} alt="" draggable={false} className={CHARITY_IMG} />}
+            leadSize="lg"
             title={c.name}
             description={t(c.blurb)}
             onClick={() => openUrl(c.url)}
@@ -180,6 +190,8 @@ export function SupportPanel() {
           />
         ))}
         <SRow
+          leading={<img src={charityNavigatorIcon} alt="" draggable={false} className={CHARITY_IMG} />}
+          leadSize="lg"
           title={t("Charity Navigator")}
           description={t("Look any of them up before you give, or find a cause of your own.")}
           onClick={() => openUrl(CHARITY_NAVIGATOR)}

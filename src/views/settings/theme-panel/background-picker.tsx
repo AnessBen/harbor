@@ -5,16 +5,23 @@ import { useT } from "@/lib/i18n";
 import { ROW_ACTION, ROW_ACTION_PRIMARY, SettingRow } from "../kit";
 import { processBackgroundImage } from "./image-utils";
 
+function pickerShade(dim: number): string {
+  const a = (v: number) => `rgb(0 0 0 / ${Math.min(0.94, Math.max(0, v))})`;
+  return `linear-gradient(to bottom, ${a(dim + 0.14)} 0%, ${a(dim)} 38%, ${a(dim + 0.22)} 100%)`;
+}
+
 export function BackgroundPicker({
   imageData,
   dim,
   onImageChange,
   onDimChange,
+  variant = "theme",
 }: {
   imageData: string | null;
   dim: number;
   onImageChange: (data: string | null) => void;
   onDimChange: (dim: number) => void;
+  variant?: "theme" | "picker";
 }) {
   const t = useT();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -79,22 +86,36 @@ export function BackgroundPicker({
               className="absolute inset-0 bg-cover bg-center"
               style={{ backgroundImage: `url(${imageData})` }}
             />
-            <div className="absolute inset-0 bg-canvas/[0.45]" />
-            <div className="absolute inset-0 bg-canvas" style={{ opacity: dim }} />
+            {variant === "picker" ? (
+              <div className="absolute inset-0" style={{ background: pickerShade(dim) }} />
+            ) : (
+              <>
+                <div className="absolute inset-0 bg-canvas/[0.45]" />
+                <div className="absolute inset-0 bg-canvas" style={{ opacity: dim }} />
+              </>
+            )}
           </>
         ) : (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-ink-subtle">
             <ImageDown size={32} strokeWidth={1.6} />
-            <p className="text-[15.5px]">{t("No background image")}</p>
+            <p className="text-[15.5px]">
+              {variant === "picker"
+                ? t("No background yet. The picker blurs the app behind it.")
+                : t("No background image")}
+            </p>
           </div>
         )}
         <div className="relative z-10 flex h-full flex-col items-start justify-end gap-1 p-5">
-          <p className="harbor-settings-label">{t("Live preview")}</p>
+          <p className="harbor-settings-label">
+            {variant === "picker" ? t("Who's watching preview") : t("Live preview")}
+          </p>
           <p className="font-display text-[26px] font-medium tracking-tight text-ink">
-            {t("Tonight's picks")}
+            {variant === "picker" ? t("Who's watching?") : t("Tonight's picks")}
           </p>
           <p className="max-w-[66ch] text-[15.5px] leading-[22px] text-ink-muted">
-            {t("Both serif and body text should stay legible at this dim.")}
+            {variant === "picker"
+              ? t("Profile names and avatars should stay readable at this dim.")
+              : t("Both serif and body text should stay legible at this dim.")}
           </p>
         </div>
       </div>
@@ -140,9 +161,13 @@ export function BackgroundPicker({
       <SettingRow
         wide
         label={t("Dim overlay")}
-        desc={t(
-          "0% shows the raw image. 100% covers it with the theme color. 60-80% is the readable sweet spot.",
-        )}
+        desc={
+          variant === "picker"
+            ? t("0% shows the raw image. 100% covers it in black. 60-80% keeps profiles readable.")
+            : t(
+                "0% shows the raw image. 100% covers it with the theme color. 60-80% is the readable sweet spot.",
+              )
+        }
       >
         <div className="flex w-full max-w-[520px] flex-wrap items-center gap-4">
           <input
