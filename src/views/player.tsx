@@ -32,6 +32,7 @@ import { useEngineStats } from "./player/hooks/use-engine-stats";
 import { useContentAdvisory } from "./player/hooks/use-content-advisory";
 import {
   getPlaybackPosition,
+  subscribePlaybackClock,
   resolvePlaybackDownloadedFraction,
   setPlaybackDownloaded,
 } from "@/lib/player/playback-clock";
@@ -420,23 +421,29 @@ export function PlayerView({ src }: { src: PlayerSrc }) {
         : { ...src, url: liveUrl, historyUrl: liveHistoryUrl, streamRef: liveStreamRef },
     [src, liveUrl, liveHistoryUrl, liveStreamRef],
   );
-  const { resolvedImdbId, subAssNative, captureExitSnapshot, download, subDropToast } =
-    usePlayerMedia({
-      src: activeMediaSrc,
-      snap,
-      engine,
-      settings,
-      authKey,
-      bridgeRef,
-      bridgeReady,
-      bridgeKey,
-      svpActive,
-      videoMountRef,
-      toggleFullscreen,
-      castActiveRef: cast.castActiveRef,
-      season,
-      episode,
-    });
+  const {
+    resolvedImdbId,
+    subAssNative,
+    captureExitSnapshot,
+    download,
+    subDropToast,
+    suspendAutoSyncForManualTiming,
+  } = usePlayerMedia({
+    src: activeMediaSrc,
+    snap,
+    engine,
+    settings,
+    authKey,
+    bridgeRef,
+    bridgeReady,
+    bridgeKey,
+    svpActive,
+    videoMountRef,
+    toggleFullscreen,
+    castActiveRef: cast.castActiveRef,
+    season,
+    episode,
+  });
 
   const contentAdvisory = useContentAdvisory(
     settings.contentAdvisoryToast,
@@ -717,8 +724,9 @@ export function PlayerView({ src }: { src: PlayerSrc }) {
     };
   }, [showSyncToast, t]);
   const handleEnterSync = useCallback(() => {
+    suspendAutoSyncForManualTiming();
     void textSync.enter(src.url, src.headers);
-  }, [textSync.enter, src.url, src.headers]);
+  }, [textSync.enter, src.url, src.headers, suspendAutoSyncForManualTiming]);
 
   const volumeIndicatorTimerRef = useRef<number | null>(null);
   const [volumeIndicator, setVolumeIndicator] = useState<VolumeIndicatorState>({
@@ -962,8 +970,39 @@ export function PlayerView({ src }: { src: PlayerSrc }) {
   useEffect(() => {
     const ep = src.episode;
     const subtitle = ep ? `S${ep.season} E${ep.episode}${ep.name ? ` · ${ep.name}` : ""}` : "";
-    updateMediaControls(playing, src.meta.name, subtitle);
-  }, [playing, src.meta.name, src.episode]);
+    const artUrl = src.episode?.still || src.meta.background || src.meta.poster || null;
+    const vol = snap.muted ? 0 : snap.volume;
+    const isPlaying = snap.status === "playing" && (snap.firstFrameReady || snap.positionSec > 0.3);
+    const pos = getPlaybackPosition();
+    updateMediaControls(isPlaying, src.meta.name, subtitle, artUrl, snap.durationSec, pos, vol);
+
+    const unsub = subscribePlaybackClock(() => {
+      const livePos = getPlaybackPosition();
+      const currentSnap = snapRef.current;
+      const playingNow =
+        currentSnap.status === "playing" && (currentSnap.firstFrameReady || livePos > 0.3);
+      updateMediaControls(
+        playingNow,
+        src.meta.name,
+        subtitle,
+        artUrl,
+        currentSnap.durationSec,
+        livePos,
+        vol,
+      );
+    });
+    return () => unsub();
+  }, [
+    snap.status,
+    snap.firstFrameReady,
+    src.meta.name,
+    src.episode,
+    src.meta.poster,
+    src.meta.background,
+    snap.durationSec,
+    snap.volume,
+    snap.muted,
+  ]);
   useEffect(() => () => clearMediaControls(), []);
 
   const onPrevEpisode = useCallback(() => playPrevRef.current(), [playPrevRef]);
