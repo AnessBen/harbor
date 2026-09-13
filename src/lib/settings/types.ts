@@ -85,6 +85,15 @@ export type ProfileAudioMode = "auto" | "click" | "off";
 
 export type StreamPriorityEntry = { key: string; name: string };
 
+export type ScreensaverMediaKind = "image" | "gif" | "video";
+
+export type ScreensaverMedia = {
+  id: string;
+  name: string;
+  path: string;
+  kind: ScreensaverMediaKind;
+};
+
 export type Settings = {
   soundTheme: "none" | "glass" | "modern" | "retro" | "cinematic";
   sfxVolume: number;
@@ -183,7 +192,9 @@ export type Settings = {
   navIconAnimations: boolean;
   bigPicturePlayerUi: "tenFoot" | "desktop";
   screensaver: boolean;
-  screensaverStyle: "ambient" | "catBoat";
+  screensaverStyle: "ambient" | "catBoat" | "custom";
+  screensaverMedia: ScreensaverMedia[];
+  screensaverMediaId: string | null;
   screensaverDelayMin: number;
   resumePrompt: boolean;
   resumePlayback: boolean;

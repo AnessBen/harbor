@@ -117,6 +117,10 @@ export function parseStremioOpen(url: string): DeepLinkOpen | null {
   return null;
 }
 
+export function shareDeepLink(type: string, id: string): string {
+  return `harbor://detail/${encodeURIComponent(type)}/${encodeURIComponent(id)}`;
+}
+
 export function parseHarborOpen(url: string): DeepLinkOpen | null {
   if (!url.startsWith("harbor://")) return null;
   return parseDetailPath(url.slice("harbor://".length));

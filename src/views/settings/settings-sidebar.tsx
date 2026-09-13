@@ -224,7 +224,7 @@ export function SettingsSidebar({
   meta: Record<SectionId, { label: string; sub: string }>;
   query?: string;
   onSelect: (section: SectionId, tab?: string) => void;
-  onJump?: (section: SectionId, anchor?: string) => void;
+  onJump?: (section: SectionId, anchor?: string, tab?: string) => void;
 }) {
   const t = useT();
   const { settings } = useSettings();
@@ -277,10 +277,9 @@ export function SettingsSidebar({
                     key={`${o.section}-${o.label}-${i}`}
                     type="button"
                     onClick={() =>
-                      (onJump ?? onSelect)(
-                        o.section,
-                        o.anchorTitle ? settingsAnchor(o.anchorTitle) : undefined,
-                      )
+                      onJump
+                        ? onJump(o.section, o.anchorTitle ? settingsAnchor(o.anchorTitle) : undefined, o.tab)
+                        : onSelect(o.section, o.tab)
                     }
                     className="hset-rail-kid"
                   >

@@ -116,6 +116,8 @@ export const DEFAULT: Settings = {
   bigPicturePlayerUi: "tenFoot",
   screensaver: true,
   screensaverStyle: "ambient",
+  screensaverMedia: [],
+  screensaverMediaId: null,
   screensaverDelayMin: 5,
   resumePrompt: false,
   resumePlayback: true,

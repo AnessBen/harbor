@@ -778,6 +778,8 @@ function Shell({ onReady }: { onReady?: () => void }) {
     goForward,
     openMeta,
     openManga,
+    openEBook,
+    openPerson,
     peopleInit,
     openPlayer,
     stackKinds,
@@ -1194,6 +1196,19 @@ function Shell({ onReady }: { onReady?: () => void }) {
             setView("addons");
           });
           const stopOpen = onDeepLinkOpen(({ type, id, videoId }) => {
+            if (type === "person") {
+              const personId = Number(id);
+              if (Number.isInteger(personId) && personId > 0) openPerson(personId);
+              return;
+            }
+            if (type === "manga") {
+              openManga(id);
+              return;
+            }
+            if (type === "ebook") {
+              openEBook(id);
+              return;
+            }
             const hint = parseDeepLinkEpisode(videoId);
             openMeta(
               { id, type: type as MetaType, name: "" },
@@ -1233,7 +1248,7 @@ function Shell({ onReady }: { onReady?: () => void }) {
     return () => {
       dispose?.();
     };
-  }, [setView, openMeta, openPlayer, openList]);
+  }, [setView, openMeta, openPlayer, openList, openPerson, openManga, openEBook]);
 
   useEffect(() => {
     if (topKind === "anime" && settings.hideContent.anime) setView("home");

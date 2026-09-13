@@ -4,6 +4,7 @@ import { useBigPicture } from "@/lib/big-picture";
 import { useSettings } from "@/lib/settings";
 import { useView } from "@/lib/view";
 import { useIdleScreensaver } from "@/lib/screensaver/use-idle-screensaver";
+import { activeScreensaverMedia, onScreensaverPreview } from "@/lib/screensaver/media";
 import type { AmbientItem } from "./ambient-overlay";
 
 const CatBoatOverlay = lazy(() =>
@@ -12,6 +13,10 @@ const CatBoatOverlay = lazy(() =>
 
 const AmbientOverlay = lazy(() =>
   import("./ambient-overlay").then((m) => ({ default: m.AmbientOverlay })),
+);
+
+const CustomMediaOverlay = lazy(() =>
+  import("./custom-media-overlay").then((m) => ({ default: m.CustomMediaOverlay })),
 );
 
 const EXIT_MS = 460;
@@ -37,12 +42,39 @@ export function ScreensaverRoot() {
   const { active: bigPicture } = useBigPicture();
   const enabled = settings.screensaver;
   const catBoat = settings.screensaverStyle === "catBoat";
+  const [failedId, setFailedId] = useState<string | null>(null);
+  const picked =
+    settings.screensaverStyle === "custom"
+      ? activeScreensaverMedia(settings.screensaverMedia, settings.screensaverMediaId)
+      : null;
+  const customMedia = picked && picked.id !== failedId ? picked : null;
+  const ambient = !catBoat && !customMedia;
   const delayMs = Math.max(1, settings.screensaverDelayMin || 5) * 60000;
   // Big Picture claims keydown in the capture phase, so this hook's bubble
   // listeners never see its navigation and it would idle out mid use.
   const suppressed =
     bigPicture || !!player || !!picker || topKind === "live" || topKind === "vod";
   const { active, dismiss } = useIdleScreensaver(enabled, delayMs, suppressed);
+  const [preview, setPreview] = useState(false);
+  useEffect(() => onScreensaverPreview(() => setPreview(true)), []);
+  useEffect(() => {
+    if (!preview) return;
+    const armedAt = performance.now() + 700;
+    const stop = () => {
+      if (performance.now() < armedAt) return;
+      setPreview(false);
+    };
+    const events = ["pointerdown", "keydown", "wheel"] as const;
+    for (const ev of events) window.addEventListener(ev, stop, true);
+    return () => {
+      for (const ev of events) window.removeEventListener(ev, stop, true);
+    };
+  }, [preview]);
+  const showing = active || preview;
+  const dismissAll = () => {
+    dismiss();
+    setPreview(false);
+  };
 
   const [items, setItems] = useState<AmbientItem[]>([]);
   const fetchedRef = useRef(false);
@@ -60,14 +92,19 @@ export function ScreensaverRoot() {
   useEffect(() => {
     if (!enabled) return;
     const warm = window.setTimeout(
-      () => void (catBoat ? import("./cat-boat-overlay") : import("./ambient-overlay")),
+      () =>
+        void (catBoat
+          ? import("./cat-boat-overlay")
+          : customMedia
+            ? import("./custom-media-overlay")
+            : import("./ambient-overlay")),
       3000,
     );
     return () => window.clearTimeout(warm);
-  }, [enabled, catBoat]);
+  }, [enabled, catBoat, customMedia]);
 
   useEffect(() => {
-    if (catBoat || !active || fetchedRef.current) return;
+    if (!ambient || !showing || fetchedRef.current) return;
     fetchedRef.current = true;
     let cancelled = false;
     const source = settings.heroFeed === "classic" ? "trending" : settings.heroFeed;
@@ -80,9 +117,9 @@ export function ScreensaverRoot() {
     return () => {
       cancelled = true;
     };
-  }, [active, settings.heroFeed, catBoat]);
+  }, [showing, settings.heroFeed, ambient]);
 
-  const wantShow = active && !suppressed && (catBoat || items.length > 0);
+  const wantShow = showing && !suppressed && (catBoat || !!customMedia || items.length > 0);
   const [mounted, setMounted] = useState(false);
   const [visible, setVisible] = useState(false);
   useEffect(() => {
@@ -100,9 +137,16 @@ export function ScreensaverRoot() {
   return (
     <Suspense fallback={null}>
       {catBoat ? (
-        <CatBoatOverlay reduce={reduce} visible={visible} onDismiss={dismiss} />
+        <CatBoatOverlay reduce={reduce} visible={visible} onDismiss={dismissAll} />
+      ) : customMedia ? (
+        <CustomMediaOverlay
+          media={customMedia}
+          visible={visible}
+          onDismiss={dismissAll}
+          onFail={() => setFailedId(customMedia.id)}
+        />
       ) : (
-        <AmbientOverlay items={items} reduce={reduce} visible={visible} onDismiss={dismiss} neverDeep />
+        <AmbientOverlay items={items} reduce={reduce} visible={visible} onDismiss={dismissAll} neverDeep />
       )}
     </Suspense>
   );

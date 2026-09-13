@@ -4,6 +4,7 @@ import { SaveIcon, SkipIcon, ThumbsDownIcon } from "@/components/icons/harbor-gl
 import tideInfo from "@/assets/tide-info.png";
 import type { FeedItem } from "@/lib/feed";
 import { useT } from "@/lib/i18n";
+import { HoverTooltip } from "@/components/hover-tooltip";
 import { useTmdbImdbId } from "@/lib/providers/tmdb";
 import { useSettings } from "@/lib/settings";
 import { useLocalizedOverview } from "@/lib/use-localized-overview";
@@ -154,7 +155,7 @@ export function FeedHero({
               className="harbor-feed-cta flex h-12 items-center gap-2.5 rounded-full bg-ink px-7 text-[15px] font-semibold text-canvas shadow-[0_2px_10px_-4px_rgba(0,0,0,0.4)] transition-[background-color,transform,box-shadow] duration-200 ease-out hover:-translate-y-0.5 hover:bg-ink/90 hover:shadow-[0_10px_26px_-10px_rgba(0,0,0,0.55)]"
             >
               <Play size={18} fill="currentColor" />
-              <span>{t("Play tonight")}</span>
+              <span>{t("Play now")}</span>
             </button>
             <SecondaryAction
               icon={<SaveIcon size={18} />}
@@ -172,17 +173,21 @@ export function FeedHero({
               }
               active={saved}
             />
-            <SecondaryAction
-              icon={<SkipIcon size={18} />}
-              label={t("Skip")}
-              onClick={onSkip}
-            />
-            {onNotInterested && (
+            <HoverTooltip label={t("Back in two weeks")} side="top" align="center">
               <SecondaryAction
-                icon={<ThumbsDownIcon size={18} />}
-                label={t("Not interested")}
-                onClick={onNotInterested}
+                icon={<SkipIcon size={18} />}
+                label={t("Skip")}
+                onClick={onSkip}
               />
+            </HoverTooltip>
+            {onNotInterested && (
+              <HoverTooltip label={t("Never shown again")} side="top" align="center">
+                <SecondaryAction
+                  icon={<ThumbsDownIcon size={18} />}
+                  label={t("Not interested")}
+                  onClick={onNotInterested}
+                />
+              </HoverTooltip>
             )}
           </div>
           </div>

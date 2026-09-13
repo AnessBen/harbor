@@ -19,6 +19,7 @@ import {
   sanitizeSubtitleOffsetSize,
 } from "@/lib/player/subtitle-offset";
 import { sanitizeBufferSize } from "@/lib/player/buffer-profile";
+import { sanitizeScreensaverMedia } from "@/lib/screensaver/media";
 import {
   sanitizeControllerCursor,
   sanitizeControllerCursorImage,
@@ -341,6 +342,13 @@ function parseStoredSettings(raw: string | null): Settings {
           ? parsed.fullscreenClockEnabled
           : DEFAULT.fullscreenClockEnabled,
       controllerCursor: sanitizeControllerCursor(parsed.controllerCursor),
+      screensaverStyle:
+        parsed.screensaverStyle === "catBoat" || parsed.screensaverStyle === "custom"
+          ? parsed.screensaverStyle
+          : "ambient",
+      screensaverMedia: sanitizeScreensaverMedia(parsed.screensaverMedia),
+      screensaverMediaId:
+        typeof parsed.screensaverMediaId === "string" ? parsed.screensaverMediaId : null,
       controllerCursorImage: sanitizeControllerCursorImage(parsed.controllerCursorImage),
       controllerCursorSize: sanitizeControllerCursorSize(parsed.controllerCursorSize),
       fullscreenClockFormat: sanitizeFullscreenClockFormat(parsed.fullscreenClockFormat),

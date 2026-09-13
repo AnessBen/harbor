@@ -26,7 +26,7 @@ export function settingsSearchEntries(source) {
         const label = string("label");
         const section = string("section");
         if (!label || !section) throw new Error("Settings search entry needs a label and section");
-        return { label, section, anchor: string("anchorTitle"), keywords };
+        return { label, section, tab: string("tab"), anchor: string("anchorTitle"), keywords, range: [element.getStart(file), element.getEnd()] };
       });
     }
     ts.forEachChild(node, visit);

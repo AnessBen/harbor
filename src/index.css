@@ -5800,3 +5800,7 @@ button.hset-rail-me:hover,
 .hset-motion-comparison[data-paused] .hset-motion-scene {
   opacity: 1 !important;
 }
+
+.harbor-queue-tile {
+  --poster-radius: var(--radius-md);
+}

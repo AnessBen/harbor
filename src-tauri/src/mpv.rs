@@ -1035,6 +1035,16 @@ fn spawn_event_loop(
                             }
                         }
                     }
+                    if let Event::PropertyChange { name, change, .. } = &event {
+                        if *name == "sub-text" && crate::captions::captions_is_open(&app) {
+                            let text = match change {
+                                PropertyData::Str(s) => s.to_string(),
+                                PropertyData::OsdStr(s) => s.to_string(),
+                                _ => String::new(),
+                            };
+                            let _ = app.emit_to("harbor-captions", "captions://text", text);
+                        }
+                    }
                     let payload = event_to_payload(event);
                     if let Some(p) = payload {
                         let _ = app.emit("mpv://event", p);

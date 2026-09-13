@@ -59,6 +59,7 @@ export function ProfilePickerModal() {
 
   const [bg, setBg] = useState<{ image: string | null; dim: number }>({ image: null, dim: 55 });
   useEffect(() => {
+    if (!pickerOpen) return;
     let alive = true;
     void loadPickerBg().then((v) => {
       if (alive) setBg(v);
@@ -66,7 +67,7 @@ export function ProfilePickerModal() {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [pickerOpen]);
 
   if (!pickerOpen) return null;
 

@@ -8,6 +8,7 @@ import { useT } from "@/lib/i18n";
 import { Section, ToggleRow } from "../shared";
 import { SettingGroup, SettingRow, Nested } from "../kit";
 import { PosterCardSection } from "./display/poster-card-section";
+import { ScreensaverMediaManager } from "./screensaver-media";
 import { SFX } from "@/lib/sfx";
 
 export function AmbienceSection() {
@@ -45,18 +46,24 @@ export function AmbienceSection() {
           />
           <SettingRow
             label={t("Screensaver style")}
-            desc={t("Cinematic drifts through backdrops from what's trending. Cat and boat plays a hand drawn illustration instead.")}
+            desc={t("Default drifts through backdrops from what's trending. Boat plays a hand drawn illustration. Custom plays your own videos, GIFs, or images.")}
             icon={<Sailboat size={18} strokeWidth={2} />}
           >
             <Dropdown
               value={settings.screensaverStyle}
               onChange={(v) => update({ screensaverStyle: v as typeof settings.screensaverStyle })}
               options={[
-                { value: "ambient", label: t("Cinematic") },
-                { value: "catBoat", label: t("Cat and boat") },
+                { value: "ambient", label: t("Default") },
+                { value: "catBoat", label: t("Boat") },
+                { value: "custom", label: t("Custom") },
               ]}
             />
           </SettingRow>
+          {settings.screensaverStyle === "custom" && (
+            <Nested>
+              <ScreensaverMediaManager />
+            </Nested>
+          )}
           {settings.screensaver && (
             <Nested>
               <SettingRow

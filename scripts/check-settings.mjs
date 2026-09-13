@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { settingsSearchEntries } from "./settings-search-entries.mjs";
+import { createSettingsAnchorAudit } from "./settings-anchors.mjs";
 
 const ROOT = path.resolve(process.argv[2] ?? ".");
 const SRC = path.join(ROOT, "src");
@@ -201,10 +202,24 @@ for (const f of settingsSrc) {
 const entries = settingsSearchEntries(nav);
 
 report(
-  "search entries pointing at a heading that does not exist",
+  "search entries pointing at a heading that does not exist anywhere",
   entries.filter((e) => e.anchor && !headings.has(e.anchor)).map((e) => e.label + " -> " + e.anchor),
   "the search result opens the page and then scrolls nowhere",
 );
+
+const anchorAudit = createSettingsAnchorAudit(ROOT);
+const ANCHOR_CHECKS = [
+  ["heading missing", "the heading is not rendered on that page, so the jump lands at the top of it"],
+  ["heading wrong", "the jump highlights a different heading from the one the control sits under"],
+  ["page wrong", "the control lives on another page, so the jump opens the wrong one"],
+  ["tab unknown", "the tab id is not in tab-registry.ts for that page"],
+  ["tab wrong", "the jump opens a tab that does not hold the control"],
+  ["tab missing", "the jump has to cycle every tab looking for the heading instead of opening the right one"],
+  ["unknown section", "the section id is not a settings page"],
+];
+for (const [kind, why] of ANCHOR_CHECKS) {
+  report("search entries: " + kind, anchorAudit.problems.filter((p) => p.kind === kind).map((p) => p.detail), why);
+}
 
 const seen = new Map();
 for (const e of entries) {

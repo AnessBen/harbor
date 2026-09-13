@@ -37,6 +37,7 @@ export function VoyageModal() {
       <div
         role="dialog"
         aria-modal="true"
+        data-voyage-panel
         onClick={(e) => e.stopPropagation()}
         className="relative flex max-h-[88vh] w-full max-w-[720px] flex-col overflow-hidden rounded-lg bg-elevated shadow-[0_40px_120px_-24px_rgba(0,0,0,0.85)]"
         style={{

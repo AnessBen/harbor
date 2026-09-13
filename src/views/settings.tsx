@@ -391,27 +391,30 @@ export function Settings({ visible = true }: { visible?: boolean }) {
     viewChromeHidden,
   ]);
 
-  const handleNav = (id: SectionId, anchor?: string) => {
+  const pendingTab = useRef<string | null>(null);
+  const handleNav = (id: SectionId, anchor?: string, tab?: string) => {
     closeBrowse();
     setLanding(null);
     setPendingPage(null);
+    pendingTab.current = tab ?? null;
+    if (tab && id === active) {
+      subRegRef.current?.onChange(tab);
+      pendingTab.current = null;
+    }
     startTransition(() => {
       setActive(id);
       setPendingAnchor(anchor ?? null);
     });
   };
 
-  const pendingTab = useRef<string | null>(null);
   const selectFromRail = (id: SectionId, tab?: string) => {
-    closeBrowse();
-    setPendingPage(null);
-    pendingTab.current = tab ?? null;
     if (id === active) {
+      closeBrowse();
+      setPendingPage(null);
       if (tab) subRegRef.current?.onChange(tab);
-      pendingTab.current = null;
       return;
     }
-    handleNav(id);
+    handleNav(id, undefined, tab);
   };
 
   const openPage = (id: SectionId, tab?: string) => {
@@ -525,6 +528,13 @@ export function Settings({ visible = true }: { visible?: boolean }) {
         return;
       }
       const reg = subRegRef.current;
+      const want = pendingTab.current;
+      if (want && reg && !reg.tabs.some((tab) => tab.id === want)) pendingTab.current = null;
+      else if (want) {
+        if (tries++ < 30) timer = window.setTimeout(tryScroll, 50);
+        else setPendingAnchor(null);
+        return;
+      }
       if (reg && triedTabs.current.size < reg.tabs.length) {
         const next = reg.tabs.find((tab) => !triedTabs.current.has(tab.id));
         if (next) {
@@ -544,7 +554,7 @@ export function Settings({ visible = true }: { visible?: boolean }) {
       }
     };
     triedTabs.current = new Set();
-    restoreTab.current = subRegRef.current?.value ?? null;
+    restoreTab.current = pendingTab.current ?? subRegRef.current?.value ?? null;
     if (subRegRef.current) triedTabs.current.add(subRegRef.current.value);
     timer = window.setTimeout(tryScroll, 60);
     return () => window.clearTimeout(timer);
