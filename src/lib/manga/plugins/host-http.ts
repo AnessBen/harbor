@@ -1,6 +1,7 @@
 import { FINAL_URL_HEADER, safeFetch, safeFetchBase64, safeFetchBytes } from "@/lib/safe-fetch";
 import { isBlockedUrl } from "@/lib/privacy/blocklist";
 import { SUBTITLE_PUBLIC_NETWORK_HEADER } from "@/lib/subtitles/provider-url";
+import { sameSiteHost } from "@/lib/same-site-host";
 import type { PluginGrpcOpts, PluginGrpcResult, PluginHttpOpts, PluginHttpResult } from "./types";
 
 export type PluginHttpPolicy = {
@@ -100,94 +101,6 @@ export function assertSafeUrl(raw: string): string {
   return u.href;
 }
 
-const TWO_LEVEL_TLDS = new Set([
-  "co.uk",
-  "org.uk",
-  "gov.uk",
-  "ac.uk",
-  "me.uk",
-  "net.uk",
-  "sch.uk",
-  "ltd.uk",
-  "plc.uk",
-  "com.au",
-  "net.au",
-  "org.au",
-  "edu.au",
-  "gov.au",
-  "id.au",
-  "co.jp",
-  "or.jp",
-  "ne.jp",
-  "ac.jp",
-  "go.jp",
-  "com.cn",
-  "net.cn",
-  "org.cn",
-  "gov.cn",
-  "co.nz",
-  "net.nz",
-  "org.nz",
-  "co.in",
-  "net.in",
-  "org.in",
-  "firm.in",
-  "gen.in",
-  "ind.in",
-  "co.kr",
-  "or.kr",
-  "com.br",
-  "net.br",
-  "org.br",
-  "gov.br",
-  "com.mx",
-  "com.ar",
-  "com.tr",
-  "com.ua",
-  "com.pl",
-  "com.ru",
-  "com.sa",
-  "com.eg",
-  "com.ng",
-  "co.za",
-  "co.il",
-  "co.id",
-  "co.th",
-  "co.ke",
-  "com.sg",
-  "com.hk",
-  "com.tw",
-  "com.my",
-  "com.ph",
-  "com.vn",
-  "github.io",
-  "pages.dev",
-  "web.app",
-  "workers.dev",
-  "vercel.app",
-  "netlify.app",
-  "onrender.com",
-  "fly.dev",
-  "deno.dev",
-  "firebaseapp.com",
-  "herokuapp.com",
-  "glitch.me",
-  "r2.dev",
-]);
-
-function ipLiteral(h: string): boolean {
-  return /^\d{1,3}(\.\d{1,3}){3}$/.test(h) || h.includes(":");
-}
-
-function registrableDomain(host: string): string {
-  const h = host.replace(/\.$/, "");
-  const labels = h.split(".");
-  if (labels.length <= 2) return h;
-  const lastTwo = labels.slice(-2).join(".");
-  if (TWO_LEVEL_TLDS.has(lastTwo)) return labels.slice(-3).join(".");
-  return lastTwo;
-}
-
 function hostOf(raw?: string | null): string | null {
   if (!raw) return null;
   const s = raw.trim();
@@ -201,13 +114,6 @@ function hostOf(raw?: string | null): string | null {
   }
 }
 
-function sameSite(a: string | null, b: string | null): boolean {
-  if (!a || !b) return false;
-  if (a === b) return true;
-  if (ipLiteral(a) || ipLiteral(b)) return false;
-  return registrableDomain(a) === registrableDomain(b);
-}
-
 type HeaderGate = {
   host: string;
   allowRefererHost: string | null;
@@ -219,14 +125,14 @@ function keepReferer(value: string, gate: HeaderGate): boolean {
   const vh = hostOf(value);
   if (!vh) return false;
   return (
-    sameSite(vh, gate.host) &&
-    sameSite(vh, gate.allowRefererHost) &&
-    sameSite(gate.host, gate.allowRefererHost)
+    sameSiteHost(vh, gate.host) &&
+    sameSiteHost(vh, gate.allowRefererHost) &&
+    sameSiteHost(gate.host, gate.allowRefererHost)
   );
 }
 
 function keepCookie(gate: HeaderGate): boolean {
-  return !!gate.allowCookieHost && sameSite(gate.host, gate.allowCookieHost);
+  return !!gate.allowCookieHost && sameSiteHost(gate.host, gate.allowCookieHost);
 }
 
 function filterHeaders(
@@ -371,7 +277,13 @@ export async function runPluginHttp(
     );
     if (raw) {
       const r = await raw;
-      return { status: r.status, ok: r.ok, headers: pickHeaderRecord(r.headers), body: r.body, url: r.url };
+      return {
+        status: r.status,
+        ok: r.ok,
+        headers: pickHeaderRecord(r.headers),
+        body: r.body,
+        url: r.url,
+      };
     }
   }
   const res = policy?.publicOnly
