@@ -47,7 +47,16 @@ export async function verifyExperimentalAccess(): Promise<ExperimentalAccessVeri
     if (!response.user) return "denied";
     applyServerUser(response.user);
     return hasExperimentalAccess(response.user) ? "allowed" : "denied";
-  } catch {
+  } catch (error) {
+    // An expired/rejected session is not a connectivity failure. Never fall
+    // back to cached badges when the server rejects authentication.
+    if (
+      error &&
+      typeof error === "object" &&
+      "status" in error &&
+      (error.status === 401 || error.status === 403)
+    )
+      return "denied";
     return "unavailable";
   } finally {
     clearTimeout(timer);

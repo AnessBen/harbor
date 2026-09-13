@@ -100,6 +100,51 @@ function manifest() {
   };
 }
 
+test("standalone recovery discovers exact installed approval without account access", async () => {
+  const h = harness({ version: "0.9.123" });
+  h.config.access = "unavailable";
+  const paths: (string | undefined)[] = [];
+  const context = await h.betaReturn.discoverBetaReturnContext(
+    "0.9.123",
+    "windows-x86_64",
+    async (path) => {
+      paths.push(path);
+      return manifest();
+    },
+  );
+  assert.equal(context?.version, "0.9.123");
+  assert.equal(context?.targets[0].version, "0.9.122");
+  assert.equal(paths.length, 2);
+  assert.equal(paths[1], `experimental/0.9.123/${manifest().buildId}/manifest.json`);
+});
+
+test("standalone recovery rejects unrelated, missing and unapproved releases", async () => {
+  for (const raw of [
+    null,
+    { ...manifest(), version: "0.9.124" },
+    { ...manifest(), returnToBeta: [] },
+    { ...manifest(), withdrawn: true },
+  ]) {
+    const h = harness();
+    assert.equal(
+      await h.betaReturn.discoverBetaReturnContext("0.9.123", "windows-x86_64", async () => raw),
+      null,
+    );
+    assert.equal(h.betaReturn.readBetaReturnContext("0.9.123"), null);
+  }
+});
+
+test("standalone recovery requires matching immutable approval", async () => {
+  const h = harness();
+  assert.equal(
+    await h.betaReturn.discoverBetaReturnContext("0.9.123", "windows-x86_64", async (path) =>
+      path ? null : manifest(),
+    ),
+    null,
+  );
+  assert.equal(h.betaReturn.readBetaReturnContext("0.9.123"), null);
+});
+
 function deferred<T>() {
   let resolve!: (value: T) => void;
   let reject!: (reason: Error) => void;
@@ -305,6 +350,80 @@ function harness(
   return { updater, channel, betaReturn, localStorage, recovery, config, calls };
 }
 
+test("account requests use native-aware transport and retry with the refreshed token", async () => {
+  let token = "old-test-token";
+  const calls: unknown[] = [];
+  const controller = new AbortController();
+  const mocks = {
+    "@/lib/theme-auth": {
+      authToken: () => token,
+      captureSessionScope: () => () => true,
+      refreshToken: async () => {
+        token = "new-test-token";
+        return true;
+      },
+    },
+    "@/lib/config/endpoints": { HARBOR_API_BASE: "https://example.test" },
+    "@/lib/safe-fetch": {
+      safeFetch: async (url: string, options: { headers: unknown; signal: unknown }) => {
+        calls.push({
+          url,
+          ...options,
+          headers: Object.fromEntries(new Headers(options.headers as HeadersInit)),
+        });
+        return {
+          status: calls.length === 1 ? 401 : 200,
+          ok: calls.length > 1,
+          json: async () => ({ user: { badges: [{ name: "tester" }] } }),
+        };
+      },
+    },
+  };
+  const client = load<typeof import("../src/lib/account/client")>(
+    "src/lib/account/client.ts",
+    {
+      ...mocks,
+      "./authenticated-fetch": load("src/lib/account/authenticated-fetch.ts", mocks, {}),
+    },
+    {},
+  );
+  await client.getJson("/identity/api/me", { bearer: true, signal: controller.signal });
+  assert.deepEqual(
+    calls,
+    ["old-test-token", "new-test-token"].map((value) => ({
+      url: "https://example.test/themes/api/identity/api/me",
+      headers: { authorization: `Bearer ${value}` },
+      signal: controller.signal,
+    })),
+  );
+});
+
+test("verification distinguishes rejected sessions from network failures without trusting cached badges", async () => {
+  for (const status of [401, 403, 500, undefined]) {
+    const access = load<ExperimentalAccess>(
+      "src/lib/updater/experimental-access.ts",
+      {
+        react: {},
+        "@/lib/account/client": {
+          getJson: async () => {
+            throw Object.assign(new Error("test"), { status });
+          },
+        },
+        "@/lib/theme-auth": {
+          currentAuthor: () => ({ badges: [{ name: "dev" }] }),
+          applyServerUser() {},
+          subscribeAuthor() {},
+        },
+      },
+      {},
+    );
+    assert.equal(
+      await access.verifyExperimentalAccess(),
+      status === 401 || status === 403 ? "denied" : "unavailable",
+    );
+  }
+});
+
 test("experimental access recognizes only the approved Harbor account badges", () => {
   let author: { badges?: Array<{ name: string }> } | null = null;
   const access = load<ExperimentalAccess>(
@@ -344,7 +463,9 @@ test("experimental enrollment, checks, and installation fail closed without badg
   h.config.access = "unavailable";
   await h.updater.checkForUpdate(true);
   assert.equal(h.updater.useUpdate().status, "error");
-  assert.equal(h.calls.fetchUrls.length, 0);
+  // Public recovery discovery is allowed; Experimental installation remains gated.
+  assert.equal(h.calls.fetchUrls.length, 1);
+  assert.equal(h.calls.stage, 0);
   assert.equal(h.channel.selectedUpdateChannel(), "experimental");
 
   h.config.access = "allowed";
@@ -492,7 +613,7 @@ test("legacy NSIS Windows bootstraps through only the verified recoverable insta
   await h.updater.checkForUpdate(true);
   assert.ok(h.updater.useUpdate().handoff?.verifiable);
   assert.deepEqual(h.calls.headers, []);
-  assert.deepEqual(h.calls.fetchHeaders, [undefined]);
+  assert.deepEqual(h.calls.fetchHeaders, [undefined, undefined]);
   assert.ok(h.calls.fetchUrls[0].endsWith("/updates/latest-experimental.json"));
   await h.updater.downloadUpdate();
   await h.updater.installUpdate();

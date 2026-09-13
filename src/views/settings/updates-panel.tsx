@@ -1,4 +1,5 @@
 import { useT } from "@/lib/i18n";
+import { ExperimentalChangelog } from "@/components/update/experimental-changelog";
 import { isLinuxDesktop } from "@/lib/platform";
 import { Section } from "./shared";
 import { BetaChannelRow, UpdatesRow } from "./advanced-panel";
@@ -20,6 +21,7 @@ export function UpdatesPanel() {
 
   return (
     <>
+      <ExperimentalChangelog />
       {supportsInAppUpdates && (
         <Section
           title={t("Updates")}

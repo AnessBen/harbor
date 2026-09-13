@@ -13,6 +13,7 @@ import {
 import { releaseNote, type ReleaseNote } from "@/lib/updater/release-notes";
 import { useT } from "@/lib/i18n";
 import { RichNote } from "./rich-notes";
+import { experimentalReleaseNote } from "@/lib/updater/experimental-notes";
 
 function mb(bytes: number): string {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
@@ -29,7 +30,10 @@ export function UpdateCard() {
   }, []);
   useEffect(() => {
     let ok = true;
-    if (u.channel !== "experimental" && u.status === "available" && u.version) {
+    if (u.channel === "experimental") {
+      setRich(experimentalReleaseNote(u.version));
+    } else if (u.version) {
+      setRich(null);
       releaseNote(u.version).then((n) => ok && setRich(n));
     } else {
       setRich(null);
@@ -107,7 +111,7 @@ export function UpdateCard() {
           </p>
         )}
 
-        {u.status === "available" && (rich || u.notes) && (
+        {["available", "downloading", "downloaded"].includes(u.status) && (rich || u.notes) && (
           <div className="mx-5 mb-1 max-h-[248px] overflow-y-auto rounded-xl border border-edge-soft/60 bg-canvas/40 px-3.5 py-3">
             {rich ? (
               <RichNote note={rich} />
