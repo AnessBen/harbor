@@ -8,7 +8,7 @@ import type { KitsuEpisode } from "@/lib/providers/kitsu";
 import { useSettings } from "@/lib/settings";
 import { SPOILER_TEXT_CLASS, SPOILER_THUMB_CLASS, type SpoilerMask } from "@/lib/spoilers";
 import { useView } from "@/lib/view";
-import { animeSeasonKey } from "./anime-episodes/anime-season-key";
+import { animeSeasonKey, resolveAnimeDetailTarget } from "./anime-episodes/anime-season-key";
 import { formatAirDate } from "@/lib/dates";
 import { useT } from "@/lib/i18n";
 import { EpisodeGrid } from "./episode-grid";
@@ -46,7 +46,7 @@ export function AnimeEpisodeStrip({
   metaForEp?: (ep: KitsuEpisode) => Meta;
   showSeason?: boolean;
 }) {
-  const { openPicker } = useView();
+  const { openPicker, openEpisodeDetail } = useView();
   const { settings } = useSettings();
   const t = useT();
 
@@ -88,9 +88,13 @@ export function AnimeEpisodeStrip({
               },
               { autoPlay: settings.instantPlay, resume: opts?.resume },
             ),
+          openDetail: () => {
+            const target = resolveAnimeDetailTarget(ep, meta, epMeta);
+            openEpisodeDetail(target.seriesId, target.season, target.episode, target.seriesMeta);
+          },
         };
       }),
-    [episodes, meta, metaForEp, openPicker, settings.instantPlay, t, showSeason],
+    [episodes, meta, metaForEp, openEpisodeDetail, openPicker, settings.instantPlay, t, showSeason],
   );
   const epByKey = useMemo(() => {
     const m = new Map<string, KitsuEpisode>();
@@ -119,6 +123,7 @@ export function AnimeEpisodeStrip({
         >
           <AnimeEpisodeStripCard
             meta={metaForEp ? metaForEp(ep) : meta}
+            parentMeta={meta}
             ep={ep}
             progress={progressFor(ep)}
             spoiler={spoilerFor?.(ep)}
@@ -133,6 +138,7 @@ export function AnimeEpisodeStrip({
 
 function AnimeEpisodeStripCard({
   meta,
+  parentMeta,
   ep,
   progress,
   spoiler,
@@ -140,6 +146,7 @@ function AnimeEpisodeStripCard({
   showSeason,
 }: {
   meta: Meta;
+  parentMeta?: Meta;
   ep: KitsuEpisode;
   progress: Progress;
   spoiler?: SpoilerMask;
@@ -248,7 +255,15 @@ function AnimeEpisodeStripCard({
         <HoverTooltip label={t("Episode details")} align="center" className="shrink-0">
           <button
             type="button"
-            onClick={() => openEpisodeDetail(meta.id, animeSeasonKey(ep), ep.number, meta)}
+            onClick={() => {
+              const target = resolveAnimeDetailTarget(ep, parentMeta ?? meta, meta);
+              openEpisodeDetail(
+                target.seriesId,
+                target.season,
+                target.episode,
+                target.seriesMeta,
+              );
+            }}
             aria-label={t("Episode details")}
             className="flex items-center justify-center rounded-full p-1.5 text-ink-subtle transition-colors hover:bg-elevated hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink"
           >
