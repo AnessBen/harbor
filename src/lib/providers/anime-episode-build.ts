@@ -132,6 +132,18 @@ export function mergeAniZipEpisodes(
   if (!aniZip?.episodes) return;
   const azImdb = aniZip.mappings?.imdb_id;
   const localized = wantsLocalized(opts);
+  // Guard against corrupt third-party mappings (e.g. Witch Hat Atelier,
+  // kitsu:46043, where AniZip key 2 duplicates key 1's tvdbId/abs and keys
+  // 3..13 shift by -1). Stale tvdbIds outrank correct streaming pairs during
+  // season matching, so the shifted episode steals the slot and the correct
+  // one falls through to Extras. Track ids already owned across the pool so a
+  // duplicate is never applied twice, even if this merge runs more than once.
+  const tvdbOwned = new Map<number, number>();
+  const absOwned = new Map<number, number>();
+  for (const ep of episodes) {
+    if (ep.tvdbEpisodeId != null) tvdbOwned.set(ep.tvdbEpisodeId, (tvdbOwned.get(ep.tvdbEpisodeId) ?? 0) + 1);
+    if (ep.absoluteNumber != null) absOwned.set(ep.absoluteNumber, (absOwned.get(ep.absoluteNumber) ?? 0) + 1);
+  }
   for (const ep of episodes) {
     const az = aniZip.episodes[String(ep.number)];
     if (!az) continue;
@@ -160,16 +172,52 @@ export function mergeAniZipEpisodes(
     if (az.airDate) ep.airdate = az.airDate;
     if (az.runtime && !ep.length) ep.length = az.runtime;
     if (az.filler) ep.filler = true;
-    if (az.absoluteEpisodeNumber) ep.absoluteNumber = az.absoluteEpisodeNumber;
-    if (az.tvdbId) ep.tvdbEpisodeId = az.tvdbId;
+    // Same-season mismatch means this record's ids belong to another episode
+    // (shifted mapping): applying them would steal a TVDB slot. Multi-cour
+    // entries legitimately differ across seasons, so only same-season
+    // mismatches are skipped. Specials (season 0) never apply to regular eps.
+    const epSeason = ep.imdbSeason ?? ep.seasonNumber ?? 1;
+    const epNum = ep.imdbEpisode ?? ep.number;
+    const azSeason = az.seasonNumber;
+    const shifted =
+      (azSeason === 0 && epSeason >= 1) ||
+      (azSeason != null &&
+        azSeason >= 1 &&
+        azSeason === epSeason &&
+        az.episodeNumber != null &&
+        epNum != null &&
+        az.episodeNumber !== epNum);
+    let applyIds = !shifted;
+    if (applyIds && az.tvdbId && (tvdbOwned.get(az.tvdbId) ?? 0) > (ep.tvdbEpisodeId === az.tvdbId ? 1 : 0)) {
+      applyIds = false;
+    }
+    if (
+      applyIds &&
+      az.absoluteEpisodeNumber &&
+      (absOwned.get(az.absoluteEpisodeNumber) ?? 0) > (ep.absoluteNumber === az.absoluteEpisodeNumber ? 1 : 0)
+    ) {
+      applyIds = false;
+    }
+    if (applyIds) {
+      if (az.absoluteEpisodeNumber) {
+        ep.absoluteNumber = az.absoluteEpisodeNumber;
+        absOwned.set(az.absoluteEpisodeNumber, (absOwned.get(az.absoluteEpisodeNumber) ?? 0) + 1);
+      }
+      if (az.tvdbId) {
+        ep.tvdbEpisodeId = az.tvdbId;
+        tvdbOwned.set(az.tvdbId, (tvdbOwned.get(az.tvdbId) ?? 0) + 1);
+      }
+    }
     if (ep.rating == null && az.rating != null) {
       const r = Number(az.rating);
       if (Number.isFinite(r) && r > 0) ep.rating = r;
     }
     if (az.seasonNumber != null && az.seasonNumber >= 0 && az.episodeNumber != null) {
       if (azImdb) ep.imdbId = azImdb;
-      if (ep.imdbSeason == null) ep.imdbSeason = az.seasonNumber;
-      if (ep.imdbEpisode == null) ep.imdbEpisode = az.episodeNumber;
+      if (!shifted) {
+        if (ep.imdbSeason == null) ep.imdbSeason = az.seasonNumber;
+        if (ep.imdbEpisode == null) ep.imdbEpisode = az.episodeNumber;
+      }
     }
   }
 }
