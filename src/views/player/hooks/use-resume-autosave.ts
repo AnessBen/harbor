@@ -19,6 +19,10 @@ import { savePlayback } from "@/lib/playback-history";
 import { clearResume, saveResumeMs } from "@/lib/resume";
 import { isMovieWatchedLocal, setMovieWatchedLocal } from "@/lib/movie-watched";
 import { setViewedSeason } from "@/lib/season-view-pref";
+import {
+  isOwnTrackerEntry,
+  resolveTrackEpisodeNumber,
+} from "@/lib/tracker-progress";
 import type { PlayerSnapshot } from "@/lib/player/bridge";
 import { getPlaybackPosition, subscribePlaybackClock } from "@/lib/player/playback-clock";
 import { useSettings } from "@/lib/settings";
@@ -221,12 +225,18 @@ export function useResumeAutosave(params: {
     if (pos < TASTE_MIN_SEC) return;
     const trackId = s.episode?.sourceMetaId ?? animeTrackId(s);
     const absEp = s.episode?.absoluteNumber;
-    const trackEp =
-      seasonForeign && typeof ep === "number"
-        ? ep
-        : s.episode?.sourceMetaId
-          ? ep
-          : (s.episode?.imdbEpisode ?? ep);
+    const rowEntryId =
+      s.episode?.sourceMetaId ??
+      (s.episode?.kitsuStreamId?.startsWith("kitsu:")
+        ? s.episode.kitsuStreamId.split(":").slice(0, 2).join(":")
+        : null) ??
+      (isAnimeId(s.meta.id) ? s.meta.id : null);
+    const trackEp = resolveTrackEpisodeNumber(ep, {
+      sourceMetaId: s.episode?.sourceMetaId,
+      imdbEpisode: s.episode?.imdbEpisode,
+      seasonForeign,
+      ownEntry: isOwnTrackerEntry(rowEntryId, trackId),
+    });
     const syncReady = finished || (sn.durationSec > 0 && pos / sn.durationSec >= SYNC_RATIO);
     const fireTrackers = (tid: string, tep: number | undefined): void => {
       if (anilistAutoSyncRef.current) void markAnimeWatching(tid, s.meta.name);

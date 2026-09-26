@@ -1,5 +1,6 @@
 import { activeProfileId } from "@/lib/active-profile-id";
 import { kitsuToAnilist } from "@/lib/providers/anime-mapping";
+import { resolveTrackerProgress } from "@/lib/tracker-progress";
 import { AnilistApiError, anilistRequest } from "./client";
 import { isAuthenticated } from "./session";
 
@@ -188,8 +189,7 @@ export async function syncAnimeProgress(
 
     const current = media.mediaListEntry?.progress ?? 0;
     const total = media.episodes ?? 0;
-    let target = ep;
-    if (abs != null && total > 0 && abs <= total && ep <= current && abs > current) target = abs;
+    let target = resolveTrackerProgress(ep, abs, total);
     if (total > 0 && target > total) {
       if (target > total + 1) return;
       target = total;

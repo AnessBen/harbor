@@ -1,6 +1,7 @@
 import { activeProfileId } from "@/lib/active-profile-id";
 import { malRequest, MalApiError } from "./client";
 import { resolveMalMediaId } from "./mutations";
+import { resolveTrackerProgress } from "@/lib/tracker-progress";
 import { isAuthenticated } from "./session";
 
 export type SyncError = "update-not-confirmed" | "unreachable";
@@ -140,8 +141,7 @@ export async function syncMalProgress(
 
     const current = cur?.my_list_status?.num_episodes_watched ?? 0;
     const total = cur?.num_episodes ?? 0;
-    let target = ep;
-    if (abs != null && total > 0 && abs <= total && ep <= current && abs > current) target = abs;
+    let target = resolveTrackerProgress(ep, abs, total);
     if (total > 0 && target > total) {
       if (target > total + 1) return;
       target = total;
