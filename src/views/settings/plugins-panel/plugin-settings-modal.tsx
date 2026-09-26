@@ -55,7 +55,7 @@ export function PluginSettingsModal({
     return () => {
       cancelled = true;
     };
-  }, [adapter, plugin.id, t]);
+  }, [adapter, plugin.id]);
 
   const save = async () => {
     if (!fields || !adapter.saveSettings) return;

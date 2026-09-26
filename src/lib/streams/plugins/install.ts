@@ -18,7 +18,6 @@ import {
 const FETCH_TIMEOUT = 20_000;
 const MAX_SOURCE_BYTES = 2 * 1024 * 1024;
 const MAX_ARCHIVE_BYTES = 16 * 1024 * 1024;
-const MAX_ICON_BYTES = 64 * 1024;
 const READY_TIMEOUT = 10_000;
 
 async function sha256Bytes(bytes: Uint8Array): Promise<string> {
@@ -69,24 +68,6 @@ function archiveName(entry: StreamRepoEntry): string {
   return `${safe}.cs3`;
 }
 
-async function fetchIcon(url: string | undefined): Promise<string | undefined> {
-  if (!url) return undefined;
-  try {
-    const target = assertSafeUrl(url);
-    const res = await safeFetch(target, { signal: AbortSignal.timeout(8_000) });
-    if (!res.ok) return undefined;
-    const type = res.headers.get("content-type") ?? "";
-    if (!type.startsWith("image/")) return undefined;
-    const bytes = new Uint8Array(await res.arrayBuffer());
-    if (bytes.byteLength === 0 || bytes.byteLength > MAX_ICON_BYTES) return undefined;
-    let bin = "";
-    for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
-    return `data:${type.split(";")[0]};base64,${btoa(bin)}`;
-  } catch {
-    return undefined;
-  }
-}
-
 async function probe(plugin: InstalledStreamPlugin): Promise<void> {
   const worker = new PluginWorker(workerPluginFor(plugin), {
     readyTimeoutMs: READY_TIMEOUT,
@@ -126,7 +107,7 @@ function fromEntry(
     hash,
     etag,
     native: null,
-    icon: prior?.icon,
+    icon: entry.icon ?? prior?.icon,
     description: entry.description,
     author: entry.author,
     lang: entry.lang,
@@ -169,7 +150,6 @@ async function installArchiveEntry(
     native,
     previous: null,
   };
-  plugin.icon = (await fetchIcon(entry.icon)) ?? prior?.icon;
   await saveStreamPlugin(plugin);
   return plugin;
 }
@@ -185,7 +165,6 @@ export async function installEntry(
   const prior = streamPluginById(pluginIdFor(repo.url, entry.id));
   const plugin = fromEntry(repo, entry, code, hash, etag, prior);
   await probe(plugin);
-  plugin.icon = (await fetchIcon(entry.icon)) ?? prior?.icon;
   disposeStreamPlugin(plugin.id);
   await saveStreamPlugin(plugin);
   return plugin;
