@@ -766,6 +766,7 @@ export function createMpvBridge(mpvOptions?: MpvOptions): PlayerBridge {
         return;
       }
       snap.status = observedPaused === true ? "paused" : "playing";
+      snap.buffering = false; // cache is full; clear the stall flag regardless of pause state.
       snap.firstFrameReady = true;
       if (currentIsLive === false && currentStartupProfile && steadyBufferLoadId !== mediaLoadId) {
         steadyBufferLoadId = mediaLoadId;

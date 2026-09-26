@@ -91,8 +91,8 @@ export function createHtml5Bridge(): PlayerBridge {
     snap.positionSec = Number.isFinite(video.currentTime) ? video.currentTime : 0;
     snap.durationSec = Number.isFinite(video.duration) ? video.duration : 0;
     snap.bufferedSec = bufferedAhead(video);
-    snap.buffering =
-      !video.paused && !video.ended && video.readyState < HTMLMediaElement.HAVE_FUTURE_DATA;
+    // refresh and clear the buffering state once sufficient data arrives.
+    snap.buffering = !video.ended && video.readyState < HTMLMediaElement.HAVE_FUTURE_DATA;
     snap.volume = pendingVolume;
     snap.muted = video.muted;
     snap.rate = video.playbackRate;
@@ -117,7 +117,10 @@ export function createHtml5Bridge(): PlayerBridge {
       snap.status = "ended";
     } else if (!video.paused) {
       snap.status = "playing";
-    } else if (video.readyState >= 3) {
+    } else if (video.readyState >= 3 || snap.firstFrameReady) {
+      // If paused mid-playback, report "paused" so the BufferingIndicator stays visible.
+      // Without this check, hitting pause could fall through to "loading", causing the
+      // BufferingIndicator to hide since it does not render when snap.status is "loading".
       snap.status = "paused";
     } else {
       snap.status = "loading";
