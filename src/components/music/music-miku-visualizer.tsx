@@ -4,7 +4,6 @@ import idleAtlas from "@/assets/music/miku-idle-motion.webp";
 import closedEyes from "@/assets/music/miku-eyes-closed.webp";
 import atlas from "@/assets/music/miku-motion.webp";
 import swayDance from "@/assets/music/miku-dance-sway.webp";
-import handDance from "@/assets/music/miku-dance-hands.webp";
 import hipDance from "@/assets/music/miku-dance-hips.webp";
 import { acquireMusicMeter } from "@/lib/music/audio-meter";
 import { createMikuDance, createMikuDanceMemory, MIKU_DANCE } from "@/lib/music/miku-dance";
@@ -19,11 +18,11 @@ import "./music-miku-visualizer.css";
  *   0–620ms   measured audio arrives → palms rise to the headphone cups
  *   listening bass/level envelope drives nods; hair follows with a softer response
  *   42s+      a strong musical phrase earns a short dance, then headphones
- *   75–95s    listening between dances; repertoire/cooldown survive song changes
+ *   75–85s    listening between dances; repertoire/cooldown survive song changes
  *   850ms     silence or lost signal → hands lower, movement settles
  *   reduced   static portrait; no animation loop or native meter acquired
  */
-const DANCE_SHEETS = [swayDance, handDance, hipDance];
+const DANCE_SHEETS = [swayDance, hipDance];
 export function MikuArtwork({ className = "" }: { className?: string }) {
   return <img className={`music-miku-art ${className}`} src={portrait} alt="" aria-hidden="true" draggable={false} />;
 }

@@ -5,12 +5,12 @@
  * Remember the repertoire and cooldown across tracks and visibility changes.
  */
 export const MIKU_DANCE = {
-  columns: 9, rows: [10, 17, 10], reachFrames: 25, loopFrames: [64, 128, 64],
+  columns: 9, rows: [10, 10], reachFrames: 25, loopFrames: [64, 64],
   prepareMs: 140, enterMs: 800, leaveMs: 700, recoverMs: 140,
   restFrame: 15, lowerFraction: 0.45, restFraction: 0.12,
   leaveLowerFraction: 0.4, leaveRestFraction: 0.14,
-  loopBeats: [2, 8, 4], minimumEnergy: 0.5, energetic: 0.65,
-  firstWaitMs: 42000, breaksMs: [75000, 95000, 85000], minimumTrackBeats: 16,
+  loopBeats: [2, 4], minimumEnergy: 0.5,
+  firstWaitMs: 42000, breaksMs: [75000, 85000], minimumTrackBeats: 16,
   danceMs: 12000, defaultPeriodMs: 500,
   cancelMs: 180, rhythmGraceMs: 700,
 } as const;
@@ -24,24 +24,19 @@ export function createMikuDanceMemory(initialKind = 0) {
   return {
     next: Number.isInteger(initialKind) && initialKind >= 0 && initialKind < MIKU_DANCE.loopFrames.length ? initialKind : 0,
     remainingMs: Number(MIKU_DANCE.firstWaitMs),
-    visited: [] as number[],
   };
 }
 
 export function createMikuDance(initial: number | ReturnType<typeof createMikuDanceMemory> = 0) {
   const memory = typeof initial === "number" ? createMikuDanceMemory(initial) : initial;
+  if (!Number.isInteger(memory.next) || memory.next < 0 || memory.next >= MIKU_DANCE.loopFrames.length) memory.next = 0;
   let stage: Stage = "listening", kind = memory.next, elapsed = 0, listened = 0, lostRhythm = 0;
   let previous: number | null = null, frame = 0, opacity = 0, listening = 1;
   let performBeats = 16;
   let prepareBeats = 0.28, enterBeats = 1.72, leaveBeats = 1, recoverBeats = 0.28;
-  const rememberDance = (excitement: number) => {
-    memory.visited.push(kind);
-    if (memory.visited.length === MIKU_DANCE.loopFrames.length) memory.visited = [];
-    // Use all three before revisiting one. Never repeat the last routine,
-    // including after a track change; stronger phrases favour playful palms.
-    const preference = excitement >= MIKU_DANCE.energetic ? [1, 2, 0] : [2, 0, 1];
-    memory.next = preference.find(candidate => candidate !== kind && !memory.visited.includes(candidate))
-      ?? (kind + 1) % MIKU_DANCE.loopFrames.length;
+  const rememberDance = () => {
+    // Alternate the two retained routines, including across track changes.
+    memory.next = (kind + 1) % MIKU_DANCE.loopFrames.length;
     memory.remainingMs = MIKU_DANCE.breaksMs[kind];
   };
   const reset = () => {
@@ -109,7 +104,7 @@ export function createMikuDance(initial: number | ReturnType<typeof createMikuDa
             : elapsed < riseAt ? MIKU_DANCE.restFrame
             : MIKU_DANCE.restFrame + Math.round(clamp((elapsed - riseAt) / (enterBeats - riseAt)) * (MIKU_DANCE.reachFrames - 1 - MIKU_DANCE.restFrame));
           if (elapsed >= enterBeats) {
-            elapsed -= enterBeats; stage = "dancing"; rememberDance(excitement);
+            elapsed -= enterBeats; stage = "dancing"; rememberDance();
           }
         }
         if (stage === "dancing") {

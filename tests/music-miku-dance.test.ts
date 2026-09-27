@@ -28,7 +28,7 @@ function fixture(kind = 0, period = 500) {
 }
 
 test("dances are short complete loops at slow, normal and fast drum tempos, even at a peak", () => {
-  for (const period of [300, 400, 500, 750, 850]) for (const kind of [0, 1, 2]) {
+  for (const period of [300, 400, 500, 750, 850]) for (const kind of [0, 1]) {
     const f = fixture(kind, period);
     const started = f.until("dancing");
     assert.ok(started >= MIKU_DANCE.firstWaitMs);
@@ -64,7 +64,8 @@ test("headphones dominate a continuous energetic song, with a fair nonrepeating 
   }
   assert.ok(dancingMs < 90000, "most of this long high-energy track should remain headphone listening");
   assert.ok(sequence.length >= 5);
-  for (let i = 0; i + 3 <= sequence.length; i += 3) assert.equal(new Set(sequence.slice(i, i + 3)).size, 3);
+  assert.deepEqual([...new Set(sequence)].sort(), [0, 1]);
+  for (let i = 0; i + 2 <= sequence.length; i += 2) assert.equal(new Set(sequence.slice(i, i + 2)).size, 2);
 });
 
 test("the next routine and listening break survive track changes and visibility resets", () => {
@@ -91,7 +92,7 @@ test("the next routine and listening break survive track changes and visibility 
 });
 
 test("a new track still gets listening time even when the shared cooldown has expired", () => {
-  const memory = createMikuDanceMemory(2);
+  const memory = createMikuDanceMemory(1);
   memory.remainingMs = 0;
   const dance = createMikuDance(memory);
   for (let now = 0; now < 7500; now += 16) {
@@ -143,7 +144,7 @@ test("short analysis gaps keep a phrase moving; sustained missing rhythm cancels
 });
 
 test("dance atlas accents advance once per measured beat at different tempos", () => {
-  for (const period of [300, 500, 750]) for (const kind of [0, 1, 2]) {
+  for (const period of [300, 500, 750]) for (const kind of [0, 1]) {
     const f = fixture(kind, period); f.until("dancing");
     const start = f.now, frames: number[] = [];
     while (f.now - start < period * 2.2) frames.push(f.tick().frame - MIKU_DANCE.reachFrames);
@@ -155,7 +156,7 @@ test("dance atlas accents advance once per measured beat at different tempos", (
 });
 
 test("headphone handoffs stay brisk at different tempos and the dance begins on a drum beat", () => {
-  for (const period of [300, 400, 500, 650, 850]) for (const kind of [0, 1, 2]) {
+  for (const period of [300, 400, 500, 650, 850]) for (const kind of [0, 1]) {
     const f = fixture(kind, period);
     const prepare = f.until("preparing");
     const start = f.until("dancing");
