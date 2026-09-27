@@ -69,7 +69,9 @@ export function AddonsView() {
   const t = useT();
   const { settings, update } = useSettings();
   const { authKey } = useAuth();
-  const { byId, installedIds, loading, refetch } = useAddonsCatalog(settings.showAdultAddons);
+  const { byId, installedIds, installedAddons, loading, refetch } = useAddonsCatalog(
+    settings.showAdultAddons,
+  );
   const { addonDetailId, openAddonDetail, goBack } = useView();
   const [tab, setTab] = useState<Tab>(() => consumeAddonsTab() ?? "discover");
 
@@ -162,14 +164,12 @@ export function AddonsView() {
     seq.forEach((url, i) => {
       if (!rank.has(url)) rank.set(url, i);
     });
-    return allAddons
-      .filter((r) => r.installed)
-      .sort(
-        (a, b) =>
-          (rank.get(a.transportUrl) ?? Number.MAX_SAFE_INTEGER) -
-          (rank.get(b.transportUrl) ?? Number.MAX_SAFE_INTEGER),
-      );
-  }, [allAddons]);
+    return [...installedAddons].sort(
+      (a, b) =>
+        (rank.get(a.transportUrl) ?? Number.MAX_SAFE_INTEGER) -
+        (rank.get(b.transportUrl) ?? Number.MAX_SAFE_INTEGER),
+    );
+  }, [installedAddons]);
   const trimmedQuery = query.trim();
   useEffect(() => {
     if (trimmedQuery.length > 0 && tab !== "installed") setTab("browse");
@@ -309,7 +309,7 @@ export function AddonsView() {
                         active ? "bg-canvas/15 text-canvas" : "bg-edge text-ink-muted"
                       }`}
                     >
-                      {installedIds.size}
+                      {installed.length}
                     </span>
                   </button>
                 );
