@@ -340,6 +340,7 @@ mod tests {
             artwork: "cover.jpg".to_string(),
             year: Some(2003),
             track_count: Some(14),
+            explicit: None,
         };
         let bare = items::track(
             "MdVBSHOMWSY",

@@ -2,13 +2,13 @@ import { loadRecordingProfile } from "@/lib/music/recording-profile";
 import { resolveDisplayCredits } from "@/lib/music/artist-credit";
 import { requestMusicExplore } from "@/lib/music/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { ChevronRight, TriangleAlert, Unplug } from "lucide-react";
+import { ChevronRight, TriangleAlert, Unplug } from "@/components/icons/music-icons";
 import type { MusicCardBadge } from "@/components/music/music-cover-card";
 import { useMusicNavigate } from "@/components/music/music-navigate";
 import { useMusicPlaylistPicker } from "@/components/music/music-playlist-picker";
 import { MusicTrackRow } from "@/components/music/music-track-row";
 import { useT } from "@/lib/i18n";
-import { enqueueMusic, musicSimilarTracks, useMusicPlayer } from "@/lib/music/player";
+import { enqueueMusic, useMusicPlayer } from "@/lib/music/player";
 import type { MusicTrack } from "@/lib/music/types";
 
 export type MusicSectionStatus = "loading" | "ready" | "error";
@@ -194,7 +194,6 @@ export function MusicTrackGrid({
 }) {
   const visible = tracks.slice(0, count);
   const radioRequest = useRef(0);
-  const similarRequest = useRef(0);
   const [radioStatus, setRadioStatus] = useState<{
     op: "radio" | "similar";
     state: "loading" | "error";
@@ -217,20 +216,10 @@ export function MusicTrackGrid({
   // so the grid supplies them and a caller only overrides for something view specific.
   const addToQueue = onAddToQueue ?? ((track: MusicTrack) => enqueueMusic(track));
   const addToPlaylist = onAddToPlaylist ?? ((track: MusicTrack) => openPlaylistPicker(track));
+  // The mix page opens straight away and builds itself, so there is nothing to
+  // wait on here and no status to show.
   const moreLikeThis =
-    onMoreLikeThis ??
-    (async (track: MusicTrack) => {
-      const request = ++similarRequest.current;
-      setRadioStatus({ op: "similar", state: "loading" });
-      try {
-        const mix = await musicSimilarTracks(track);
-        if (request !== similarRequest.current) return;
-        setRadioStatus(null);
-        requestMusicExplore({ kind: "similar", track, queue: mix });
-      } catch {
-        if (request === similarRequest.current) setRadioStatus({ op: "similar", state: "error" });
-      }
-    });
+    onMoreLikeThis ?? ((track: MusicTrack) => requestMusicExplore({ kind: "similar", track }));
   const toArtist = onGoToArtist ?? ((track: MusicTrack) => goToArtist(track.artist, track));
   const toAlbum =
     onGoToAlbum ??

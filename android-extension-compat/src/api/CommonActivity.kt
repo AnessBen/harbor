@@ -1,12 +1,19 @@
 package com.lagradost.cloudstream3
 
 import android.app.Activity
+import android.widget.Toast
+import com.lagradost.api.Log
 
-/**
- * Extensions reach for the activity to raise a toast or open a dialog. Off Android there is none,
- * and every call site guards for that, so it stays null rather than handing back a fake.
- */
 object CommonActivity {
 
     var activity: Activity? = null
+
+    fun showToast(message: String?, duration: Int? = null) {
+        if (message.isNullOrBlank()) return
+        try {
+            Toast.makeText(activity, message, duration ?: Toast.LENGTH_SHORT).show()
+        } catch (t: Throwable) {
+            Log.w("CommonActivity", "toast failed: ${t.message}")
+        }
+    }
 }

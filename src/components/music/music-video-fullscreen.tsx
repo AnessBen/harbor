@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
-import { Loader2, Minimize } from "lucide-react";
+import { Loader2, Minimize } from "@/components/icons/music-icons";
 import type { MusicTrack } from "@/lib/music/types";
 import { useEscape } from "@/components/modal-shell";
 import { useT } from "@/lib/i18n";

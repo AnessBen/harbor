@@ -1,9 +1,12 @@
 package android.content
 
+import android.app.ActivityManager
+import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.content.res.Resources
 import android.net.ConnectivityManager
 import harbor.compat.host.PlatformHost
+import java.io.File
 
 open class Context {
 
@@ -22,14 +25,33 @@ open class Context {
         PlatformHost.launch(intent)
     }
 
-    /** Extensions ask for a service by name. Only the services the host actually has are answered;
-     * null for the rest, which is what Android returns for a service that is not present. */
+    open fun getFilesDir(): File = ensure(File(PlatformHost.dataDir, "files"))
+
+    open fun getCacheDir(): File = ensure(File(PlatformHost.dataDir, "cache"))
+
+    open fun getContentResolver(): ContentResolver = resolver
+
+    open fun getApplicationInfo(): ApplicationInfo = ApplicationInfo()
+
     open fun getSystemService(name: String): Any? = when (name) {
         CONNECTIVITY_SERVICE -> PlatformHost.connectivityManager
+        CLIPBOARD_SERVICE -> PlatformHost.clipboardManager
+        ACTIVITY_SERVICE -> activityManager
         else -> null
+    }
+
+    private val activityManager: ActivityManager by lazy { ActivityManager() }
+
+    private val resolver: ContentResolver by lazy { ContentResolver() }
+
+    private fun ensure(dir: File): File {
+        if (!dir.isDirectory) dir.mkdirs()
+        return dir
     }
 
     companion object {
         const val CONNECTIVITY_SERVICE: String = "connectivity"
+        const val CLIPBOARD_SERVICE: String = "clipboard"
+        const val ACTIVITY_SERVICE: String = "activity"
     }
 }

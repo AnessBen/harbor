@@ -18,14 +18,6 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.runBlocking
 
-/** Proves the reverse request: the layer asks the host to clear a challenge, and replays what
- * comes back. Two halves, because they can fail independently.
- *
- * The wire half runs the real bridge over two pipes and asserts the frames. The layer half runs a
- * real challenged site and asserts that both request paths get through it, and that with no host
- * attached they do not, which is the fallback the standalone gates depend on.
- */
-
 private val failures = ArrayList<String>()
 
 private fun check(label: String, ok: Boolean, detail: Any? = null) {
@@ -178,9 +170,6 @@ private fun layer() {
     }
 }
 
-/** The case that decides whether the gate can be believed: a site that hands out cookies and
- * challenges anyway. A solver that answered from the cookies alone would report this as a solve, the
- * gate would read green, and the extension behind it would still see a challenge. */
 private fun unclearable() {
     val site = ChallengeSite(clears = false).start()
     try {
@@ -207,7 +196,6 @@ private fun unclearable() {
     }
 }
 
-/** Loads one page through the webkit stub and returns the title it ended on. */
 private fun loadPage(url: String): String? {
     val view = WebView(null)
     val finished = CountDownLatch(1)

@@ -3,14 +3,15 @@ package com.harbor.capstan.bridge
 import com.google.gson.JsonArray
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
+import com.harbor.capstan.CatalogueRow
+import com.harbor.capstan.CatalogueSection
 import com.harbor.capstan.EpisodeItem
 import com.harbor.capstan.MediaItem
 import com.harbor.capstan.SearchItem
 import com.harbor.capstan.StreamLink
 import com.harbor.capstan.SubtitleItem
+import com.harbor.capstan.UnconvertedMethod
 
-/** Every value that crosses the wire is shaped here, so the Rust and TypeScript sides have one
- * place to read and nothing has to guess at a field name. */
 object BridgeEncode {
 
     fun provider(entry: ProviderEntry): JsonObject {
@@ -39,6 +40,32 @@ object BridgeEncode {
         out.addProperty("source", entry.source)
         out.add("providers", strings(entry.providerIds))
         out.add("extractors", strings(entry.loaded.extractorNames))
+        out.add("unavailable", array(entry.loaded.unavailable) { unconverted(it) })
+        return out
+    }
+
+    fun unconverted(note: UnconvertedMethod): JsonObject {
+        val out = JsonObject()
+        out.addProperty("method", note.display)
+        out.addProperty("descriptor", note.descriptor)
+        out.addProperty("reason", note.reason)
+        return out
+    }
+
+    fun catalogueRow(row: CatalogueRow): JsonObject {
+        val out = JsonObject()
+        out.addProperty("name", row.name)
+        out.addProperty("data", row.data)
+        out.addProperty("horizontalImages", row.horizontalImages)
+        out.addProperty("declared", row.declared)
+        return out
+    }
+
+    fun catalogueSection(section: CatalogueSection): JsonObject {
+        val out = JsonObject()
+        out.addProperty("name", section.name)
+        out.addProperty("horizontalImages", section.horizontalImages)
+        out.add("items", array(section.items) { searchItem(it) })
         return out
     }
 

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Disc3, Mic2, Music2 } from "lucide-react";
+import { Disc3, Mic2, Music2 } from "@/components/icons/music-icons";
 import { searchTyped } from "@/lib/music/catalog";
 import { artistIdentityKey, peekArtistIdentity, resolveArtist } from "@/lib/music/artist-authority";
 import { collapseArtistRows } from "@/lib/music/search-artists";

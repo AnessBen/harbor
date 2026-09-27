@@ -4,18 +4,28 @@ import android.content.SharedPreferences
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import java.io.File
+import java.util.concurrent.CopyOnWriteArrayList
 
-/** A SharedPreferences backed by one JSON file per preference name.
- *
- * Extensions keep real state here: cached crypto material, tokens, cookie hosts, cache stamps.
- * Values carry a one letter type tag on disk so a long comes back a long rather than a double,
- * which is what a plain JSON number round trip would give. */
 class JsonPreferences(private val file: File) : SharedPreferences {
 
     private val values = LinkedHashMap<String, Any>()
 
+    private val listeners = CopyOnWriteArrayList<SharedPreferences.OnSharedPreferenceChangeListener>()
+
     init {
         load()
+    }
+
+    override fun registerOnSharedPreferenceChangeListener(
+        listener: SharedPreferences.OnSharedPreferenceChangeListener?,
+    ) {
+        if (listener != null && !listeners.contains(listener)) listeners.add(listener)
+    }
+
+    override fun unregisterOnSharedPreferenceChangeListener(
+        listener: SharedPreferences.OnSharedPreferenceChangeListener?,
+    ) {
+        if (listener != null) listeners.remove(listener)
     }
 
     override fun getAll(): MutableMap<String, *> = synchronized(this) { LinkedHashMap(values) }
@@ -43,12 +53,29 @@ class JsonPreferences(private val file: File) : SharedPreferences {
 
     override fun edit(): SharedPreferences.Editor = PendingEdit()
 
-    private fun commit(pending: Map<String, Any?>, clearFirst: Boolean): Boolean = synchronized(this) {
-        if (clearFirst) values.clear()
-        for ((key, value) in pending) {
-            if (value == null) values.remove(key) else values[key] = value
+    private fun commit(pending: Map<String, Any?>, clearFirst: Boolean): Boolean {
+        val changed = LinkedHashSet<String>()
+        val written = synchronized(this) {
+            if (clearFirst) {
+                changed.addAll(values.keys)
+                values.clear()
+            }
+            for ((key, value) in pending) {
+                val previous = if (value == null) values.remove(key) else values.put(key, value)
+                if (previous != value) changed.add(key)
+            }
+            persist()
         }
-        persist()
+        for (key in changed) {
+            for (listener in listeners) {
+                try {
+                    listener.onSharedPreferenceChanged(this, key)
+                } catch (error: Throwable) {
+                    PlatformHost.log(5, "Preferences", "change listener failed for $key", error)
+                }
+            }
+        }
+        return written
     }
 
     private fun load() {

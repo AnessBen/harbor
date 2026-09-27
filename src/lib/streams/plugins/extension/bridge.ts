@@ -10,6 +10,14 @@ export type BridgeProvider = {
   hasQuickSearch: boolean;
 };
 
+/** One row a provider offers to browse. `declared` is false for the single row the layer stands up
+ * for a provider that answers the call and names none, which is its only way in. */
+export type BridgeCatalogueRow = {
+  name: string;
+  horizontalImages: boolean;
+  declared: boolean;
+};
+
 export type BridgeSearchItem = {
   name: string;
   url: string;
@@ -145,4 +153,38 @@ export async function bridgeLoadLinks(providerId: string, data: string): Promise
     subtitles: list<BridgeSubtitle>(raw, "subtitles"),
     note: note(raw),
   };
+}
+
+function catalogueRow(value: unknown): BridgeCatalogueRow | null {
+  if (!value || typeof value !== "object") return null;
+  const o = value as Record<string, unknown>;
+  const name = typeof o.name === "string" ? o.name.trim() : "";
+  if (!name) return null;
+  return { name, horizontalImages: o.horizontalImages === true, declared: o.declared !== false };
+}
+
+export async function bridgeCatalogue(providerId: string): Promise<BridgeCatalogueRow[]> {
+  const raw = await invoke("capstan_catalogue", { providerId });
+  const out: BridgeCatalogueRow[] = [];
+  for (const entry of list<unknown>(raw, "rows")) {
+    const made = catalogueRow(entry);
+    if (made) out.push(made);
+  }
+  return out;
+}
+
+/** A provider may answer one page with several named sections, so a page is flattened back into
+ * the items of the row that was asked for. */
+export async function bridgeCataloguePage(
+  providerId: string,
+  row: string,
+  page: number,
+): Promise<BridgeResults<BridgeSearchItem> & { hasNext: boolean }> {
+  const raw = await invoke("capstan_catalogue_page", { providerId, row, page });
+  const items: BridgeSearchItem[] = [];
+  for (const section of list<unknown>(raw, "sections")) {
+    items.push(...list<BridgeSearchItem>(section, "items"));
+  }
+  const o = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+  return { items, note: note(raw), hasNext: o.hasNext === true };
 }

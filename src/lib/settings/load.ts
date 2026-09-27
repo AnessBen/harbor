@@ -162,6 +162,7 @@ function parseStoredSettings(raw: string | null): Settings {
       _contentAdvisoryOnByDefaultV1?: boolean;
       _skipButtonHideSecV2?: boolean;
       _anilistSyncOnV1?: boolean;
+      _musicSeekThumbV1?: boolean;
       _rememberLastStreamOnV1?: boolean;
       _streamSortAddonV1?: boolean;
       scrapers?: unknown;
@@ -235,6 +236,11 @@ function parseStoredSettings(raw: string | null): Settings {
     if (!parsed._anilistSyncOnV1) {
       parsed.anilistAutoSync = true;
       parsed._anilistSyncOnV1 = true;
+    }
+    if (!parsed._musicSeekThumbV1) {
+      parsed.musicSeekThumb = true;
+      parsed.musicSeekThumbHover = true;
+      parsed._musicSeekThumbV1 = true;
     }
     if (!parsed._rememberLastStreamOnV1) {
       parsed.rememberLastStream = true;

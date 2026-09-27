@@ -9,8 +9,6 @@ import com.lagradost.cloudstream3.utils.Qualities
 import com.lagradost.cloudstream3.utils.extractorLog
 import java.net.URLEncoder
 
-/** archive.org items, read from the metadata api. An item is a directory of files, so the work is
- * picking the playable ones and rebuilding their download urls. */
 class InternetArchive : ExtractorApi() {
 
     override val name: String = "InternetArchive"
@@ -57,8 +55,6 @@ class InternetArchive : ExtractorApi() {
                     name = "$name ${fileName.substringAfterLast('/')}${if (audio) " (audio)" else ""}",
                     url = "https://$server$dir/$encoded",
                     referer = mainUrl,
-                    // Any positive quality is shown as a vertical resolution, so an audio file has
-                    // to carry none rather than the unknown rung, which renders as 400p on an mp3.
                     quality = when {
                         audio -> 0
                         height != null -> Qualities.fromHeight(height).value
@@ -89,9 +85,6 @@ class InternetArchive : ExtractorApi() {
         )
         val VIDEO_SUFFIX = listOf(".mp4", ".mkv", ".webm", ".ogv", ".m4v", ".avi")
 
-        /** The provider's own search asks archive.org for mediatype:(movies OR audio) and most of
-         * what comes back is audio, whose only playable derivative is an mp3 or an ogg. A video
-         * only list drops those items and reports them as having no playable file. */
         val AUDIO_SUFFIX = listOf(".mp3", ".ogg", ".oga", ".opus", ".m4a", ".aac", ".flac", ".wav")
 
         val PLAYABLE_SUFFIX = VIDEO_SUFFIX + AUDIO_SUFFIX

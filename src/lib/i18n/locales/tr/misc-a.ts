@@ -618,6 +618,8 @@ const miscA: Record<string, string> = {
   "Browse streams manually": "Yayınlara elle göz at",
   "Browsing {section}. Change section": "{section} bölümüne göz atılıyor. Bölümü değiştir",
   "Buffer fill": "Arabellek doluluğu",
+  "Reveal the dot on hover": "Nokta imleçle görünsün",
+  "The dot stays out of the way and appears when you point at the bar. Turn this off to keep it on screen the whole time.": "Nokta göz önünde durmaz, çubuğu işaret ettiğinizde belirir. Sürekli görünmesini isterseniz bunu kapatın.",
   "Buffer fill brightness": "Arabellek doluluk parlaklığı",
   "Buffers the whole file in the background as you watch, even while paused, so big remuxes pre-load and you can scrub a cached file with no re-buffering. Works for debrid and P2P streams. Uses more disk and bandwidth; cleared when you switch or close.":
     "Siz izlerken, duraklatılmış olsa bile dosyanın tamamını arka planda arabelleğe alır. Böylece büyük remux dosyaları önceden yüklenir ve önbelleğe alınmış dosyada yeniden arabelleğe alma olmadan ileri geri sarabilirsiniz. Debrid ve P2P yayınlarında çalışır. Daha fazla disk alanı ve bant genişliği kullanır; kaynak değiştirdiğinizde veya kapattığınızda temizlenir.",

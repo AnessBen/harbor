@@ -17,7 +17,10 @@ import java.util.*;
  * Resolution alone is not the whole contract. Each entry also carries the shape the call sites
  * were compiled against: invokestatic against an instance method, or a class where the extension
  * expects an interface, links and then throws IncompatibleClassChangeError the first time that
- * line runs. A member of the wrong shape is counted unresolved, because at runtime it is. */
+ * line runs. A member of the wrong shape is counted unresolved, because at runtime it is.
+ *
+ * Usage: Contract <root> [--spec rel] [--tag name]. The tag suffixes the two reports, so scoring a
+ * wider contract cannot overwrite the reports the standing scoreboard is read from. */
 public final class Contract {
   static String desc(Class<?> c) {
     if (c == void.class) return "V";
@@ -115,10 +118,18 @@ public final class Contract {
     return null;
   }
 
+  static String opt(String[] a, String name, String fallback) {
+    for (int i = 1; i + 1 < a.length; i++) {
+      if (a[i].equals(name)) return a[i + 1];
+    }
+    return fallback;
+  }
+
   public static void main(String[] a) throws Exception {
     Path root = Paths.get(a[0]);
+    String tag = opt(a, "--tag", "");
     JsonObject spec = JsonParser.parseReader(
-        Files.newBufferedReader(root.resolve("spec/required.json"))).getAsJsonObject();
+        Files.newBufferedReader(root.resolve(opt(a, "--spec", "spec/required.json")))).getAsJsonObject();
     List<URL> cp = new ArrayList<>();
     for (String d : new String[] {"out", "libs"}) {
       File dir = root.resolve(d).toFile();
@@ -155,10 +166,10 @@ public final class Contract {
     }
     Collections.sort(missing);
     Collections.sort(wrongShape);
-    try (PrintWriter w = new PrintWriter(Files.newBufferedWriter(root.resolve("out/missing.txt")))) {
+    try (PrintWriter w = new PrintWriter(Files.newBufferedWriter(root.resolve("out/missing" + tag + ".txt")))) {
       for (String m : missing) w.println(m);
     }
-    try (PrintWriter w = new PrintWriter(Files.newBufferedWriter(root.resolve("out/shape.txt")))) {
+    try (PrintWriter w = new PrintWriter(Files.newBufferedWriter(root.resolve("out/shape" + tag + ".txt")))) {
       for (String m : wrongShape) w.println(m);
     }
     System.out.printf("CONTRACT %d/%d resolved, %d missing, %d present but wrong shape%n",

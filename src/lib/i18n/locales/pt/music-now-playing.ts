@@ -2,14 +2,16 @@ const musicNowPlaying: Record<string, string> = {
   "music.artist.filmography": "Cinema e TV",
   "music.action.error": "Não foi possível concluir a ação. Tente novamente.",
   "music.radio.error": "Não foi possível iniciar a rádio. Tente novamente ou use outra fonte.",
-  "music.download.action": "Baixar música",
-  "music.download.done": "Baixado",
-  "music.download.busy": "Baixando",
-  "music.download.retry": "Tentar novamente",
+  "music.download.action": "Guardar faixa",
+  "music.download.done": "Guardada",
+  "music.download.busy": "A guardar",
+  "music.download.retry": "Tentar guardar de novo",
   "music.download.unsupported":
     "Esta fonte não oferece um arquivo de áudio para baixar. Tente outra fonte.",
   "music.download.missing": "Arquivo ausente. Baixe novamente.",
   "music.download.failed": "Falha no download. Tente novamente ou use outra fonte.",
+  "music.download.changeFolder": "Alterar",
+  "music.download.defaultFolder": "Usar padrão",
   "music.download.empty": "Baixe músicas pelo player ou menu da faixa para ouvir offline.",
   "music.download.folder": "Mostrar na pasta",
   "music.download.delete": "Excluir download",
@@ -72,12 +74,16 @@ const musicNowPlaying: Record<string, string> = {
   "music.buy.search": "Pesquisar em {store}",
 
   "music.artist.about": "Sobre o artista",
+  "music.artist.save": "Salvar artista",
+  "music.artist.unsave": "Remover dos artistas salvos",
 
   "music.artist.origin": "Origem",
 
   "music.artist.began": "Nascimento / formação",
 
   "music.artist.aliases": "Também conhecido como",
+
+  "music.artist.label": "Gravadora",
 
   "music.artist.connections": "Membros e colaboradores",
 
@@ -88,6 +94,9 @@ const musicNowPlaying: Record<string, string> = {
   "music.artist.merch": "Produtos oficiais",
 
   "music.artist.official": "Site oficial",
+
+  "music.artist.kicker": "Artista",
+  "music.artist.listenOn": "Ouvir em",
 };
 
 export default musicNowPlaying;

@@ -1,3 +1,4 @@
+import mediaStart from "./ja/media-start";
 import listenTogether from "./ja/listen-together";
 import music from "./ja/music";
 import sportsConsent from "./ja/sports-consent";
@@ -44,7 +45,10 @@ import plugins from "./ja/plugins";
 import brands from "./ja/brands";
 import bpSports from "./ja/bp-sports";
 
+import nytTv from "./ja/nyt-tv";
+
 const ja: Record<string, string> = {
+  ...mediaStart,
   ...videoCast,
   ...music,
   ...ebookSources,
@@ -91,6 +95,7 @@ const ja: Record<string, string> = {
   ...esportsArena,
   ...bpSports,
   ...listenTogether,
+  ...nytTv,
 };
 
 export default ja;

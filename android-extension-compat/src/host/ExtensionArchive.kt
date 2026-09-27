@@ -9,7 +9,6 @@ import java.util.zip.ZipFile
 
 class ExtensionFormatException(message: String) : RuntimeException(message)
 
-/** What an extension file declares about itself. */
 class ExtensionManifest(
     val name: String,
     val entryClassName: String?,
@@ -17,8 +16,6 @@ class ExtensionManifest(
     val requiresResources: Boolean,
 )
 
-/** An extension file read off disk: its declaration, its Dalvik units, and an identity for the
- * exact bytes that were read, which is what the converted jar is cached against. */
 class OpenArchive(
     val file: File,
     val manifest: ExtensionManifest,
@@ -60,8 +57,6 @@ object ExtensionArchive {
         )
     }
 
-    /** classes.dex leads and the numbered units follow in numeric order. The converter merges them
-     * in this order and a later unit may only add to what an earlier one defined. */
     private fun dexEntries(zip: ZipFile): List<ZipEntry> {
         val units = ArrayList<Pair<Int, ZipEntry>>()
         val names = zip.entries()
@@ -74,6 +69,7 @@ object ExtensionArchive {
         return units.sortedBy { it.first }.map { it.second }
     }
 
+    // classes.dex leads and the numbered units follow in numeric order; a later unit may only add.
     private fun unitIndex(name: String): Int? {
         if (!name.endsWith(".dex") || name.contains('/')) return null
         val stem = name.removeSuffix(".dex")

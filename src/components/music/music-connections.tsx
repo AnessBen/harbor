@@ -8,7 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { ChevronLeft, Search } from "lucide-react";
+import { ChevronLeft, Search } from "@/components/icons/music-icons";
 import {
   errorText,
   MusicConnectionRow,
@@ -204,6 +204,7 @@ export function MusicConnections({ focusId, onClose }: { focusId?: string; onClo
         <details className="text-[13px] leading-relaxed text-ink-muted">
           <summary className="w-fit cursor-pointer text-ink">{t("music.legal.title")}</summary>
           <p className="mt-3">{t("music.legal.services")}</p>
+          <p className="mt-3">{t("music.legal.saving")}</p>
           <p className="mt-3">{t("music.legal.data")}</p>
         </details>
         {status === "loading" && (

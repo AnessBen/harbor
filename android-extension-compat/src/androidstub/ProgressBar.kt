@@ -1,6 +1,7 @@
 package android.widget
 
 import android.content.Context
+import android.graphics.drawable.Drawable
 import android.util.AttributeSet
 import android.view.View
 
@@ -12,4 +13,5 @@ open class ProgressBar @JvmOverloads constructor(
     var isIndeterminate: Boolean = true
     var progress: Int = 0
     var max: Int = 100
+    var progressDrawable: Drawable? = null
 }

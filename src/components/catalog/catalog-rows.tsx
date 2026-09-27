@@ -39,6 +39,7 @@ const BUILT_IN_CATALOG_ROW_KEYS: Readonly<Record<string, true>> = {
   "decade-90": true,
   "decade-80": true,
   "decade-70": true,
+  "black-and-white": true,
   "lang-jp": true,
   "lang-kr": true,
   "lang-fr": true,

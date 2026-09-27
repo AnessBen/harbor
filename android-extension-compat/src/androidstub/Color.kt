@@ -1,6 +1,5 @@
 package android.graphics
 
-/** Colour packing and the string parser extensions use for every hex literal they ship. */
 open class Color {
 
     companion object {
@@ -43,8 +42,6 @@ open class Color {
             "teal" to 0xFF008080.toInt(),
         )
 
-        /** Unparseable input yields opaque black rather than an exception, so one bad literal
-         *  tints a widget instead of killing the scraping path that built it. */
         @JvmStatic
         fun parseColor(colorString: String?): Int {
             val s = colorString?.trim() ?: return BLACK

@@ -328,6 +328,64 @@
 .music-hero-video[data-on]::after {
   opacity: 1;
 }
+[dir="rtl"] .music-hero-video {
+  clip-path: inset(0 calc(100% - var(--hero-media-col, 43.5%)) 0 0);
+}
+.music-hero-sound {
+  position: absolute;
+  z-index: 2;
+  inset-block-start: 14px;
+  inset-inline-end: 14px;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  color: #fff;
+  opacity: 0;
+  transform: scale(0.78);
+  filter: drop-shadow(0 2px 10px rgb(0 0 0 / 0.9));
+  pointer-events: none;
+  transition:
+    opacity 260ms ease-out,
+    transform 260ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+.music-hero-sound[data-show] {
+  opacity: 0.5;
+  transform: none;
+}
+.music-hero-sound[data-show]:not([data-state="loading"]) {
+  pointer-events: auto;
+}
+.music-hero-sound[data-show]:hover,
+.music-hero-sound[data-show]:focus-visible {
+  opacity: 1;
+}
+.music-hero-sound:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 4px;
+  border-radius: 999px;
+}
+.music-hero-sound-glyph {
+  grid-area: 1 / 1;
+  display: grid;
+  place-items: center;
+  opacity: 0;
+  transform: scale(0.62) rotate(-40deg);
+  transition:
+    opacity 220ms ease-out,
+    transform 340ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+.music-hero-sound-glyph[data-on] {
+  opacity: 1;
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .music-hero-sound,
+  .music-hero-sound-glyph {
+    transition-duration: 1ms;
+    transform: none;
+  }
+}
 .music-feature-backdrop {
   animation: music-hero-backdrop-in 900ms cubic-bezier(0.22, 0.61, 0.36, 1) backwards;
 }

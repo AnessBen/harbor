@@ -1,10 +1,5 @@
 package com.harbor.capstan
 
-/** The host facing shape of everything an extension can produce.
- *
- * Nothing here names a compat type, so a caller can consume the result of a scrape without
- * linking against the layer the extension was compiled for. */
-
 data class ProviderInfo(
     val name: String,
     val mainUrl: String,
@@ -15,6 +10,26 @@ data class ProviderInfo(
     val hasDownloadSupport: Boolean,
     val instantLinkLoading: Boolean,
 )
+
+data class CatalogueRow(
+    val name: String,
+    val data: String,
+    val horizontalImages: Boolean,
+    val declared: Boolean,
+)
+
+data class CatalogueSection(
+    val name: String,
+    val horizontalImages: Boolean,
+    val items: List<SearchItem>,
+)
+
+data class CataloguePage(
+    val sections: List<CatalogueSection>,
+    val hasNext: Boolean,
+) {
+    val items: Int get() = sections.sumOf { it.items.size }
+}
 
 data class SearchItem(
     val name: String,
@@ -36,7 +51,6 @@ data class EpisodeItem(
     val description: String?,
     val runtimeMinutes: Int?,
     val airDate: Long?,
-    /** Empty for anything that is not split by audio track. */
     val track: String,
 )
 
@@ -54,7 +68,6 @@ data class MediaItem(
     val contentRating: String?,
     val scoreOutOf10: Double?,
     val comingSoon: Boolean,
-    /** Set for a single playable item. An item with episodes carries its data per episode. */
     val playableData: String?,
     val episodes: List<EpisodeItem>,
     val recommendations: List<SearchItem>,
@@ -80,7 +93,6 @@ data class SubtitleItem(
 )
 
 data class LinkSet(
-    /** What the provider itself reported, which is not the same as having produced links. */
     val handled: Boolean,
     val links: List<StreamLink>,
     val subtitles: List<SubtitleItem>,

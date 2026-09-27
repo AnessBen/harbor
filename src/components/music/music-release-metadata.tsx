@@ -1,5 +1,5 @@
 import { MusicServiceLogo } from "./music-service-logo";
-import { Disc3 } from "lucide-react";
+import { Disc3 } from "@/components/icons/music-icons";
 import { useEffect, useState } from "react";
 import { useT, useUiLanguage } from "@/lib/i18n";
 import { loadMusicReleaseMetadata, type MusicReleaseDetails } from "@/lib/music/release-metadata";

@@ -2,14 +2,16 @@ const musicNowPlaying: Record<string, string> = {
   "music.artist.filmography": "Film ve TV",
   "music.action.error": "İşlem tamamlanamadı. Yeniden deneyin.",
   "music.radio.error": "Radyo başlatılamadı. Yeniden deneyin veya başka kaynak seçin.",
-  "music.download.action": "Şarkıyı indir",
-  "music.download.done": "İndirildi",
-  "music.download.busy": "İndiriliyor",
-  "music.download.retry": "İndirmeyi yeniden dene",
+  "music.download.action": "Parçayı kaydet",
+  "music.download.done": "Kaydedildi",
+  "music.download.busy": "Kaydediliyor",
+  "music.download.retry": "Yeniden kaydet",
   "music.download.unsupported":
     "Bu kaynak indirilebilir ses dosyası sunmuyor. Başka bir kaynak deneyin.",
   "music.download.missing": "Dosya eksik. Yeniden indirin.",
   "music.download.failed": "İndirme başarısız. Yeniden deneyin veya başka kaynak kullanın.",
+  "music.download.changeFolder": "Değiştir",
+  "music.download.defaultFolder": "Varsayılanı kullan",
   "music.download.empty":
     "Çevrimdışı dinlemek için oynatıcıdan veya şarkı menüsünden şarkı indirin.",
   "music.download.folder": "Klasörde göster",
@@ -73,12 +75,16 @@ const musicNowPlaying: Record<string, string> = {
   "music.buy.search": "{store} içinde ara",
 
   "music.artist.about": "Sanatçı hakkında",
+  "music.artist.save": "Sanatçıyı kaydet",
+  "music.artist.unsave": "Kayıtlı sanatçılardan kaldır",
 
   "music.artist.origin": "Köken",
 
   "music.artist.began": "Doğum / kuruluş",
 
   "music.artist.aliases": "Diğer adları",
+
+  "music.artist.label": "Plak şirketi",
 
   "music.artist.connections": "Üyeler ve iş birlikleri",
 
@@ -89,6 +95,9 @@ const musicNowPlaying: Record<string, string> = {
   "music.artist.merch": "Ürünler",
 
   "music.artist.official": "Resmî web sitesi",
+
+  "music.artist.kicker": "Sanatçı",
+  "music.artist.listenOn": "Şurada dinleyin",
 };
 
 export default musicNowPlaying;

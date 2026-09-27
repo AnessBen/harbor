@@ -1,10 +1,11 @@
 import type { MouseEvent, ReactNode } from "react";
-import { Play, Radio } from "lucide-react";
+import { Play, Radio } from "@/components/icons/music-icons";
 import { MusicPlaylistCover } from "@/components/music/music-playlist-cover";
 import { Poster } from "@/components/poster";
 import { useT } from "@/lib/i18n";
 import { MusicMediaBadge } from "./music-media-badge";
 import { MusicArtistLink } from "./music-artist-link";
+import type { AlbumExplicitMark } from "@/lib/music/album-explicit";
 import type { MusicCatalogItem } from "@/lib/music/types";
 
 export type MusicCardBadge =
@@ -115,6 +116,7 @@ export function MusicCoverCard({
   title,
   subtitle,
   badge,
+  explicitMark,
   onPlay,
   onOpen,
   onMenu,
@@ -125,6 +127,7 @@ export function MusicCoverCard({
   title?: string;
   subtitle?: string;
   badge?: MusicCardBadge | null;
+  explicitMark?: AlbumExplicitMark | null;
   onPlay?: () => void;
   onOpen?: () => void;
   onMenu?: (event: MouseEvent<HTMLElement>) => void;
@@ -180,6 +183,16 @@ export function MusicCoverCard({
             {heading}
           </span>
           {chip && <MusicCardBadgeChip badge={chip} />}
+          {explicitMark && (
+            <span
+              data-music-label={explicitMark === "explicit" ? "explicit" : "clean"}
+              title={t(`music.label.${explicitMark}`)}
+              aria-label={t(`music.label.${explicitMark}`)}
+              className="inline-flex shrink-0 items-center rounded-[2px] bg-elevated px-1 py-0.5 text-[9px] font-medium leading-none text-ink-muted"
+            >
+              {explicitMark === "explicit" ? "E" : t("music.label.clean")}
+            </span>
+          )}
           {item.kind === "track" && <MusicMediaBadge kind={item.mediaKind} compact />}
         </span>
       </button>

@@ -8,8 +8,6 @@ open class Resources {
 
     open fun getDisplayMetrics(): DisplayMetrics = DisplayMetrics()
 
-    /** Zero is what Android returns for a name with no entry in the resource table, and every
-     * extension that asks guards on it, so an unwired host makes those branches skip themselves. */
     open fun getIdentifier(name: String?, defType: String?, defPackage: String?): Int =
         PlatformHost.resourceId(name, defType, defPackage)
 
@@ -31,4 +29,6 @@ open class Resources {
 
         fun setTo(other: Theme) {}
     }
+
+    class NotFoundException(message: String?) : RuntimeException(message)
 }

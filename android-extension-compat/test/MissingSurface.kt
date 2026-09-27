@@ -3,12 +3,6 @@ package harbor.capstan.test
 import java.io.File
 import java.util.zip.ZipFile
 
-/** How much of a package an extension actually names, measured from its converted bytecode.
- *
- * A failure reports the first type that could not be resolved, which reads like a one line gap.
- * This is the rest of the iceberg: if the extension names sixty members of the package, no stub
- * is going to make it work, and knowing that before writing one is the whole value.
- */
 object MissingSurface {
 
     class Gap(val packageRoot: String, val types: List<String>)
@@ -29,9 +23,6 @@ object MissingSurface {
         return if (found.isEmpty()) null else Gap(root, found.toList())
     }
 
-    /** Walks the raw class bytes rather than parsing the constant pool: every reference to a type,
-     * whether a name or a descriptor, carries its path verbatim, so scanning for the package path
-     * finds all of them without needing a bytecode library on this classpath. */
     private fun collect(bytes: ByteArray, path: String, into: MutableSet<String>) {
         val needle = path.toByteArray(Charsets.UTF_8)
         var at = indexOf(bytes, needle, 0)

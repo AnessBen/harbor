@@ -5,6 +5,7 @@ import { loadInstalledStreamPlugins, subscribeStreamPluginStore } from "./store"
 export type {
   InstalledStreamPlugin,
   NativeExtensionRef,
+  PluginCatalogue,
   PluginCheckResult,
   PluginHealth,
   PluginLogLine,
@@ -55,6 +56,13 @@ export {
   setStreamPluginConfig,
 } from "./addon";
 export { splitRepoLinks } from "./manifest";
+export {
+  extensionCataloguePage,
+  extensionCataloguesSync,
+  refreshExtensionCatalogues,
+  subscribeExtensionCatalogues,
+} from "./catalogues";
+export { extensionCatalogueBase, isExtensionCatalogueBase } from "./extension/catalogue";
 
 let loading: Promise<void> | null = null;
 

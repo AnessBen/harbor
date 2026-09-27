@@ -457,7 +457,10 @@ export function createMpvBridge(mpvOptions?: MpvOptions): PlayerBridge {
           return;
         }
         lastRect = r;
-        await invoke("mpv_set_geometry", { geom: r });
+        await invoke("mpv_set_geometry", { geom: r }).catch((error) => {
+          lastRect = null;
+          throw error;
+        });
       } catch {}
     };
 

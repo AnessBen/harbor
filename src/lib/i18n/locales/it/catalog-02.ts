@@ -139,6 +139,8 @@ const catalog02: Record<string, string> = {
   Budget: "Budget",
   "Budget exhausted, resets at midnight UTC.": "Budget esaurito, si azzera a mezzanotte UTC.",
   "Buffer fill": "Riempimento del buffer",
+  "Reveal the dot on hover": "Mostra il punto al passaggio del mouse",
+  "The dot stays out of the way and appears when you point at the bar. Turn this off to keep it on screen the whole time.": "Il punto resta defilato e compare quando punti la barra. Disattivalo per tenerlo sempre visibile.",
   "Buffer fill brightness": "Luminosità del riempimento del buffer",
   Buffering: "Buffering",
   "Buffers the whole file in the background as you watch, even while paused, so big remuxes pre-load and you can scrub a cached file with no re-buffering. Works for debrid and P2P streams. Uses more disk and bandwidth; cleared when you switch or close.": "Carica in buffer l'intero file in background durante la visione, anche in pausa, così i remux di grandi dimensioni vengono precaricati e puoi spostarti all'interno di un file in cache senza dover attendere un nuovo buffering. Funziona con gli stream debrid e P2P. Usa più spazio su disco e larghezza di banda; la cache viene svuotata quando cambi contenuto o chiudi.",

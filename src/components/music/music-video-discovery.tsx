@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
-import { ArrowLeft, ArrowRight, Film, Mic2, Play, Radio, RotateCcw, Search } from "lucide-react";
+import { ArrowLeft, ArrowRight, Film, Mic2, Play, Radio, RotateCcw, Search } from "@/components/icons/music-icons";
 import { Poster } from "@/components/poster";
 import { MusicArtistLink } from "./music-artist-link";
+import { useMusicItemMenu } from "./music-item-menu";
 import { useT } from "@/lib/i18n";
 import { useDragScroll } from "@/lib/use-drag-scroll";
 import {
@@ -49,6 +50,12 @@ export function MusicVideoDiscovery({
     error: boolean;
   } | null>(null);
   const [edges, setEdges] = useState({ start: true, end: true });
+  const tracks = result?.tracks ?? [];
+  const itemMenu = useMusicItemMenu({
+    onPlay: (item) => {
+      if (item.kind === "track") onWatch(item, tracks);
+    },
+  });
   const rail = useDragScroll<HTMLDivElement>();
   useEffect(() => {
     setDraft(baseQuery);
@@ -200,8 +207,12 @@ export function MusicVideoDiscovery({
       ) : (
         <>
           <div className="music-video-rail" ref={railRef} {...rail.handlers}>
-            {current.tracks.map((track) => (
-              <div key={track.sourceId} className="music-video-tile">
+            {current.tracks.map((track, index) => (
+              <div
+                key={track.sourceId}
+                className="music-video-tile"
+                onContextMenu={itemMenu.openFor({ ...track, kind: "track" }, index)}
+              >
                 <button
                   type="button"
                   className="flex min-w-0 flex-col text-start"
@@ -234,6 +245,7 @@ export function MusicVideoDiscovery({
               </div>
             ))}
           </div>
+          {itemMenu.menu}
           <div className="music-video-rail-controls">
             <button
               type="button"

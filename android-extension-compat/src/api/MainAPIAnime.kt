@@ -35,7 +35,6 @@ fun AnimeLoadResponse.addEpisodes(status: DubStatus, episodes: List<Episode>?) {
     this.episodes[status] = episodes
 }
 
-/** Air dates are free text per site, and a page that fails to parse one is still a good page. */
 fun Episode.addDate(date: String?, format: String = "yyyy-MM-dd") {
     val text = date?.trim()
     if (text.isNullOrEmpty()) return

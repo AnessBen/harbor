@@ -7,11 +7,6 @@ import com.lagradost.cloudstream3.utils.ExtractorApi
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.extractorLog
 
-/** Twitch live channels and vods.
- *
- * Playback needs a signed token, which the site gets from its own graph endpoint before asking the
- * playlist server for the manifest. Both steps are done here so a channel link resolves to a
- * normal hls master the player can treat like any other. */
 open class TwitchExtractor : ExtractorApi() {
 
     override val name: String = "Twitch"
@@ -47,7 +42,6 @@ open class TwitchExtractor : ExtractorApi() {
         }
     }
 
-    /** The graph call returns the token and the signature that the playlist server checks. */
     private suspend fun accessToken(vod: String?, channel: String?): Pair<String, String>? {
         val isLive = vod == null
         val id = vod ?: channel ?: return null
@@ -85,14 +79,6 @@ open class TwitchExtractor : ExtractorApi() {
         return value to signature
     }
 
-    /** Whether the answer says this channel is not streaming.
-     *
-     * A token is issued for an offline channel exactly as it is for a live one, and the playlist
-     * server then answers 404 with a json body, so without this the extractor hands back a link
-     * that cannot play. The live status is asked for in the same graph call as the token, so it
-     * costs no extra request. Only an answer that carries the channel and no stream counts: a
-     * missing or null user means the question was not answered and the link is still worth having.
-     */
     private fun offline(tree: JsonNode): Boolean {
         val user = tree.path("user")
         if (!user.isObject) return false

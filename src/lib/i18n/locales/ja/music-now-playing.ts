@@ -2,14 +2,16 @@ const musicNowPlaying: Record<string, string> = {
   "music.artist.filmography": "映画・テレビ",
   "music.action.error": "操作を完了できませんでした。再試行してください。",
   "music.radio.error": "ラジオを開始できませんでした。再試行するか別のソースを選択してください。",
-  "music.download.action": "曲をダウンロード",
-  "music.download.done": "ダウンロード済み",
-  "music.download.busy": "ダウンロード中",
-  "music.download.retry": "再ダウンロード",
+  "music.download.action": "曲を保存",
+  "music.download.done": "保存済み",
+  "music.download.busy": "保存中",
+  "music.download.retry": "もう一度保存",
   "music.download.unsupported":
     "このソースにはダウンロード可能な音声ファイルがありません。別のソースをお試しください。",
   "music.download.missing": "ファイルが見つかりません。再ダウンロードしてください。",
   "music.download.failed": "ダウンロードに失敗しました。再試行するか別のソースをお試しください。",
+  "music.download.changeFolder": "変更",
+  "music.download.defaultFolder": "既定に戻す",
   "music.download.empty": "プレーヤーや曲のメニューからダウンロードしてオフラインで聴けます。",
   "music.download.folder": "フォルダーに表示",
   "music.download.delete": "ダウンロードを削除",
@@ -72,12 +74,16 @@ const musicNowPlaying: Record<string, string> = {
   "music.buy.search": "{store} で検索",
 
   "music.artist.about": "アーティストについて",
+  "music.artist.save": "アーティストを保存",
+  "music.artist.unsave": "保存したアーティストから削除",
 
   "music.artist.origin": "出身",
 
   "music.artist.began": "誕生 / 結成",
 
   "music.artist.aliases": "別名",
+
+  "music.artist.label": "レーベル",
 
   "music.artist.connections": "メンバーと共演者",
 
@@ -88,6 +94,9 @@ const musicNowPlaying: Record<string, string> = {
   "music.artist.merch": "グッズ",
 
   "music.artist.official": "公式サイト",
+
+  "music.artist.kicker": "アーティスト",
+  "music.artist.listenOn": "聴けるサービス",
 };
 
 export default musicNowPlaying;

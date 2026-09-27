@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowUpRight, LoaderCircle, ShoppingBag } from "lucide-react";
+import { ArrowUpRight, LoaderCircle, ShoppingBag } from "@/components/icons/music-icons";
 import { useT, useUiLanguage } from "@/lib/i18n";
 import { openUrl } from "@/lib/window";
 import type { MusicArtistProfile } from "@/lib/music/artist-profile";

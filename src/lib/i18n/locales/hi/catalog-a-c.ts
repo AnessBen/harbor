@@ -1218,6 +1218,8 @@ const catalogAC: Record<string, string> = {
   "Budget exhausted, resets at midnight UTC.":
     "बजट खत्म हो गया है। यह UTC के अनुसार आधी रात को रीसेट होगा।",
   "Buffer fill": "बफ़र फ़िल",
+  "Reveal the dot on hover": "होवर करने पर डॉट दिखाएँ",
+  "The dot stays out of the way and appears when you point at the bar. Turn this off to keep it on screen the whole time.": "डॉट रास्ते से हटा रहता है और जब आप बार पर पॉइंटर लाते हैं तब दिखता है। इसे बंद करें ताकि यह हर समय दिखता रहे।",
   "Buffer fill brightness": "बफ़र फ़िल की ब्राइटनेस",
   "Buffer size": "बफ़र का आकार",
   Buffering: "बफ़र हो रहा है",

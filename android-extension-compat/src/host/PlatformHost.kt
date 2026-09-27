@@ -1,5 +1,6 @@
 package harbor.compat.host
 
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
@@ -17,11 +18,10 @@ fun interface ActivityLauncher {
     fun launch(intent: Intent)
 }
 
-/** The single seam between the platform classes the extensions link against and the running host.
- *
- * Everything an extension can observe about "the device" is read from here, so the host can point
- * preferences at a real directory, route logging into its own log, and decide what an outbound
- * intent means, without any extension knowing the difference. */
+fun interface ClipboardSink {
+    fun copy(label: String?, text: String)
+}
+
 object PlatformHost {
 
     @Volatile
@@ -45,6 +45,9 @@ object PlatformHost {
     @Volatile
     var activityLauncher: ActivityLauncher? = null
 
+    @Volatile
+    var clipboardSink: ClipboardSink? = null
+
     val applicationContext: Context by lazy { Context() }
 
     val packageManager: PackageManager by lazy { PackageManager() }
@@ -52,6 +55,8 @@ object PlatformHost {
     val resources: Resources by lazy { Resources() }
 
     val connectivityManager: ConnectivityManager by lazy { ConnectivityManager() }
+
+    val clipboardManager: ClipboardManager by lazy { ClipboardManager() }
 
     private val preferenceFiles = ConcurrentHashMap<String, SharedPreferences>()
 
@@ -62,7 +67,6 @@ object PlatformHost {
 
     fun preferenceDir(): File = File(dataDir, "preferences")
 
-    /** Gives a name the id an extension will later look up with getIdentifier. */
     fun registerResource(type: String, name: String, id: Int) {
         resourceIds["$type/$name"] = id
     }
@@ -83,6 +87,15 @@ object PlatformHost {
         val line = "${levelLabel(priority)}/$tag: $message"
         if (priority >= 5) System.err.println(line) else System.out.println(line)
         error?.printStackTrace(if (priority >= 5) System.err else System.out)
+    }
+
+    fun copyToClipboard(label: String?, text: String) {
+        val sink = clipboardSink
+        if (sink != null) {
+            sink.copy(label, text)
+            return
+        }
+        log(4, "Clipboard", "no sink wired, dropping ${text.length} characters")
     }
 
     fun launch(intent: Intent) {

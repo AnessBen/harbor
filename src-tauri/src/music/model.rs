@@ -11,6 +11,8 @@ pub struct MusicAlbumRef {
     pub artwork: String,
     pub year: Option<u32>,
     pub track_count: Option<u32>,
+    #[serde(default)]
+    pub explicit: Option<bool>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -228,6 +230,7 @@ mod tests {
             artwork: "https://example.test/art.jpg".to_string(),
             year: Some(2003),
             track_count: Some(14),
+            explicit: None,
         });
         let value = serde_json::to_value(&album).expect("album item");
         assert_eq!(value["kind"], "album");

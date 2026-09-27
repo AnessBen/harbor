@@ -1,7 +1,5 @@
 package io.ktor.http
 
-/** Parses a url the way the original library does: nothing is decoded on the way in, because an
- * extension that re-sends the path has to send back exactly what it was given. */
 fun Url(urlString: String): Url = URLBuilder(urlString).build()
 
 fun URLBuilder(urlString: String): URLBuilder = URLBuilder().takeFrom(urlString)

@@ -2,9 +2,6 @@ package com.lagradost.cloudstream3.syncproviders.providers
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 
-/** Shapes of the AniList GraphQL payloads that extensions embed in their own response models.
- * Every field is optional because an extension asks for whatever subset of the schema it needs,
- * and unknown keys are ignored so a wider query still parses. */
 class AniListApi {
     @JsonIgnoreProperties(ignoreUnknown = true)
     data class Title(
@@ -16,6 +13,19 @@ class AniListApi {
     @JsonIgnoreProperties(ignoreUnknown = true)
     data class CoverImage(
         val extraLarge: String? = null,
+        val large: String? = null,
+        val medium: String? = null,
+    )
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    data class MediaTitle(
+        val romaji: String? = null,
+        val english: String? = null,
+        val `native`: String? = null,
+    )
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    data class MediaCoverImage(
         val large: String? = null,
         val medium: String? = null,
     )
@@ -41,19 +51,19 @@ class AniListApi {
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     data class RecommendationEdge(
-        val node: RecommendationNode? = null,
+        val node: Recommendation? = null,
     )
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    data class RecommendationNode(
+    data class Recommendation(
         val id: Int? = null,
-        val mediaRecommendation: RecommendationMedia? = null,
+        val mediaRecommendation: RecommendedMedia? = null,
     )
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    data class RecommendationMedia(
+    data class RecommendedMedia(
         val id: Int? = null,
-        val title: Title? = null,
-        val coverImage: CoverImage? = null,
+        val title: MediaTitle? = null,
+        val coverImage: MediaCoverImage? = null,
     )
 }

@@ -7,6 +7,12 @@ as the scoreboard. It is measured from the bytecode, never guessed from document
 
 This half answers WHICH members are needed. Run tools/usage.sh afterwards to add HOW each one is
 referenced, which is the other half of the contract and is what spec/groups/*.txt is cut from.
+
+Usage: required.py <dir|LABEL=dir> [more...] [--out path]
+
+A LABEL= prefix qualifies that root's archive names in the output. Two roots can ship an archive
+under the same file name at different versions, and an unqualified name would silently merge the
+two into one entry, so the label is what keeps the per-extension counts honest.
 """
 
 import json
@@ -74,22 +80,41 @@ def members(path):
     return out
 
 
-if __name__ == "__main__":
-    root = sys.argv[1]
-    per, union = {}, {}
-    for f in sorted(os.listdir(root)):
-        if not f.endswith(".cs3"):
+def parse_args(argv):
+    roots, out = [], None
+    i = 0
+    while i < len(argv):
+        if argv[i] == "--out":
+            out = argv[i + 1]
+            i += 2
             continue
-        ms = members(os.path.join(root, f))
-        per[f] = sorted("|".join(m) for m in ms)
-        for m in ms:
-            union.setdefault("|".join(m), []).append(f)
+        label, sep, path = argv[i].partition("=")
+        roots.append((label, path) if sep else ("", argv[i]))
+        i += 1
+    if not roots:
+        raise SystemExit(__doc__.strip().splitlines()[-1])
+    return roots, out
+
+
+if __name__ == "__main__":
+    roots, out = parse_args(sys.argv[1:])
+    per, union = {}, {}
+    for label, root in roots:
+        for f in sorted(os.listdir(root)):
+            if not f.endswith(".cs3"):
+                continue
+            key = label + "/" + f if label else f
+            ms = members(os.path.join(root, f))
+            per[key] = sorted("|".join(m) for m in ms)
+            for m in ms:
+                union.setdefault("|".join(m), []).append(key)
     doc = {
         "extensions": len(per),
         "required": {k: {"exts": sorted(v)} for k, v in sorted(union.items())},
         "per_extension": per,
     }
-    out = os.path.join(os.path.dirname(root), "spec", "required.json")
+    if out is None:
+        out = os.path.join(os.path.dirname(roots[0][1]), "spec", "required.json")
     with open(out, "w", encoding="utf-8", newline="\n") as fh:
         json.dump(doc, fh, indent=1, sort_keys=True)
     kinds = {}

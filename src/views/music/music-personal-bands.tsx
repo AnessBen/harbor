@@ -1,4 +1,4 @@
-import { Music2, Plus, X } from "lucide-react";
+import { Music2, Plus, X } from "@/components/icons/music-icons";
 import { hideMusicRecent, isMusicRecentHidden } from "@/lib/music/hidden-recents";
 import { MusicTrackMixChip, MusicTrackPlaylistChip } from "@/components/music/music-playlist-chip";
 import { MusicMediaBadge } from "@/components/music/music-media-badge";

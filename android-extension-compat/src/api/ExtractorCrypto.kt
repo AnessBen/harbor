@@ -7,14 +7,6 @@ import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.IvParameterSpec
 import javax.crypto.spec.SecretKeySpec
 
-/** The block cipher work several player apis need to hand back a stream url.
- *
- * Every host here answers with the same shape: a body that is not json until it has been decoded
- * and decrypted, so keeping that step in one place is what lets each extractor stay a short class
- * that only knows its own endpoint and its own key. */
-
-/** Decrypts an AES CBC body. Returns null rather than throwing, because a host rotating its key is
- * an ordinary event and must cost one dead extractor, not the whole link load. */
 internal fun aesCbcDecrypt(body: ByteArray, key: ByteArray, iv: ByteArray): String? = try {
     val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
     cipher.init(Cipher.DECRYPT_MODE, SecretKeySpec(key, "AES"), IvParameterSpec(iv))
@@ -24,8 +16,6 @@ internal fun aesCbcDecrypt(body: ByteArray, key: ByteArray, iv: ByteArray): Stri
     null
 }
 
-/** Decrypts an AES GCM body whose authentication tag is the last 16 bytes, which is where every
- * browser crypto api puts it and therefore where every player that encrypts in the page puts it. */
 internal fun aesGcmDecrypt(body: ByteArray, key: ByteArray, iv: ByteArray): String? = try {
     val cipher = Cipher.getInstance("AES/GCM/NoPadding")
     cipher.init(Cipher.DECRYPT_MODE, SecretKeySpec(key, "AES"), GCMParameterSpec(TAG_BITS, iv))
@@ -37,7 +27,6 @@ internal fun aesGcmDecrypt(body: ByteArray, key: ByteArray, iv: ByteArray): Stri
 
 private const val TAG_BITS = 128
 
-/** A key the host writes shorter than the cipher wants, zero filled up to [size]. */
 internal fun paddedKey(secret: String, size: Int): ByteArray =
     secret.toByteArray(Charsets.UTF_8).copyOf(size)
 
@@ -54,7 +43,6 @@ internal fun decodeHex(text: String): ByteArray? {
     }
 }
 
-/** Base64 as the players write it: url safe alphabet, padding usually left off. */
 internal fun decodeBase64Url(text: String): ByteArray? {
     val clean = text.trim().trim('"').replace('-', '+').replace('_', '/')
     if (clean.length < 8) return null

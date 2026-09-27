@@ -17,10 +17,6 @@ private const val DESKTOP_AGENT =
 
 private val started = AtomicBoolean(false)
 
-/** The extractor library reads its downloader out of a static that the phone app fills in at
- * startup, so an extension built against it never calls init itself and would find that static
- * null here. Nothing else in the layer needs this, and a host that ships without the library
- * should lose one extension rather than all of them. */
 internal fun startNewPipe() {
     if (!started.compareAndSet(false, true)) return
     try {
@@ -31,8 +27,6 @@ internal fun startNewPipe() {
     }
 }
 
-/** Reads the client per call rather than holding one, so a host that replaces the shared client
- * after startup is honoured here too. */
 private class HostDownloader : Downloader() {
 
     override fun execute(request: Request): Response {

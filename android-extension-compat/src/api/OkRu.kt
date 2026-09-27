@@ -8,10 +8,6 @@ import com.lagradost.cloudstream3.utils.ExtractorLinkType
 import com.lagradost.cloudstream3.utils.Qualities
 import com.lagradost.cloudstream3.utils.extractorLog
 
-/** ok.ru, which anime extensions lean on as a mirror.
- *
- * The player state is an html escaped json blob in a data-options attribute, holding both a
- * progressive url per named quality and, on newer videos, an hls manifest. */
 open class OkRu : ExtractorApi() {
 
     override val name: String = "Okru"

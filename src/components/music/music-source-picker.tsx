@@ -9,7 +9,7 @@ import {
   type ReactNode,
   type RefObject,
 } from "react";
-import { Check, ExternalLink, LoaderCircle, Music2, Unplug, X } from "lucide-react";
+import { Check, ExternalLink, LoaderCircle, Music2, Unplug, X } from "@/components/icons/music-icons";
 import { ModalShell, useModalExit } from "@/components/modal-shell";
 import { MusicSourceRow } from "@/components/music/music-source-row";
 import { useT } from "@/lib/i18n";

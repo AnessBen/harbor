@@ -8,7 +8,7 @@ import {
   ChevronLeft,
   Clock3,
   Disc3,
-  ExternalLink,
+  Heart,
   ListMusic,
   ListPlus,
   LoaderCircle,
@@ -18,7 +18,7 @@ import {
   UserRound,
   Video,
   X,
-} from "lucide-react";
+} from "@/components/icons/music-icons";
 import { Dropdown } from "@/components/dropdown";
 import { MusicQualityBadge } from "@/components/music/music-quality-badge";
 import { MusicReleaseMetadata } from "@/components/music/music-release-metadata";
@@ -30,6 +30,8 @@ import {
   MusicTrackPlaylistChip,
 } from "@/components/music/music-playlist-chip";
 import { MusicCollectionControls } from "@/components/music/music-collection-controls";
+import { MusicStickyTitle } from "@/components/music/music-sticky-title";
+import { toggleLikedArtist, useLikedArtist } from "@/lib/music/liked-artists";
 import { musicSourceLink } from "@/lib/music/source-link";
 import { MusicServiceLogo } from "@/components/music/music-service-logo";
 import { openUrl } from "@/lib/window";
@@ -38,7 +40,7 @@ import { MusicCardsSkeleton, MusicTrackRowsSkeleton } from "@/components/music/m
 import { MusicCatalogRow } from "@/components/music/music-catalog-row";
 import { Poster } from "@/components/poster";
 import { useMusicPlaylistPicker } from "@/components/music/music-playlist-picker";
-import { enqueueMusic, toggleMusicLiked, useMusicPlayer } from "@/lib/music/player";
+import { enqueueMusic, useMusicPlayer } from "@/lib/music/player";
 import { useRecordingProfile } from "@/lib/music/use-recording-profile";
 import { useT, useUiLanguage } from "@/lib/i18n";
 import { loadArtistProfile } from "@/lib/music/artist-profile";
@@ -117,6 +119,7 @@ export function MusicDetail({
   const language = useUiLanguage();
   const [artistImage, setArtistImage] = useState<string | null>(null);
   const { item, tracks, loading, error } = detail;
+  const artistSaved = useLikedArtist(item.kind === "artist" ? item : null);
   const heroTrack = item.kind === "track" ? item : null;
   const heroMenu = useMusicTrackContextMenu(heroTrack, {
     onPlay: heroTrack ? () => onPlay(heroTrack, [heroTrack]) : undefined,
@@ -225,6 +228,7 @@ export function MusicDetail({
         <ChevronLeft size={18} />
         {t("music.watch.back")}
       </button>
+      <MusicStickyTitle title={title} tracks={filtered} onPlay={onPlay} />
       <header className="music-detail-hero">
         {heroMenu.menu}
         <div
@@ -259,15 +263,9 @@ export function MusicDetail({
               {item.kind === "album" && item.year ? ` / ${item.year}` : ""}
             </p>
           )}
-          {item.kind !== "track" && !loading && !error && (
+          {item.kind !== "track" && item.kind !== "artist" && !loading && !error && (
             <p className="mt-3 text-sm text-ink-muted">
-              {item.kind === "artist"
-                ? t(
-                    detail.trackScope === "top"
-                      ? "music.artist.popular"
-                      : "music.artist.recordings",
-                  )
-                : t("music.trackCount", { count: tracks.length })}
+              {t("music.trackCount", { count: tracks.length })}
             </p>
           )}
           {item.kind === "track" && (
@@ -296,24 +294,50 @@ export function MusicDetail({
               <MusicTrackPlaylistChip track={item} />
             </div>
           )}
-          {source && (
-            <button
-              type="button"
-              onClick={() => openUrl(source.url)}
-              className="mt-3 inline-flex min-h-10 items-center gap-2 text-sm text-ink-muted underline-offset-4 hover:text-ink hover:underline"
-            >
-              <MusicServiceLogo source={item.connectorId ?? ""} itemId={item.id} size={20} />
-              {source.name}
-              <ExternalLink size={14} aria-hidden />
-            </button>
-          )}
           {item.kind === "track" && <MusicQualityBadge track={item} />}
+          {tracks.length > 0 && (
+            <div className="music-detail-hero-actions">
+              <MusicCollectionControls
+                tracks={filtered}
+                onPlay={onPlay}
+                disabled={loading}
+                extra={
+                  <>
+                    {item.kind === "artist" && (
+                      <button
+                        type="button"
+                        className="music-collection-extra"
+                        aria-pressed={artistSaved}
+                        aria-label={t(artistSaved ? "music.artist.unsave" : "music.artist.save")}
+                        title={t(artistSaved ? "music.artist.unsave" : "music.artist.save")}
+                        onClick={() => toggleLikedArtist(item)}
+                      >
+                        <Heart size={24} fill={artistSaved ? "currentColor" : "none"} aria-hidden />
+                      </button>
+                    )}
+                    {source && (
+                      <button
+                        type="button"
+                        className="music-collection-extra music-collection-source"
+                        onClick={() => openUrl(source.url)}
+                        aria-label={source.name}
+                        title={source.name}
+                      >
+                        <MusicServiceLogo
+                          source={item.connectorId ?? ""}
+                          itemId={item.id}
+                          size={22}
+                        />
+                      </button>
+                    )}
+                  </>
+                }
+              />
+            </div>
+          )}
         </div>
       </header>
       <div className="music-detail-actions">
-        {tracks.length > 0 && (
-          <MusicCollectionControls tracks={filtered} onPlay={onPlay} disabled={loading} />
-        )}
         {item.kind === "track" && (
           <>
             <button
@@ -416,8 +440,6 @@ export function MusicDetail({
               onAddToQueue={() => enqueueMusic(track)}
               onAddToPlaylist={() => openPlaylistPicker(track)}
               onGoToArtist={() => onArtistSearch(track.artist, track)}
-              liked={player.likedIds.includes(track.id)}
-              onToggleFavorite={() => toggleMusicLiked(track)}
             />
           ))}
         </div>

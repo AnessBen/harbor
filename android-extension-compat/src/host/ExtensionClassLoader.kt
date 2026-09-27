@@ -15,12 +15,6 @@ private fun <T> Enumeration<T>.collect(): List<T> {
     return out
 }
 
-/** Stands between an extension and the host: it hands out the compat layer and the dependency
- * jars by delegating to the loader that already defined them, and answers everything else with a
- * ClassNotFoundException.
- *
- * Delegation rather than a second copy is the point. A class handed back here is the very class
- * the host holds, so a provider the extension registers is a provider the host can call. */
 class CompatParentLoader(private val compat: ClassLoader) : ClassLoader(getPlatformClassLoader()) {
 
     override fun loadClass(name: String, resolve: Boolean): Class<*> {
@@ -56,11 +50,6 @@ class CompatParentLoader(private val compat: ClassLoader) : ClassLoader(getPlatf
     }
 }
 
-/** Child first loader over one converted extension jar.
- *
- * The shared prefixes are the exception to child first and go to the parent even when the jar
- * carries a class of that name, because two copies of a compat type are two unrelated types at
- * runtime and every call between host and extension across them would fail. */
 class ExtensionClassLoader(
     jar: File,
     private val compat: CompatParentLoader,

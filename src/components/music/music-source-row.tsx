@@ -1,4 +1,4 @@
-import { Check, LoaderCircle, Music2, Play } from "lucide-react";
+import { Check, LoaderCircle, Music2, Play } from "@/components/icons/music-icons";
 import type { MusicSourceCandidate } from "@/lib/music/types";
 import { useT } from "@/lib/i18n";
 import { MusicServiceLogo } from "./music-service-logo";

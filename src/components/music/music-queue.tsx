@@ -15,7 +15,7 @@ import {
   Trash2,
   Volume2,
   X,
-} from "lucide-react";
+} from "@/components/icons/music-icons";
 import { Poster } from "@/components/poster";
 import { MusicServiceLogo } from "./music-service-logo";
 import "./music-queue.css";

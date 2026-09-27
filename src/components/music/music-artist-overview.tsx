@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowUpRight, Globe2, ShoppingBag } from "lucide-react";
+import { ArrowUpRight, Globe2, ShoppingBag } from "@/components/icons/music-icons";
 import { useT, useUiLanguage } from "@/lib/i18n";
 import { openUrl } from "@/lib/window";
 import { requestMusicGenre } from "@/lib/music/navigation";

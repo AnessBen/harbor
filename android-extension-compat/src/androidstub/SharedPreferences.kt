@@ -20,6 +20,14 @@ interface SharedPreferences {
 
     fun edit(): Editor
 
+    fun registerOnSharedPreferenceChangeListener(listener: OnSharedPreferenceChangeListener?)
+
+    fun unregisterOnSharedPreferenceChangeListener(listener: OnSharedPreferenceChangeListener?)
+
+    interface OnSharedPreferenceChangeListener {
+        fun onSharedPreferenceChanged(preferences: SharedPreferences?, key: String?)
+    }
+
     interface Editor {
 
         fun putString(key: String, value: String?): Editor

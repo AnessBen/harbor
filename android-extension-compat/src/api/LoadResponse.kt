@@ -34,11 +34,8 @@ interface LoadResponse {
         const val TMDB_ID = "tmdbId"
         const val IMDB_ID = "imdbId"
         const val SIMKL_ID = "simklId"
+        const val KITSU_ID = "kitsuId"
 
-        /** Erasure leaves all of these taking a bare List, so the element type is not part of the
-         * binary contract and the extensions do not agree on it: one passes ActorData, another a
-         * pair of actor and role, another a pair of actor and role name, another bare names. Only
-         * the value itself says which, so every entry point reads it rather than casts it. */
         fun LoadResponse.addActorsRole(actors: List<*>?) {
             if (actors.isNullOrEmpty()) return
             this.actors = actors.mapNotNull(::readActor)
@@ -49,9 +46,12 @@ interface LoadResponse {
             this.actors = actors.mapNotNull(::readActor)
         }
 
-        /** Upstream declares this as `addActors(List<String>)` renamed with `@JvmName`, which is
-         * the only reason the name-only variant carries a name of its own. */
         fun LoadResponse.addActorNames(actors: List<*>?) {
+            if (actors.isNullOrEmpty()) return
+            this.actors = actors.mapNotNull(::readActor)
+        }
+
+        fun LoadResponse.addActorsOnly(actors: List<*>?) {
             if (actors.isNullOrEmpty()) return
             this.actors = actors.mapNotNull(::readActor)
         }
@@ -72,14 +72,24 @@ interface LoadResponse {
             this.syncData[IMDB_ID] = id ?: return
         }
 
-        /** Given a url rather than an id, only the id inside it is kept, because that is what the
-         * key holds and what every reader of it expects. */
         fun LoadResponse.addImdbUrl(url: String?) {
             addImdbId(url?.let { IMDB_ID_IN_URL.find(it)?.value })
         }
 
         fun LoadResponse.addSimklId(id: Int?) {
             this.syncData[SIMKL_ID] = (id ?: return).toString()
+        }
+
+        fun LoadResponse.addKitsuId(id: String?) {
+            this.syncData[KITSU_ID] = id ?: return
+        }
+
+        fun LoadResponse.addScore(score: String?, maxValue: Int = 10) {
+            this.score = Score.from(score, maxValue) ?: return
+        }
+
+        fun LoadResponse.addDuration(durationText: String?) {
+            this.duration = getDurationFromString(durationText) ?: return
         }
 
         suspend fun LoadResponse.addTrailer(

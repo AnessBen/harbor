@@ -3,11 +3,6 @@ package io.ktor.http
 import java.io.ByteArrayOutputStream
 import java.nio.charset.Charset
 
-/** Percent decoding over a range of a string.
- *
- * The three defaults are load bearing: the compiler emits the bridge extensions call from them.
- * An escape that is not valid hex is left as written rather than throwing, because a scraped page
- * carries stray percent signs all the time. */
 fun String.decodeURLPart(
     start: Int = 0,
     end: Int = length,

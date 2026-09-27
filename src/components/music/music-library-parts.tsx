@@ -9,7 +9,7 @@ import {
   Play,
   Plus,
   X,
-} from "lucide-react";
+} from "@/components/icons/music-icons";
 import { AnchoredMenu } from "@/components/anchored-menu";
 import { MusicPlaylistCover } from "./music-playlist-cover";
 import { MusicCollectionControls } from "./music-collection-controls";
@@ -18,7 +18,7 @@ import { MusicMediaBadge } from "./music-media-badge";
 import { useMusicPlaylistPicker } from "./music-playlist-picker";
 import { useMusicSourcePicker } from "./music-source-picker";
 import { useT } from "@/lib/i18n";
-import { LoaderCircle } from "lucide-react";
+import { LoaderCircle } from "@/components/icons/music-icons";
 import { nowPlayingMatches } from "@/lib/music/now-playing-key";
 import { recordMusicPlaylistPlayback } from "@/lib/music/playback-origin";
 import { useMusicNowPlaying } from "@/lib/music/use-now-playing";
@@ -244,6 +244,17 @@ function LibraryTrack({
           </span>
         </span>
       </div>
+      <button
+        type="button"
+        className="music-library-track-save"
+        data-saved={liked || undefined}
+        aria-pressed={liked}
+        aria-label={t(liked ? "music.unsaveTrack" : "music.saveTrack")}
+        title={t(liked ? "music.unsaveTrack" : "music.saveTrack")}
+        onClick={() => toggleMusicLiked(track)}
+      >
+        <Heart size={16} fill={liked ? "currentColor" : "none"} aria-hidden="true" />
+      </button>
       <span className="music-library-track-duration">{track.durationLabel}</span>
       <button
         type="button"

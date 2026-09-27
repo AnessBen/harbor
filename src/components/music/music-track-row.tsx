@@ -1,11 +1,12 @@
 import { useRef, useState, type MouseEvent, type ReactNode } from "react";
-import { GripVertical, Heart, LoaderCircle, MoreHorizontal, Pause, Play } from "lucide-react";
+import { GripVertical, Heart, LoaderCircle, MoreHorizontal, Pause, Play } from "@/components/icons/music-icons";
 import { MusicTrackMenu, useMusicTrackMenuItems } from "./music-track-menu";
 import { MusicCardBadgeChip, type MusicCardBadge } from "@/components/music/music-cover-card";
 import { Poster } from "@/components/poster";
 import { useT } from "@/lib/i18n";
 import type { MusicTrack } from "@/lib/music/types";
-import { toggleMusicPlayback } from "@/lib/music/player";
+import { toggleMusicLiked, toggleMusicPlayback } from "@/lib/music/player";
+import { useMusicTrackLiked } from "@/lib/music/use-track-liked";
 import { MusicQualityBadge } from "./music-quality-badge";
 import { MusicMediaBadge } from "./music-media-badge";
 import { MusicArtistLink } from "./music-artist-link";
@@ -34,8 +35,9 @@ export function MusicTrackRow({
   onGoToArtist,
   onGoToAlbum,
   onMoreLikeThis,
-  liked = false,
+  liked,
   onToggleFavorite,
+  saveable = true,
   showDuration = false,
   nowPlaying = false,
   loading = false,
@@ -54,6 +56,7 @@ export function MusicTrackRow({
   onMoreLikeThis?: () => void;
   liked?: boolean;
   onToggleFavorite?: () => void;
+  saveable?: boolean;
   showDuration?: boolean;
   nowPlaying?: boolean;
   loading?: boolean;
@@ -61,6 +64,9 @@ export function MusicTrackRow({
   className?: string;
 }) {
   const t = useT();
+  const tracked = useMusicTrackLiked(track);
+  const saved = liked ?? tracked;
+  const save = onToggleFavorite ?? (() => toggleMusicLiked(track));
   const anchorRef = useRef<HTMLButtonElement | null>(null);
   const [open, setOpen] = useState(false);
   const seed = `track:${track.connectorId ?? ""}:${track.sourceId ?? track.id}`;
@@ -173,18 +179,19 @@ export function MusicTrackRow({
           {track.durationLabel}
         </span>
       )}
-      {onToggleFavorite && (
+      {saveable && (
         <button
           type="button"
           onClick={(event) => {
             event.stopPropagation();
-            onToggleFavorite();
+            save();
           }}
-          aria-pressed={liked}
-          aria-label={t(liked ? "music.unsaveTrack" : "music.saveTrack")}
-          className={`grid h-11 w-11 shrink-0 place-items-center rounded-full transition-[color,background-color,opacity] duration-200 ease-out hover:bg-elevated ${liked ? "text-accent opacity-100" : "text-ink-subtle opacity-0 hover:text-ink focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100 group-data-[menu-open]:opacity-100"}`}
+          aria-pressed={saved}
+          aria-label={t(saved ? "music.unsaveTrack" : "music.saveTrack")}
+          title={t(saved ? "music.unsaveTrack" : "music.saveTrack")}
+          className={`grid h-11 w-11 shrink-0 place-items-center rounded-full transition-[color,background-color,opacity] duration-200 ease-out hover:bg-elevated ${saved ? "text-accent opacity-100" : "text-ink-subtle opacity-0 hover:text-ink focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100 group-data-[menu-open]:opacity-100"}`}
         >
-          <Heart size={16} fill={liked ? "currentColor" : "none"} aria-hidden="true" />
+          <Heart size={16} fill={saved ? "currentColor" : "none"} aria-hidden="true" />
         </button>
       )}
       <button

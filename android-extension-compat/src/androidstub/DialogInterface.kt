@@ -22,6 +22,14 @@ interface DialogInterface {
         fun onCancel(dialog: DialogInterface?)
     }
 
+    interface OnShowListener {
+        fun onShow(dialog: DialogInterface?)
+    }
+
+    interface OnMultiChoiceClickListener {
+        fun onClick(dialog: DialogInterface?, which: Int, isChecked: Boolean)
+    }
+
     companion object {
         const val BUTTON_POSITIVE: Int = -1
         const val BUTTON_NEGATIVE: Int = -2

@@ -68,6 +68,8 @@ mod discord_rp;
 #[cfg(desktop)]
 mod display_fit;
 #[cfg(desktop)]
+mod dj_deck;
+#[cfg(desktop)]
 mod dlna;
 #[cfg(desktop)]
 mod dvr;
@@ -726,6 +728,7 @@ pub fn run() {
     win_graphics::configure_windows_graphics();
     let _ = rustls::crypto::ring::default_provider().install_default();
     trailer::sweep_cache();
+    std::thread::spawn(trailer::sweep_ytdlp_extractions);
     std::thread::spawn(temp_prune::sweep_temp);
 
     let proxy_state = tauri::async_runtime::block_on(stream_proxy::ProxyState::start())
@@ -1082,12 +1085,39 @@ pub fn run() {
             music::music_play_track,
             music::music_engine_pause,
             music::music_engine_seek,
+            music::music_deck_loop,
+            music::music_deck_scratch,
+            music::music_prewarm_track,
+            music::music_scratch_window,
+            music::music_scratch_hold,
+            music::music_cable_status,
+            music::music_cable_create,
+            music::music_cable_destroy,
+            music::music_deck_play,
+            music::music_deck_pause,
+            music::music_deck_seek,
+            music::music_deck_volume,
+            music::music_deck_stop,
+            music::music_deck_states,
+            music::music_deck_primary,
+            music::music_deck_crossfade,
+            music::music_deck_crossfade_get,
+            music::music_fx_set,
+            music::music_fx_clear,
+            music::music_fx_get,
             music::music_engine_set_volume,
             music::music_audio_devices,
             music::music_audio_settings_get,
             music::music_audio_meter_set_enabled,
             music::music_audio_meter_snapshot,
             music::music_audio_settings_set,
+            music::music_export_filtered,
+            music::music_broadcast_targets,
+            music::music_broadcast_start,
+            music::music_broadcast_stop,
+            music::music_broadcast_status,
+            dj_deck::dj_deck_open,
+            dj_deck::dj_deck_close,
             music::music_engine_stop,
             music::music_home_rows,
             music::music_browse_connector,
@@ -1211,10 +1241,13 @@ pub fn run() {
             capstan::capstan_search,
             capstan::capstan_load,
             capstan::capstan_load_links,
+            capstan::capstan_catalogue,
+            capstan::capstan_catalogue_page,
             discord_rp::discord_set_presence,
             discord_rp::discord_clear,
             media_controls::media_controls_update,
             media_controls::media_controls_music_state,
+            media_controls::media_controls_music_art,
             media_controls::media_controls_seeked,
             media_controls::media_controls_clear,
             gamepad::gamepad_list,

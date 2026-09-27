@@ -4,9 +4,6 @@ import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.databind.json.JsonMapper
 import com.fasterxml.jackson.module.kotlin.KotlinModule
 
-/** The serializer half of the extension utility surface. Extensions call toJson on data classes
- * they defined themselves, so the mapper has to understand Kotlin constructors and has to skip
- * nulls, which is what their payloads were shaped against. */
 object AppUtils {
 
     private val mapper: JsonMapper = JsonMapper.builder()

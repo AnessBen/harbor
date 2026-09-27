@@ -1,8 +1,4 @@
 #!/usr/bin/env node
-// Regenerates the Windows thumbnail-toolbar glyphs in src-tauri/icons/thumbbar.
-// They are hand-drawn because 16x16 is too small to downscale anything into: a
-// scaled vector turns to mush at this size, so every pixel is placed here.
-// Run: node scripts/thumbbar-icons.mjs
 
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -106,8 +102,6 @@ const PAUSE = [
   "................",
 ];
 
-// Speaker on the left, a bold X clear of it on the right. An X drawn one pixel
-// thick vanishes at this size, so both strokes are two pixels wide.
 const MUTE = [
   "................",
   "................",
@@ -127,7 +121,38 @@ const MUTE = [
   "................",
 ];
 
-/** Next is previous facing the other way, and fast-forward is rewind facing the other way. */
+const SOUND = [
+  "................",
+  "................",
+  "................",
+  "......#.........",
+  ".....##.....#...",
+  "....###.#....#..",
+  ".######..#....#.",
+  ".######..#....#.",
+  ".######..#....#.",
+  ".######..#....#.",
+  "....###.#....#..",
+  ".....##.....#...",
+  "......#.........",
+  "................",
+  "................",
+  "................",
+];
+
+function outline(rows) {
+  const on = (y, x) => y >= 0 && y < SIZE && x >= 0 && x < SIZE && rows[y][x] === "#";
+  return rows.map((row, y) =>
+    [...row]
+      .map((cell, x) =>
+        cell === "#" && (!on(y - 1, x) || !on(y + 1, x) || !on(y, x - 1) || !on(y, x + 1))
+          ? "#"
+          : ".",
+      )
+      .join(""),
+  );
+}
+
 function mirror(rows) {
   return rows.map((row) => [...row].reverse().join(""));
 }
@@ -175,6 +200,8 @@ const glyphs = {
   next: mirror(PREV),
   fwd: mirror(BACK),
   mute: MUTE,
+  sound: SOUND,
+  "fav-off": outline(HEART),
 };
 
 mkdirSync(OUT, { recursive: true });

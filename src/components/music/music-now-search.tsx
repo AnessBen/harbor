@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
-import { Check, Loader2, Play, Plus, Search, X } from "lucide-react";
+import { Check, Loader2, Play, Plus, Search, X } from "@/components/icons/music-icons";
 import { Poster } from "@/components/poster";
 import { useT } from "@/lib/i18n";
 import { searchTyped } from "@/lib/music/catalog";

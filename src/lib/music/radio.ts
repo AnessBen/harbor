@@ -425,18 +425,43 @@ async function withSeedArtist(
   return out;
 }
 
+function spreadSeeds(tracks: readonly MusicTrack[], count: number): MusicTrack[] {
+  if (tracks.length <= count) return [...tracks];
+  const step = tracks.length / count;
+  return Array.from({ length: count }, (_, index) => tracks[Math.floor(index * step)]);
+}
+
+const PLAYLIST_SEEDS = 5;
+
+export async function loadPlaylistLikeThis(
+  tracks: readonly MusicTrack[],
+  size = STATION_SIZE,
+): Promise<MusicTrack[]> {
+  const picks = spreadSeeds(tracks, PLAYLIST_SEEDS);
+  if (picks.length === 0) throw new Error("music.radio.error");
+  const resolved = await Promise.all(picks.map((track) => resolveSeed(track).catch(() => null)));
+  const seeds = resolved.filter((seed): seed is Seed => seed != null);
+  if (seeds.length === 0) throw new Error("music.radio.error");
+  const exclude = new Set(tracks.map(trackKey));
+  const mix = await build(seeds, exclude, size);
+  if (mix.length < 5) throw new Error("music.radio.error");
+  return mix;
+}
+
 export async function loadSimilarTracks(track: MusicTrack): Promise<MusicTrack[]> {
   const seed = await resolveSeed(track);
   const following = await build([seed], new Set([trackKey(track)]), STATION_SIZE);
-  if (following.length < 5) throw new Error("music.radio.error");
-  return withSeedArtist(seed, track, following);
+  const filled = await withSeedArtist(seed, track, following);
+  if (filled.length === 0) throw new Error("music.radio.error");
+  return filled;
 }
 
 export async function loadTrackRadio(track: MusicTrack): Promise<MusicTrack[]> {
   const seed = await resolveSeed(track);
   const following = await build([seed], new Set([trackKey(track)]), STATION_SIZE);
-  if (following.length < 5) throw new Error("music.radio.error");
-  return [{ ...track, mediaKind: "audio" }, ...following];
+  const filled = await withSeedArtist(seed, track, following);
+  if (filled.length < 5) throw new Error("music.radio.error");
+  return [{ ...track, mediaKind: "audio" }, ...filled];
 }
 
 let armed: { seedKey: string; stop: () => void; extending: boolean } | null = null;

@@ -176,6 +176,8 @@ const extra: Record<string, string> = {
   "Browse by country": "Duyệt theo quốc gia",
   "Browse channels": "Duyệt kênh",
   "Buffer fill": "Mức đầy bộ đệm",
+  "Reveal the dot on hover": "Hiện chấm khi di chuột",
+  "The dot stays out of the way and appears when you point at the bar. Turn this off to keep it on screen the whole time.": "Chấm không vướng mắt và xuất hiện khi bạn trỏ vào thanh. Tắt tuỳ chọn này để chấm luôn hiển thị.",
   "Buffer fill brightness": "Độ sáng mức đầy bộ đệm",
   Build: "Tạo",
   "Build a named filter once, then apply it in the source picker to hide everything that doesn't match. Each filter ANDs its dimensions and ignores any you leave blank.":

@@ -364,3 +364,12 @@ mod tests {
         );
     }
 }
+
+#[tauri::command]
+pub async fn music_prewarm_track(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, MusicState>,
+    track: MusicTrack,
+) -> Result<bool, String> {
+    Ok(resolve_track(&app, state.inner(), &track).await.is_ok())
+}

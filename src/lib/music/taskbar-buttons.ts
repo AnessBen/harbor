@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { isMusicLiked } from "./liked";
+import { setMusicWindowTitle } from "./window-title";
 import {
   getMusicState,
   nextMusic,
@@ -18,6 +19,7 @@ const STEP_SECONDS = 30;
 
 let muted = 0;
 let lastPushed = "";
+let lastArt = "";
 
 function run(action: string): void {
   const state = getMusicState();
@@ -57,10 +59,37 @@ function push(): void {
   const state = getMusicState();
   const playing = state.phase === "playing";
   const liked = isMusicLiked(state.likedIds, state.current);
-  const key = `${playing ? 1 : 0}|${liked ? 1 : 0}`;
+  const silent = state.volume <= 0;
+  setMusicWindowTitle(state.current?.title ?? null, state.current?.artist ?? null);
+  pushArtwork(state.current?.artwork ?? null);
+  const key = `${playing ? 1 : 0}|${liked ? 1 : 0}|${silent ? 1 : 0}`;
   if (key === lastPushed) return;
   lastPushed = key;
-  invoke("media_controls_music_state", { playing, liked }).catch(() => {});
+  invoke("media_controls_music_state", { playing, liked, muted: silent }).catch(() => {});
+}
+
+function appIconFollowsArtwork(): boolean {
+  try {
+    const raw = localStorage.getItem("harbor.settings");
+    return raw ? JSON.parse(raw).musicArtworkAppIcon === true : false;
+  } catch {
+    return false;
+  }
+}
+
+function pushArtwork(artwork: string | null): void {
+  const url = artwork?.startsWith("https://") ? artwork : null;
+  const appIcon = appIconFollowsArtwork();
+  const key = `${url ?? ""}|${appIcon ? 1 : 0}`;
+  if (key === lastArt) return;
+  lastArt = key;
+  invoke("media_controls_music_art", { artUrl: url, appIcon }).catch(() => {});
+}
+
+export function syncMusicTaskbarArtwork(): void {
+  if (!IS_TAURI) return;
+  lastArt = "";
+  pushArtwork(getMusicState().current?.artwork ?? null);
 }
 
 export function startMusicTaskbarButtons(): () => void {
@@ -78,6 +107,8 @@ export function startMusicTaskbarButtons(): () => void {
   return () => {
     live = false;
     unsubscribe();
+    setMusicWindowTitle(null, null);
+    pushArtwork(null);
     stop?.();
     stop = null;
   };

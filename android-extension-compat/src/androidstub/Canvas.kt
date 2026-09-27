@@ -1,7 +1,5 @@
 package android.graphics
 
-/** A recording surface. Nothing rasterises here, so every draw call is kept in order and a host
- *  renderer replays the list. Dropping the calls would make a custom drawable silently blank. */
 open class Canvas {
 
     enum class OpKind { PATH, RECT, COLOR }

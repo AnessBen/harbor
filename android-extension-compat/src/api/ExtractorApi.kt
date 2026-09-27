@@ -1,18 +1,10 @@
 package com.lagradost.cloudstream3.utils
 
 import com.lagradost.cloudstream3.SubtitleFile
+import java.util.UUID
 
-/** Passed by an extension that wants the url to decide the link type. It is deliberately null,
- * because that is what the extensions were compiled against, and null is what [newExtractorLink]
- * reads as "infer". */
 val INFER_TYPE: ExtractorLinkType? = null
 
-/** One host an extension can pull streams from.
- *
- * Extensions subclass this both to describe hosts the layer does not know about and to override a
- * host it does know about with their own scraping, so every member reached from a subclass has to
- * stay open and every entry point has to survive a throwing subclass without taking the whole
- * link load down with it. */
 abstract class ExtractorApi {
 
     abstract val name: String
@@ -21,8 +13,6 @@ abstract class ExtractorApi {
 
     abstract val requiresReferer: Boolean
 
-    /** The modern entry point. Callback based, so an extractor can emit a link the moment it
-     * resolves one instead of holding the whole list until the slowest mirror answers. */
     open suspend fun getUrl(
         url: String,
         referer: String? = null,
@@ -32,14 +22,10 @@ abstract class ExtractorApi {
         getUrl(url, referer)?.forEach(callback)
     }
 
-    /** The older list returning entry point. Extensions written against it override this one and
-     * never touch the callback form, so the default above has to delegate here. */
     open suspend fun getUrl(url: String, referer: String? = null): List<ExtractorLink>? = null
 
-    /** Turns a bare id into a page url on this host. */
     open fun getExtractorUrl(id: String): String = id
 
-    /** Never throws, whatever the subclass does. */
     suspend fun getSafeUrl(
         url: String,
         referer: String? = null,
@@ -54,8 +40,6 @@ abstract class ExtractorApi {
     }
 }
 
-/** Builds a link and hands it to the extension to finish. Kotlin emits the $default bridge the
- * extensions link against from the two trailing defaults, so their positions are load bearing. */
 suspend fun newExtractorLink(
     source: String,
     name: String,
@@ -74,10 +58,27 @@ suspend fun newExtractorLink(
     return link
 }
 
-/** Resolves [url] through the registry and reports whether anything playable came out.
- *
- * The three argument form exists as its own overload rather than as a default, because the
- * extensions call both arities directly and a default would replace one of them with a bridge. */
+suspend fun newDrmExtractorLink(
+    source: String,
+    name: String,
+    url: String,
+    type: ExtractorLinkType = ExtractorLinkType.DASH,
+    uuid: UUID = DrmExtractorLink.CLEARKEY,
+    initializer: suspend DrmExtractorLink.() -> Unit = { },
+): DrmExtractorLink {
+    val link = DrmExtractorLink(source = source, name = name, url = url, type = type, uuid = uuid)
+    link.initializer()
+    return link
+}
+
+fun ExtractorApi.fixUrl(url: String): String {
+    if (url.startsWith("//")) return "https:$url"
+    if (url.startsWith("http")) return url
+    if (url.isEmpty()) return ""
+    val base = mainUrl.trimEnd('/')
+    return if (url.startsWith("/")) base + url else "$base/$url"
+}
+
 suspend fun loadExtractor(
     url: String,
     subtitleCallback: (SubtitleFile) -> Unit,
@@ -123,7 +124,6 @@ suspend fun loadExtractor(
     return produced > 0
 }
 
-/** Reads a quality out of whatever a page called it. */
 fun getQualityFromName(qualityName: String?): Int {
     val raw = qualityName?.trim()?.lowercase() ?: return Qualities.Unknown.value
     if (raw.isEmpty()) return Qualities.Unknown.value
@@ -159,17 +159,15 @@ private val NAMED_QUALITIES = linkedMapOf(
     "low" to Qualities.P360.value,
 )
 
-/** Protocol relative urls are everywhere in embed pages and no http client accepts one. */
 fun httpsify(url: String): String = if (url.startsWith("//")) "https:$url" else url
 
-/** The packed javascript block inside a page, if there is one. */
 fun getPacked(string: String): String? =
     PACKED.find(string)?.value ?: PACKED_LOOSE.find(string)?.value
 
-/** The page with its packed block replaced by the unpacked source, or the page unchanged. */
 fun getAndUnpack(string: String): String {
-    val packed = getPacked(string) ?: return string
-    return JsUnpacker(packed).unpack() ?: string
+    val block = PACKED.find(string) ?: PACKED_LOOSE.find(string) ?: return string
+    val unpacked = JsUnpacker(block.value).unpack() ?: return string
+    return string.substring(0, block.range.first) + unpacked + string.substring(block.range.last + 1)
 }
 
 private val PACKED = Regex(

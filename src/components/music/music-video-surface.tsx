@@ -7,7 +7,7 @@ import {
   useSyncExternalStore,
   type ReactNode,
 } from "react";
-import { Loader2, Play, RotateCcw, VideoOff } from "lucide-react";
+import { Loader2, Play, RotateCcw, VideoOff } from "@/components/icons/music-icons";
 import { useT } from "@/lib/i18n";
 import type { MusicTrack } from "@/lib/music/types";
 import { useMusicPlayer } from "@/lib/music/player";

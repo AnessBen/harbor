@@ -8,12 +8,6 @@ import com.lagradost.cloudstream3.utils.ExtractorLinkType
 import com.lagradost.cloudstream3.utils.extractorLog
 import com.lagradost.cloudstream3.utils.getQualityFromName
 
-/** V-Cloud, which is where nearly every Hindi/English provider hands its sources to.
- *
- * The file page does not carry the file and does not need a browser either: it carries its own
- * next url, base64 encoded twice, as a literal. Asking that url for the token it holds answers
- * with a page listing the servers, and the ones that are direct files are the links. The encoding
- * is data rather than script, which is why this works where a javascript gate would not. */
 open class VCloud : ExtractorApi() {
 
     override val name: String = "VCloud"
@@ -59,19 +53,14 @@ open class VCloud : ExtractorApi() {
         if (produced == 0) extractorLog("$name found no servers on $url")
     }
 
-    /** The page also links its own manifest, which ends in webmanifest and would otherwise read as
-     * a stream because .webm is a prefix of it. A server link names a file, so the path it ends
-     * with has to be the file's own extension. */
     private fun isDirectFile(link: String): Boolean {
         val path = pathOf(link) ?: return false
         return FILE_SUFFIXES.any { path.endsWith(it) }
     }
 
-    /** The resolution is the `NNNp` token in the file name, never the year next to it. */
     private fun qualityOf(link: String): Int =
         getQualityFromName(RESOLUTION.find(link.substringBefore('?'))?.groupValues?.get(1))
 
-    /** The payload is the url base64'd twice, and the site's own decoder pads nothing. */
     private fun decodeTwice(value: String): String? = try {
         String(base64DecodeArray(String(base64DecodeArray(value))))
     } catch (t: Throwable) {

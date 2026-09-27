@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ChevronLeft, ExternalLink, Heart, Play, RotateCcw, VideoOff } from "lucide-react";
+import { ChevronLeft, ExternalLink, Heart, Play, RotateCcw, VideoOff } from "@/components/icons/music-icons";
 import { MusicServiceLogo } from "@/components/music/music-service-logo";
 import { MusicArtistLink } from "./music-artist-link";
 import { MusicWhereToBuy } from "./music-artist-overview";

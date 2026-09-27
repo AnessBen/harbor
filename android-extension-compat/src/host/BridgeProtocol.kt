@@ -15,7 +15,6 @@ const val CODE_INSTALL_FAILED = "install_failed"
 const val CODE_EXTENSION_ERROR = "extension_error"
 const val CODE_TIMEOUT = "timeout"
 
-/** A failure the caller is meant to read, as opposed to an extension blowing up. */
 class BridgeError(val code: String, message: String) : Exception(message)
 
 class BridgeRequest(val id: String, val method: String, val params: JsonObject) {
@@ -51,8 +50,6 @@ class BridgeRequest(val id: String, val method: String, val params: JsonObject) 
     }
 
     companion object {
-        /** The frame a line carries, or null when it is not one. Parsing is split from reading a
-         * request because a line can also be an answer to a request this side sent. */
         fun frameOf(line: String): JsonObject? {
             val root = runCatching { JsonParser.parseString(line) }.getOrNull() ?: return null
             return if (root.isJsonObject) root.asJsonObject else null
@@ -71,10 +68,6 @@ class BridgeRequest(val id: String, val method: String, val params: JsonObject) 
     }
 }
 
-/** The only writer allowed to touch the protocol stream.
- *
- * Responses are produced off many coroutines at once, so the write of a whole frame plus its
- * newline is the unit that has to be atomic, not the individual print. */
 class BridgeOutput(stream: OutputStream) {
 
     private val out = PrintStream(stream, false, Charsets.UTF_8.name())
@@ -98,8 +91,6 @@ class BridgeOutput(stream: OutputStream) {
         send(frame)
     }
 
-    /** A reverse request: this side asking the host. Shaped like a forward request so the host can
-     * reuse its own frame reader, and named `host` so it can never be mistaken for an answer. */
     fun host(id: String, method: String, params: Map<String, String>) {
         val body = JsonObject()
         for ((key, value) in params) body.addProperty(key, value)
@@ -122,10 +113,6 @@ class BridgeOutput(stream: OutputStream) {
     }
 }
 
-/** Turns anything an extension can throw into a code and a single readable line.
- *
- * The stack trace goes to stderr, never into the response, so the caller gets something it can
- * show a user and the operator still gets the detail. */
 fun describeFailure(failure: Throwable): Pair<String, String> {
     val unwrapped = if (failure is java.lang.reflect.InvocationTargetException) {
         failure.targetException ?: failure

@@ -1,6 +1,5 @@
 package android.graphics
 
-/** Opacity constants a drawable reports back from getOpacity. */
 open class PixelFormat {
     companion object {
         const val UNKNOWN: Int = 0

@@ -1,9 +1,5 @@
 package probe;
 
-/* Paired implementations for tools/selftest.sh: one that matches the shape the synthetic spec
- * records, one that resolves by name and signature yet would fail at the invoke site. Every Bad
- * here is a real linkage error on a device, not a style complaint. */
-
 class GoodStatic {
   public static void m() { }
 }

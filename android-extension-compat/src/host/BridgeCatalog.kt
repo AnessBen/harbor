@@ -22,11 +22,6 @@ class ProviderEntry(
     val provider: Provider,
 )
 
-/** What is installed and what it contributed.
- *
- * An install copies the extension file into the bridge's own directory, so a later run does not
- * depend on wherever the user happened to pick the file from, and a manifest records enough to
- * bring the same set back on the next start. */
 class BridgeCatalog(private val root: File, private val loader: ExtensionLoader) {
 
     private val extensions = LinkedHashMap<String, ExtensionEntry>()
@@ -108,8 +103,6 @@ class BridgeCatalog(private val root: File, private val loader: ExtensionLoader)
         providers[id] ?: throw BridgeError(CODE_PROVIDER_NOT_FOUND, "no provider '$id'")
     }
 
-    /** Takes ownership of a freshly loaded file, replacing whatever was installed under the same
-     * id. The caller holds the lock. */
     private fun adopt(id: String, source: String, loaded: LoadedExtension): ExtensionEntry {
         extensions.remove(id)?.let { previous ->
             for (providerId in previous.providerIds) providers.remove(providerId)

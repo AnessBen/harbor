@@ -7,13 +7,6 @@ import com.lagradost.cloudstream3.utils.SubtitleHelper
 import com.lagradost.cloudstream3.utils.absolute
 import com.lagradost.cloudstream3.utils.extractorLog
 
-/** Voe, whose player config is one obfuscated string in the page.
- *
- * The embed domain only holds a redirect stub, so the real page has to be followed to first. The
- * config that page carries is put through a fixed chain of reversible steps: junk sequences are
- * removed, the letters are rotated, then two base64 rounds with a character shift between them.
- * Each step is trivial on its own and the chain is what hides the url, so it is written out here
- * in the same order the page applies it in reverse. */
 open class Voe : ExtractorApi() {
 
     override val name: String = "Voe"
@@ -32,7 +25,6 @@ open class Voe : ExtractorApi() {
         var current = url
         var page = playerPage(current, pageReferer) ?: return
 
-        // The embed domain rotates: the stub page names the mirror holding the real player.
         val hop = REDIRECT.find(page)?.groupValues?.get(1)
         if (hop != null && hop != current) {
             current = hop
@@ -74,9 +66,6 @@ open class Voe : ExtractorApi() {
     private fun playbackHeaders(pageUrl: String): Map<String, String> =
         mapOf("User-Agent" to USER_AGENT, "Referer" to pageUrl, "Origin" to hostRoot(pageUrl, mainUrl))
 
-    /** Runs the page's obfuscation backwards. Returns null the moment a step stops making sense,
-     * so a page that has moved to a different scheme falls through to the generic reader instead
-     * of producing a plausible looking wrong url. */
     private fun configIn(page: String): String? {
         val packed = PAYLOAD.find(page)?.groupValues?.get(1)?.trim() ?: return null
         var text = packed
@@ -90,7 +79,6 @@ open class Voe : ExtractorApi() {
         return decoded.takeIf { it.trimStart().startsWith("{") }
     }
 
-    /** Rot13 over the two alphabets, digits untouched. */
     private fun rotate(text: String): String = buildString(text.length) {
         for (c in text) {
             append(

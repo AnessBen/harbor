@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
-import { ShieldCheck } from "lucide-react";
+import { ShieldCheck } from "@/components/icons/music-icons";
 import { ModalShell } from "@/components/modal-shell";
 import { useT } from "@/lib/i18n";
 import { openUrl } from "@/lib/window";

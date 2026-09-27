@@ -2,13 +2,15 @@ const musicNowPlaying: Record<string, string> = {
   "music.artist.filmography": "电影与电视",
   "music.action.error": "无法完成操作。请重试。",
   "music.radio.error": "无法启动电台。请重试或更换来源。",
-  "music.download.action": "下载歌曲",
-  "music.download.done": "已下载",
-  "music.download.busy": "正在下载",
-  "music.download.retry": "重试下载",
+  "music.download.action": "保存歌曲",
+  "music.download.done": "已保存",
+  "music.download.busy": "保存中",
+  "music.download.retry": "重试保存",
   "music.download.unsupported": "此来源不提供可下载的音频文件。请尝试其他来源。",
   "music.download.missing": "文件丢失。请重新下载。",
   "music.download.failed": "下载失败。请重试或更换来源。",
+  "music.download.changeFolder": "更改",
+  "music.download.defaultFolder": "使用默认",
   "music.download.empty": "从播放器或歌曲菜单下载歌曲，即可离线收听。",
   "music.download.folder": "在文件夹中显示",
   "music.download.delete": "删除下载",
@@ -71,12 +73,16 @@ const musicNowPlaying: Record<string, string> = {
   "music.buy.search": "在 {store} 搜索",
 
   "music.artist.about": "关于艺人",
+  "music.artist.save": "收藏艺人",
+  "music.artist.unsave": "从已收藏艺人中移除",
 
   "music.artist.origin": "来自",
 
   "music.artist.began": "出生 / 成立",
 
   "music.artist.aliases": "又名",
+
+  "music.artist.label": "厂牌",
 
   "music.artist.connections": "成员与合作艺人",
 
@@ -87,6 +93,9 @@ const musicNowPlaying: Record<string, string> = {
   "music.artist.merch": "周边商品",
 
   "music.artist.official": "官方网站",
+
+  "music.artist.kicker": "艺人",
+  "music.artist.listenOn": "收听平台",
 };
 
 export default musicNowPlaying;

@@ -3,12 +3,6 @@ package com.lagradost.cloudstream3.utils
 import com.lagradost.cloudstream3.app
 import java.net.URI
 
-/** Expands an m3u8 master playlist into one link per variant.
- *
- * Extensions hand the layer a single master url and expect the quality list a user sees to come
- * back, so this fetches the playlist and reads the variant stream declarations. When the fetch or
- * the parse fails the master url is still returned as one link, because a player that can read
- * playlists will do the selection itself and a stream is better than an empty list. */
 class M3u8Helper {
 
     companion object {
@@ -40,7 +34,6 @@ class M3u8Helper {
                 }
         }
 
-        /** Same expansion, for callers that already hold the playlist text. */
         fun fromPlaylist(
             source: String,
             name: String,
@@ -123,7 +116,6 @@ class M3u8Helper {
     }
 }
 
-/** Resolves a playlist entry against the playlist it came from. */
 internal fun absolute(base: String, target: String): String {
     val fixed = httpsify(target)
     if (fixed.startsWith("http://") || fixed.startsWith("https://")) return fixed

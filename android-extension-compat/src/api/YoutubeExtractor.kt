@@ -15,19 +15,6 @@ import kotlinx.coroutines.withContext
 import org.schabi.newpipe.extractor.ServiceList
 import org.schabi.newpipe.extractor.stream.StreamInfo
 
-/** YouTube, through the player endpoint one of its own clients calls.
- *
- * The extractor library is asked first. It is maintained against YouTube's changes and returns a
- * variant manifest plus the progressive streams. The hand written client call below it is kept for
- * the cases the library declines, and for a host that ships without the library.
- *
- * A client is asked rather than the web page because the web page hands back urls that have to be
- * run through the player javascript before they play, and a client answer does not. Which client
- * is asked is load bearing: the phone clients are now refused by the endpoint outright and the web
- * client answers UNPLAYABLE. On 2026-09-24 the headset client below was refused too, with
- * LOGIN_REQUIRED, which is what the library path answers.
- * Videos both paths refuse, age gated ones above all, produce no link rather than a link that
- * fails later in the player. */
 open class YoutubeExtractor : ExtractorApi() {
 
     override val name: String = "YouTube"

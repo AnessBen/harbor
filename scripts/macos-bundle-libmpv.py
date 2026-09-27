@@ -3,13 +3,24 @@
 
 The prepare command runs before `tauri build`. It recursively collects the
 dynamic libraries reachable from libmpv, rewrites their install names to use
-the application Frameworks directory, and writes a small Tauri overlay config.
+the application Frameworks directory, and writes a small Tauri overlay config
+whose minimumSystemVersion is raised to the highest minos in that closure. A
+closure that raises it past HIGHEST_ALLOWED_MINIMUM_MAJOR fails the build
+instead, because that is Homebrew moving its bottle to a newer macOS and
+stranding every Mac below the new floor.
 
 The finalize command runs through Tauri's beforeBundleCommand after the Harbor
-binary has been linked. It rewrites the binary's Homebrew load commands.
+binary has been linked. It rewrites the binary's Homebrew load commands, drops
+any repeated LC_RPATH, and runs verify-app's Mach-O and minimum-OS checks over
+the binary and the staged libraries against the floor prepare computed, so a
+local build cannot ship what CI would reject. The Info.plist and signature
+checks stay in verify-app, because neither exists yet at this point.
 
 The verify-app command is a CI guard: a macOS artifact must not contain any
-absolute Homebrew/MacPorts dependency and must ship every @rpath dependency.
+absolute non-system dependency, must ship every @rpath dependency, must not
+repeat an LC_RPATH or a linked dylib, must not carry a Mach-O built for a newer
+macOS than its Info.plist advertises, and must not advertise a floor above
+HIGHEST_ALLOWED_MINIMUM_MAJOR.
 """
 
 from __future__ import annotations
@@ -19,96 +30,60 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import plistlib
 import re
 import shutil
 import subprocess
 import sys
 from typing import Iterable
 
+from macos_macho import (
+    brew_prefixes,
+    dylib_loads,
+    expand_special,
+    is_system,
+    minimum_os,
+    normalize_rpaths,
+    resolve_load,
+    rpaths,
+    run,
+    sidecars,
+    verify_macho,
+    verify_minimum_os,
+    version_text,
+    version_tuple,
+)
 
-SYSTEM_PREFIXES = ("/System/Library/", "/usr/lib/")
-LOAD_LINE = re.compile(r"^\s*(.+?)\s+\(compatibility version .+\)$")
+
+HIGHEST_ALLOWED_MINIMUM_MAJOR = 15
 
 
-def run(*args: str, capture: bool = True) -> str:
-    result = subprocess.run(
-        args,
-        check=True,
-        text=True,
-        stdout=subprocess.PIPE if capture else None,
-        stderr=subprocess.PIPE if capture else None,
+def declared_minimum(root: Path) -> tuple[int, int, int]:
+    config = json.loads((root / "src-tauri" / "tauri.conf.json").read_text(encoding="utf-8"))
+    value = config.get("bundle", {}).get("macOS", {}).get("minimumSystemVersion")
+    return version_tuple(str(value)) if value else (0, 0, 0)
+
+
+def bundle_minimum(root: Path, libraries: Iterable[Path]) -> tuple[tuple[int, int, int], str]:
+    minimum = declared_minimum(root)
+    raised_by = ""
+    for library in sorted(libraries):
+        value = minimum_os(library)
+        if value is not None and value > minimum:
+            minimum, raised_by = value, library.name
+    return minimum, raised_by
+
+
+def verify_supported_minimum(minimum: tuple[int, int, int], source: str) -> None:
+    if minimum[0] <= HIGHEST_ALLOWED_MINIMUM_MAJOR:
+        return
+    raise RuntimeError(
+        f"{source} puts the floor at macOS {version_text(minimum)}, above the macOS "
+        f"{HIGHEST_ALLOWED_MINIMUM_MAJOR} ceiling this build accepts. Homebrew has moved its mpv "
+        "bottle to a newer macOS, so every Mac below the new floor would get a dyld abort at "
+        "launch. Build mpv against an older SDK, or raise HIGHEST_ALLOWED_MINIMUM_MAJOR as a "
+        "deliberate decision to drop those Macs"
     )
-    return result.stdout if capture else ""
-
-
-def dylib_loads(path: Path) -> list[str]:
-    lines = run("otool", "-L", str(path)).splitlines()[1:]
-    loads: list[str] = []
-    for line in lines:
-        match = LOAD_LINE.match(line)
-        if match:
-            loads.append(match.group(1))
-    return loads
-
-
-def is_system(load: str) -> bool:
-    return load.startswith(SYSTEM_PREFIXES)
-
-
-def brew_prefixes() -> list[Path]:
-    prefixes: list[Path] = []
-    try:
-        prefixes.append(Path(run("brew", "--prefix").strip()))
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        pass
-    for candidate in (Path("/opt/homebrew"), Path("/usr/local"), Path("/opt/local")):
-        if candidate.exists() and candidate not in prefixes:
-            prefixes.append(candidate)
-    return prefixes
-
-
-def rpaths(path: Path) -> list[str]:
-    output = run("otool", "-l", str(path)).splitlines()
-    values: list[str] = []
-    in_rpath = False
-    for line in output:
-        stripped = line.strip()
-        if stripped == "cmd LC_RPATH":
-            in_rpath = True
-        elif in_rpath and stripped.startswith("path "):
-            values.append(stripped[5:].split(" (offset", 1)[0])
-            in_rpath = False
-    return values
-
-
-def expand_special(value: str, loader: Path, executable: Path) -> Path:
-    return Path(
-        value.replace("@loader_path", str(loader.parent)).replace(
-            "@executable_path", str(executable.parent)
-        )
-    )
-
-
-def resolve_load(load: str, loader: Path, executable: Path, prefixes: Iterable[Path]) -> Path:
-    if load.startswith("/"):
-        candidate = Path(load)
-        if candidate.exists():
-            return candidate.resolve()
-    elif load.startswith("@loader_path") or load.startswith("@executable_path"):
-        candidate = expand_special(load, loader, executable)
-        if candidate.exists():
-            return candidate.resolve()
-    elif load.startswith("@rpath/"):
-        suffix = load[len("@rpath/") :]
-        for value in rpaths(loader):
-            candidate = expand_special(value, loader, executable) / suffix
-            if candidate.exists():
-                return candidate.resolve()
-        for directory in (loader.parent, *(prefix / "lib" for prefix in prefixes)):
-            candidate = directory / suffix
-            if candidate.exists():
-                return candidate.resolve()
-    raise RuntimeError(f"Could not resolve non-system dependency {load!r} loaded by {loader}")
 
 
 def find_libmpv() -> Path:
@@ -183,11 +158,13 @@ def collect(start: Path, destination: Path) -> dict[Path, Path]:
                     str(target),
                     capture=False,
                 )
+        normalize_rpaths(target)
 
     return collected
 
 
-def write_config(config_path: Path, frameworks: Iterable[Path]) -> None:
+def write_config(config_path: Path, frameworks: Iterable[Path], minimum: str) -> None:
+    identity = os.environ.get("APPLE_SIGNING_IDENTITY") or os.environ.get("APPLE_CERTIFICATE")
     config = {
         "build": {
             "beforeBundleCommand": "python3 scripts/macos-bundle-libmpv.py finalize"
@@ -195,11 +172,8 @@ def write_config(config_path: Path, frameworks: Iterable[Path]) -> None:
         "bundle": {
             "macOS": {
                 "frameworks": [str(path.resolve()) for path in sorted(frameworks)],
-                # Apple Silicon requires a valid code signature even when Harbor
-                # does not have a Developer ID certificate in CI. Tauri's
-                # documented ad-hoc identity signs the complete app after the
-                # rewritten dylibs have been copied into Frameworks.
-                "signingIdentity": "-",
+                "minimumSystemVersion": minimum,
+                "signingIdentity": None if identity else "-",
             },
         },
     }
@@ -245,25 +219,45 @@ def rewrite_executable(binary: Path, frameworks_dir: Path) -> None:
             )
 
 
-def verify_macho(path: Path, frameworks_dir: Path) -> None:
-    available = {item.name for item in frameworks_dir.glob("*.dylib")}
-    for load in dylib_loads(path):
-        if is_system(load):
-            continue
-        if load.startswith(("/opt/homebrew/", "/usr/local/", "/opt/local/")):
-            raise RuntimeError(f"{path} still references a machine-local library: {load}")
-        if load.startswith("@rpath/") and Path(load).name not in available:
-            raise RuntimeError(f"{path} references an unbundled library: {load}")
+def advertised_minimum(app: Path) -> tuple[int, int, int]:
+    plist = app / "Contents" / "Info.plist"
+    value = plistlib.loads(plist.read_bytes()).get("LSMinimumSystemVersion")
+    if not value:
+        raise RuntimeError(f"{plist} declares no LSMinimumSystemVersion")
+    return version_tuple(str(value))
+
+
+def verify_closure(
+    executable: Path,
+    frameworks_dir: Path,
+    advertised: tuple[int, int, int],
+    shipped: Iterable[Path] = (),
+) -> list[Path]:
+    verify_macho(executable, frameworks_dir)
+    libraries = sorted(frameworks_dir.glob("*.dylib"))
+    for library in libraries:
+        verify_macho(library, frameworks_dir)
+    verify_minimum_os([executable, *libraries, *shipped], advertised)
+    return libraries
 
 
 def prepare(args: argparse.Namespace) -> None:
+    root = Path(__file__).resolve().parents[1]
     destination = args.frameworks.resolve()
     if destination.exists():
         shutil.rmtree(destination)
     destination.mkdir(parents=True)
-    collected = collect(find_libmpv(), destination)
-    write_config(args.config.resolve(), collected.values())
-    print(f"[macos-bundle] collected {len(collected)} dynamic libraries in {destination}")
+    source = find_libmpv()
+    collected = collect(source, destination)
+    minimum, raised_by = bundle_minimum(root, collected.values())
+    verify_supported_minimum(minimum, raised_by or "the collected library closure")
+    write_config(args.config.resolve(), collected.values(), version_text(minimum))
+    print(
+        f"[macos-bundle] collected {len(collected)} dynamic libraries from {source.resolve()} "
+        f"into {destination}"
+    )
+    if raised_by:
+        print(f"[macos-bundle] {raised_by} raises minimumSystemVersion to {version_text(minimum)}")
 
 
 def finalize(args: argparse.Namespace) -> None:
@@ -273,10 +267,11 @@ def finalize(args: argparse.Namespace) -> None:
     frameworks_dir = Path(os.environ["HARBOR_MACOS_FRAMEWORKS_DIR"]).resolve()
     binary = release_binary(root)
     rewrite_executable(binary, frameworks_dir)
-    verify_macho(binary, frameworks_dir)
-    for library in frameworks_dir.glob("*.dylib"):
-        verify_macho(library, frameworks_dir)
-    print(f"[macos-bundle] finalized {binary}")
+    normalize_rpaths(binary)
+    advertised, _ = bundle_minimum(root, frameworks_dir.glob("*.dylib"))
+    verify_supported_minimum(advertised, "the staged library closure")
+    verify_closure(binary, frameworks_dir, advertised)
+    print(f"[macos-bundle] finalized {binary} for macOS {version_text(advertised)} or newer")
 
 
 def verify_app(args: argparse.Namespace) -> None:
@@ -289,12 +284,21 @@ def verify_app(args: argparse.Namespace) -> None:
         raise RuntimeError(f"Frameworks directory is missing from {app}")
     if not any(frameworks_dir.glob("libmpv*.dylib")):
         raise RuntimeError(f"libmpv is missing from {frameworks_dir}")
-    verify_macho(executable, frameworks_dir)
-    libraries = list(frameworks_dir.glob("*.dylib"))
-    for library in libraries:
-        verify_macho(library, frameworks_dir)
+    shipped = sidecars(executable)
+    advertised = advertised_minimum(app)
+    verify_supported_minimum(advertised, f"the {app.name} Info.plist")
+    libraries = verify_closure(executable, frameworks_dir, advertised, shipped)
+    searched = [
+        expand_special(value, executable, executable).resolve() for value in rpaths(executable)
+    ]
+    if frameworks_dir.resolve() not in searched:
+        raise RuntimeError(f"{executable} carries no LC_RPATH that reaches {frameworks_dir}")
     run("codesign", "--verify", "--deep", "--strict", str(app), capture=False)
-    print(f"[macos-bundle] verified {app} with {len(libraries)} bundled libraries")
+    summary = (
+        f"{len(libraries)} bundled libraries, {len(shipped)} sidecar executables, "
+        f"macOS {version_text(advertised)} or newer"
+    )
+    print(f"[macos-bundle] verified {app} with {summary}")
 
 
 def parser() -> argparse.ArgumentParser:

@@ -47,9 +47,6 @@ open class FragmentManager {
 
     internal fun nextCommitId(): Int = commits.incrementAndGet()
 
-    /** The dispatch runs extension code that was written for a real screen. A host with nothing
-     * wired behind a view can make that code fail, and that must not reach the caller, which is
-     * usually a scrape waiting on a coroutine. */
     private fun start(fragment: Fragment) {
         try {
             fragment.onCreate(null)

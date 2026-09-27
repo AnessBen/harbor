@@ -58,8 +58,6 @@ open class DialogFragment : Fragment() {
         dialog = made
     }
 
-    /** One dismissal only, whichever route reaches it first: the fragment's own dismiss, the
-     * dialog going away under a host surface, or a button listener holding the dialog face. */
     private fun close() {
         if (dismissed) return
         dismissed = true

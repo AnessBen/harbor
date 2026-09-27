@@ -1,5 +1,8 @@
 import { Fragment, useState } from "react";
+import nytLogo from "@/assets/awards/nyt-logo.svg";
 import { tmdbPersonIdByName, tmdbPersonIdCached } from "@/lib/providers/tmdb";
+import { curatedList } from "@/lib/curated/registry";
+import { rankInItems } from "@/lib/curated/types";
 import { useSettings } from "@/lib/settings";
 import { useView } from "@/lib/view";
 import { type AwardEntry, type AwardType } from "@/lib/providers/wikidata";
@@ -51,10 +54,16 @@ const TYPE_TITLE: Record<AwardType, string> = {
   other: "Other Awards",
 };
 
-export function AwardsBlock({ awards }: { awards: AwardEntry[] }) {
+export function AwardsBlock({
+  awards,
+  seriesImdbId,
+}: {
+  awards: AwardEntry[];
+  seriesImdbId?: string | null;
+}) {
   const t = useT();
-  if (awards.length === 0) return null;
-
+  const nytList = curatedList("nyt-tv-100");
+  const nytRank = nytList ? rankInItems(nytList.head, seriesImdbId) : null;
   const groups = new Map<AwardType, AwardEntry[]>();
   for (const a of awards) {
     if (a.type === "other") continue;
@@ -62,7 +71,7 @@ export function AwardsBlock({ awards }: { awards: AwardEntry[] }) {
     arr.push(a);
     groups.set(a.type, arr);
   }
-  if (groups.size === 0) return null;
+  if (groups.size === 0 && nytRank == null) return null;
   const sorted = [...groups.entries()].sort((a, b) => TYPE_ORDER[a[0]] - TYPE_ORDER[b[0]]);
 
   return (
@@ -74,8 +83,69 @@ export function AwardsBlock({ awards }: { awards: AwardEntry[] }) {
         {sorted.map(([type, entries]) => (
           <AwardGroup key={type} type={type} entries={entries} />
         ))}
+        {nytList && nytRank != null && (
+          <NytAccolade
+            rank={nytRank}
+            curator={nytList.curator}
+            title={nytList.title}
+            year={nytList.publishedYear}
+          />
+        )}
       </div>
     </div>
+  );
+}
+
+function NytAccolade({
+  rank,
+  curator,
+  title,
+  year,
+}: {
+  rank: number;
+  curator: string;
+  title: string;
+  year?: number;
+}) {
+  const t = useT();
+  return (
+    <section className="grid gap-7 lg:grid-cols-[240px_1fr] lg:gap-14">
+      <header className="flex flex-row items-center gap-5 lg:flex-col lg:items-start lg:gap-5">
+        <span className="flex h-20 w-20 shrink-0 items-center justify-center text-ink">
+          <span
+            aria-hidden
+            className="block h-14 opacity-85"
+            style={{
+              aspectRatio: "103.7 / 133.9",
+              backgroundColor: "currentColor",
+              maskImage: `url("${nytLogo}")`,
+              WebkitMaskImage: `url("${nytLogo}")`,
+              maskSize: "100% 100%",
+              WebkitMaskSize: "100% 100%",
+              maskRepeat: "no-repeat",
+              WebkitMaskRepeat: "no-repeat",
+              maskPosition: "center",
+              WebkitMaskPosition: "center",
+            }}
+          />
+        </span>
+        <div className="flex flex-col gap-1.5">
+          <h4 className="text-[18px] font-medium tracking-tight text-ink">{t(curator)}</h4>
+          <p className="text-[12px] font-semibold uppercase tracking-[0.16em] text-ink-subtle">
+            {t("Ranked")} <span className="text-accent">#{rank}</span>
+          </p>
+        </div>
+      </header>
+
+      <div className="flex min-w-0 flex-col gap-5">
+        <ul className="grid grid-cols-1 gap-x-10 gap-y-0">
+          <li className="flex items-baseline gap-4 border-b border-edge-soft/30 py-2.5 text-[13px]">
+            <span className="w-11 shrink-0 font-semibold tabular-nums text-accent">{year}</span>
+            <span className="min-w-0 flex-1 font-medium leading-tight text-ink">{t(title)}</span>
+          </li>
+        </ul>
+      </div>
+    </section>
   );
 }
 

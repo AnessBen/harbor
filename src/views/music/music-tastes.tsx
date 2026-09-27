@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Check, ChevronLeft, LoaderCircle, Search, SlidersHorizontal } from "lucide-react";
+import { Check, ChevronLeft, LoaderCircle, Search, SlidersHorizontal } from "@/components/icons/music-icons";
 import { MusicDiscoveryIcon } from "@/components/music/music-discovery-icon";
 import { MusicCatalogRow } from "@/components/music/music-catalog-row";
 import { MusicSectionError } from "@/components/music/music-track-grid";

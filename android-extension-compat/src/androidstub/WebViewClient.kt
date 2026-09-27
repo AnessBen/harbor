@@ -2,8 +2,6 @@ package android.webkit
 
 import android.graphics.Bitmap
 
-/** Extensions subclass this and call up through super from every override, so each member here
- * needs a real body. An abstract member would link and then fail the first time a page loaded. */
 open class WebViewClient {
 
     open fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {}

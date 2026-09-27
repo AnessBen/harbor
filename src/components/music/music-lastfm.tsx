@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowUpRight, Check, ChevronDown, LoaderCircle, Radio, Unplug } from "lucide-react";
+import { ArrowUpRight, Check, ChevronDown, LoaderCircle, Radio, Unplug } from "@/components/icons/music-icons";
 import { useT } from "@/lib/i18n";
 import {
   completeLastFmAuth,

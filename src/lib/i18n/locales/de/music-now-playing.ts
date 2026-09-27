@@ -3,14 +3,16 @@ const musicNowPlaying: Record<string, string> = {
   "music.action.error": "Aktion fehlgeschlagen. Bitte erneut versuchen.",
   "music.radio.error":
     "Radio konnte nicht gestartet werden. Erneut versuchen oder andere Quelle wählen.",
-  "music.download.action": "Song herunterladen",
-  "music.download.done": "Heruntergeladen",
-  "music.download.busy": "Wird heruntergeladen",
-  "music.download.retry": "Erneut herunterladen",
+  "music.download.action": "Titel speichern",
+  "music.download.done": "Gespeichert",
+  "music.download.busy": "Wird gespeichert",
+  "music.download.retry": "Erneut speichern",
   "music.download.unsupported":
     "Diese Quelle bietet keine Audiodatei zum Herunterladen. Andere Quelle wählen.",
   "music.download.missing": "Datei fehlt. Erneut herunterladen.",
   "music.download.failed": "Download fehlgeschlagen. Erneut versuchen oder andere Quelle wählen.",
+  "music.download.changeFolder": "Ändern",
+  "music.download.defaultFolder": "Standard verwenden",
   "music.download.empty": "Songs im Player oder Titelmenü herunterladen und offline hören.",
   "music.download.folder": "Im Ordner anzeigen",
   "music.download.delete": "Download löschen",
@@ -73,12 +75,16 @@ const musicNowPlaying: Record<string, string> = {
   "music.buy.search": "Bei {store} suchen",
 
   "music.artist.about": "Über den Künstler",
+  "music.artist.save": "Künstler speichern",
+  "music.artist.unsave": "Aus gespeicherten Künstlern entfernen",
 
   "music.artist.origin": "Herkunft",
 
   "music.artist.began": "Geboren / gegründet",
 
   "music.artist.aliases": "Auch bekannt als",
+
+  "music.artist.label": "Label",
 
   "music.artist.connections": "Mitglieder und Mitwirkende",
 
@@ -89,6 +95,9 @@ const musicNowPlaying: Record<string, string> = {
   "music.artist.merch": "Merchandise",
 
   "music.artist.official": "Offizielle Website",
+
+  "music.artist.kicker": "Künstler",
+  "music.artist.listenOn": "Anhören bei",
 };
 
 export default musicNowPlaying;

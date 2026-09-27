@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Check, LoaderCircle, Plus } from "lucide-react";
+import { Check, LoaderCircle, Plus } from "@/components/icons/music-icons";
 import { useT } from "@/lib/i18n";
 import { connectSource } from "@/lib/music/catalog";
 import {

@@ -40,6 +40,7 @@ import { addonBasesForOrigin, fetchAddonMeta, gatherCatalogAddons } from "@/lib/
 import { resolveMeta } from "@/lib/meta-resource";
 import { useMdblistScores } from "@/lib/providers/mdblist";
 import { lastPlayedEpisode, readResumeEntry, saveResumeMs } from "@/lib/resume";
+import { advancePastFinished } from "@/lib/detail-resume-advance";
 import { localCwEntry } from "@/lib/local-cw";
 import { omdbPrefetch, omdbScores, type OmdbScores } from "@/lib/providers/omdb";
 import { harborImdbTitle } from "@/lib/providers/harbor-imdb";
@@ -111,6 +112,8 @@ import { AddToSimklButton } from "./detail/add-to-simkl-button";
 import { getLocalCache, saveLocalCache } from "@/lib/simkl/activities";
 import { simklRequest } from "@/lib/simkl/client";
 import { CollectionRow } from "./detail/collection-row";
+import { SharedCrewLine } from "./detail/shared-crew-line";
+import { orderByReason, useGraphReasons } from "./detail/use-graph-reasons";
 import { MediaGallery } from "./detail/media-gallery";
 import { useTitleBackdrop } from "@/lib/title-backdrop";
 import { useTitleLogo } from "@/lib/title-logo";
@@ -128,6 +131,7 @@ import {
 import { EpisodeDownloadButton } from "./detail/episode-download-button";
 import { HeroBackdrop } from "./detail/hero-backdrop";
 import { isTitleUpcoming } from "./detail/helpers";
+import { AccoladeBadges } from "./detail/accolade-badges";
 import { HeroAwardsCorner } from "./detail/hero-awards";
 import { CrunchyrollAwardsCorner } from "./detail/crunchyroll-corner";
 import { findAnyAwardWins, parseAwardYear } from "@/lib/anime-awards";
@@ -1016,6 +1020,18 @@ export function DetailView({
   }, [tmdbRecommendations, relatedFallback, similar, meta.id]);
   const shownRecommendations = useHideAnimeMetas(recommendations);
   const shownSimilar = useHideAnimeMetas(similar);
+  const { crew: sharedCrewFilms, reasons: graphReasons } = useGraphReasons(
+    detail?.imdbId ?? undefined,
+    isAnime,
+  );
+  const reasonedRecommendations = useMemo(
+    () => orderByReason(shownRecommendations, graphReasons),
+    [shownRecommendations, graphReasons],
+  );
+  const reasonedSimilar = useMemo(
+    () => orderByReason(shownSimilar, graphReasons),
+    [shownSimilar, graphReasons],
+  );
   const liveAwards = useAwards(detail?.imdbId ?? undefined, meta.type === "series");
   const awards = useMemo(
     () => mergeBundledAwards(liveAwards, meta.name, releaseYearNum ?? undefined),
@@ -1046,6 +1062,9 @@ export function DetailView({
   const awardsNode = renderHeroAwards();
   const heroAwardsInline = awardsInDescription ? awardsNode : null;
   const heroAwardsCorner = awardsInDescription ? null : awardsNode;
+  const heroAccolades = (
+    <AccoladeBadges imdbId={detail?.imdbId ?? (meta.id.startsWith("tt") ? meta.id : null)} />
+  );
   const mangaAdaptationPoster = anilistExtra?.adaptations?.find(
     (n) => n.mediaType === "manga" && n.poster,
   )?.poster;
@@ -1222,8 +1241,21 @@ export function DetailView({
     );
     if (eligible.length === 0) return null;
     eligible.sort((a, b) => b.t - a.t);
-    return { season: eligible[0].season, episode: eligible[0].episode };
-  }, [meta.id, detail?.imdbId, detail?.id, libraryItem, isAnime, episodeHint, seriesWatchedVer]);
+    return advancePastFinished(
+      meta.id,
+      { season: eligible[0].season, episode: eligible[0].episode },
+      cinemetaFull?.videos,
+    );
+  }, [
+    meta.id,
+    detail?.imdbId,
+    detail?.id,
+    libraryItem,
+    isAnime,
+    episodeHint,
+    seriesWatchedVer,
+    cinemetaFull?.videos,
+  ]);
 
   useEffect(() => {
     if (loading) return;
@@ -1570,6 +1602,7 @@ export function DetailView({
           })}
         </div>
       )}
+      {heroAccolades}
     </>
   );
 
@@ -2041,6 +2074,7 @@ export function DetailView({
                       people={detail.editor}
                     />
                   )}
+                  <SharedCrewLine films={sharedCrewFilms} />
                 </div>
               ),
             });
@@ -2080,27 +2114,37 @@ export function DetailView({
               node: <CollectionRow collection={detail.collection} currentId={meta.id} />,
             });
           }
-          if (shownRecommendations.length > 0) {
+          if (reasonedRecommendations.length > 0) {
             railSections.push({
               key: "moreLikeThis",
               label: t("More Like This"),
               node: (
                 <Row title={t("More Like This")}>
-                  {shownRecommendations.map((r) => (
-                    <PickCard key={r.id} meta={r} />
+                  {reasonedRecommendations.map((r) => (
+                    <PickCard
+                      key={r.id}
+                      meta={r}
+                      reason={graphReasons.get(r.id)?.label}
+                      reasonDetail={graphReasons.get(r.id)?.detail}
+                    />
                   ))}
                 </Row>
               ),
             });
           }
-          if (shownSimilar.length > 0) {
+          if (reasonedSimilar.length > 0) {
             railSections.push({
               key: "similar",
               label: t("You Might Also Like"),
               node: (
                 <Row title={t("You Might Also Like")}>
-                  {shownSimilar.map((r) => (
-                    <PickCard key={`s-${r.id}`} meta={r} />
+                  {reasonedSimilar.map((r) => (
+                    <PickCard
+                      key={`s-${r.id}`}
+                      meta={r}
+                      reason={graphReasons.get(r.id)?.label}
+                      reasonDetail={graphReasons.get(r.id)?.detail}
+                    />
                   ))}
                 </Row>
               ),
@@ -2175,7 +2219,16 @@ export function DetailView({
               key: "awards",
               label: t("Awards & Recognition"),
               minHeight: 200,
-              node: <AwardsBlock awards={awards} />,
+              node: (
+                <AwardsBlock
+                  awards={awards}
+                  seriesImdbId={
+                    isSeries
+                      ? (detail.imdbId ?? (meta.id.startsWith("tt") ? meta.id : null))
+                      : null
+                  }
+                />
+              ),
             });
           }
           if (

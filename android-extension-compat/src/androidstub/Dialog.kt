@@ -64,8 +64,6 @@ open class Dialog @JvmOverloads constructor(private val context: Context? = null
         dismiss()
     }
 
-    /** The key listener an extension installs is its own escape handling, so it has to stay
-     * reachable rather than merely stored. */
     open fun dispatchKeyEvent(keyCode: Int, event: KeyEvent?): Boolean =
         keyListener?.onKey(this, keyCode, event) ?: false
 }

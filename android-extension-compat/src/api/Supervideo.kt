@@ -5,10 +5,6 @@ import com.lagradost.cloudstream3.utils.ExtractorApi
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.extractorLog
 
-/** Supervideo.
- *
- * The page holds its player config inside one packed script block and nothing else, which is the
- * shape the shared engine already reads, so this only has to find the page. */
 open class Supervideo : ExtractorApi() {
 
     override val name: String = "Supervideo"

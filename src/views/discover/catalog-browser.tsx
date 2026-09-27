@@ -2,7 +2,12 @@ import { ChevronDown } from "lucide-react";
 import { Search } from "@/components/icons/search-icon";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth";
-import { browseFetcher, listBrowseCatalogs, type BrowseCatalog } from "@/lib/catalog-browse";
+import {
+  browseFetcher,
+  listBrowseCatalogs,
+  subscribeBrowseCatalogs,
+  type BrowseCatalog,
+} from "@/lib/catalog-browse";
 import { useT } from "@/lib/i18n";
 import { useView } from "@/lib/view";
 
@@ -145,11 +150,17 @@ export function CatalogBrowser() {
 
   useEffect(() => {
     let cancelled = false;
-    void listBrowseCatalogs(authKey).then((list) => {
-      if (!cancelled) setCatalogs(list);
-    });
+    const reload = () => {
+      void listBrowseCatalogs(authKey).then((list) => {
+        if (!cancelled) setCatalogs(list);
+      });
+    };
+    reload();
+    // A plugin's own catalogs arrive after its runtime is up, which is later than the addons.
+    const stop = subscribeBrowseCatalogs(reload);
     return () => {
       cancelled = true;
+      stop();
     };
   }, [authKey]);
 

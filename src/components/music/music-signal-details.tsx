@@ -1,4 +1,4 @@
-import { Info } from "lucide-react";
+import { Info } from "@/components/icons/music-icons";
 import { useT } from "@/lib/i18n";
 import type { MusicAudioSettingsValue } from "@/lib/music/audio-settings";
 import { musicMeterFraction, type MusicAudioMeterState } from "@/lib/music/audio-meter";

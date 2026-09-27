@@ -1283,8 +1283,10 @@ fn spawn_event_loop(
                                 let gamma = mpv_keepalive
                                     .get_property::<String>("video-params/gamma")
                                     .unwrap_or_default();
-                                let active = gamma == "pq" || gamma == "hlg";
-                                apply_mac_edr(&app, &mpv_keepalive, active);
+                                if !gamma.is_empty() {
+                                    let active = gamma == "pq" || gamma == "hlg";
+                                    apply_mac_edr(&app, &mpv_keepalive, active);
+                                }
                             }
                         }
                     }
@@ -1545,14 +1547,13 @@ pub async fn mpv_set_geometry(
     }
     #[cfg(target_os = "macos")]
     {
-        let (tx, rx) = std::sync::mpsc::sync_channel(1);
         app.run_on_main_thread(move || {
-            let _ = tx.send(crate::mpv_render_mac::resize_to(geom));
+            if let Err(error) = crate::mpv_render_mac::resize_to(geom) {
+                eprintln!("[harbor::mpv] macOS resize rejected: {error}");
+            }
         })
         .map_err(|error| format!("failed to schedule macOS mpv resize: {error}"))?;
-        return rx
-            .recv_timeout(std::time::Duration::from_millis(300))
-            .map_err(|error| format!("timed out waiting for macOS mpv resize: {error}"))?;
+        return Ok(());
     }
     #[cfg(target_os = "linux")]
     {

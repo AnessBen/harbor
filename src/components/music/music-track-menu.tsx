@@ -6,12 +6,12 @@ import {
   type ReactNode,
   type RefObject,
 } from "react";
-import { Copy, Disc3, Download, ListPlus, Play, Plus, UserRound } from "lucide-react";
+import { Copy, Disc3, ImageDown, ListPlus, Play, Plus, Save, UserRound } from "@/components/icons/music-icons";
 import { MoreLikeThisIcon } from "@/components/icons/more-like-this-icon";
 import { AnchoredMenu } from "@/components/anchored-menu";
 import { useT } from "@/lib/i18n";
 import { downloadMusic } from "@/lib/music/downloads";
-import { musicSimilarTracks } from "@/lib/music/player";
+import { saveArtwork } from "@/lib/music/artwork-save";
 import { requestMusicExplore } from "@/lib/music/navigation";
 import { useArtistCredits } from "./use-artist-credits";
 import { useMusicNavigate } from "./music-navigate";
@@ -51,9 +51,19 @@ export function useMusicTrackMenuItems(
     items.push({
       id: "download",
       label: t("music.download.action"),
-      icon: <Download size={14} />,
+      icon: <Save size={14} />,
       run: () => {
         void downloadMusic(track).catch(() => {});
+      },
+    });
+  }
+  if (track.artwork) {
+    items.push({
+      id: "artwork",
+      label: t("music.artwork.save"),
+      icon: <ImageDown size={14} />,
+      run: async () => {
+        await saveArtwork(track.artwork, track.album || track.title, track.artist);
       },
     });
   }
@@ -99,12 +109,7 @@ export function useMusicTrackMenuItems(
     id: "similar",
     label: t("music.card.moreLikeThis"),
     icon: <MoreLikeThisIcon size={14} />,
-    run:
-      onMoreLikeThis ??
-      (async () => {
-        const mix = await musicSimilarTracks(track);
-        requestMusicExplore({ kind: "similar", track, queue: mix });
-      }),
+    run: onMoreLikeThis ?? (() => requestMusicExplore({ kind: "similar", track })),
   });
   items.push({
     id: "copy",

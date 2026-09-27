@@ -162,7 +162,10 @@ import { BigPictureEntryButton } from "@/views/big-picture/bp-entry-button";
 import { releaseBigPictureFullscreen } from "@/views/big-picture/use-bp-fullscreen";
 import { getNavFocusTarget } from "@/lib/keyboard-navigation/geometry";
 import { SFX } from "@/lib/sfx";
-import { startMusicTaskbarButtons } from "@/lib/music/taskbar-buttons";
+import {
+  startMusicTaskbarButtons,
+  syncMusicTaskbarArtwork,
+} from "@/lib/music/taskbar-buttons";
 
 const importAnime = () => import("@/views/anime");
 const importCalendar = () => import("@/views/calendar");
@@ -173,6 +176,7 @@ const importDiscover = () => import("@/views/discover");
 const importCatalogs = () => import("@/views/catalogs");
 const importAward = () => import("@/views/award");
 const importAnimeAward = () => import("@/views/anime-award");
+const importCuratedList = () => import("@/views/curated-list");
 const importFilter = () => import("@/views/filter");
 const importBrands = () => import("@/views/brands");
 const importGrid = () => import("@/views/grid");
@@ -207,6 +211,9 @@ const Discover = lazy(() => importDiscover().then((m) => ({ default: m.Discover 
 const Catalogs = lazy(() => importCatalogs().then((m) => ({ default: m.Catalogs })));
 const AwardView = lazy(() => importAward().then((m) => ({ default: m.AwardView })));
 const AnimeAwardView = lazy(() => importAnimeAward().then((m) => ({ default: m.AnimeAwardView })));
+const CuratedListView = lazy(() =>
+  importCuratedList().then((m) => ({ default: m.CuratedListView })),
+);
 const FilterView = lazy(() => importFilter().then((m) => ({ default: m.FilterView })));
 const BrandsView = lazy(() => importBrands().then((m) => ({ default: m.BrandsView })));
 const GridView = lazy(() => importGrid().then((m) => ({ default: m.GridView })));
@@ -347,7 +354,6 @@ function useIdleEvict(active: boolean, pin = false): boolean {
   const [alive, setAlive] = useState(active);
   const [pressure, setPressure] = useState(false);
   useEffect(() => subscribeMemoryPressure(setPressure), []);
-  useEffect(() => startMusicTaskbarButtons(), []);
   useEffect(() => {
     if (active || pin) {
       setAlive(true);
@@ -761,6 +767,7 @@ function Shell({ onReady }: { onReady?: () => void }) {
     grid,
     awardType,
     animeAwardSource,
+    curatedListId,
     picker,
     player,
     setView,
@@ -1211,6 +1218,7 @@ function Shell({ onReady }: { onReady?: () => void }) {
         onDeepLinkInstall,
         onDeepLinkOpen,
         onDeepLinkOpenList,
+        onDeepLinkOpenMusic,
         onOpenLocalFile,
         onOpenProfileEdit,
         isProfileEditUrl,
@@ -1244,6 +1252,15 @@ function Shell({ onReady }: { onReady?: () => void }) {
           const stopOpenList = onDeepLinkOpenList(({ handle, listId }) => {
             openList(handle, listId);
           });
+          const stopOpenMusic = onDeepLinkOpenMusic((link) => {
+            setView("music");
+            void Promise.all([
+              import("@/lib/music/navigation"),
+              import("@/lib/music/deep-link"),
+            ]).then(([{ requestMusicSearch }, { musicDeepLinkQuery }]) =>
+              requestMusicSearch(musicDeepLinkQuery(link)),
+            );
+          });
           const stopEdit = onOpenProfileEdit(() => {
             const handle = currentAuthor()?.handle;
             if (handle) requestEditProfile(handle);
@@ -1265,6 +1282,7 @@ function Shell({ onReady }: { onReady?: () => void }) {
             stopListener();
             stopOpen();
             stopOpenList();
+            stopOpenMusic();
             stopEdit();
             stopFile();
           };
@@ -1327,6 +1345,7 @@ function Shell({ onReady }: { onReady?: () => void }) {
   const gridTop = topKind === "grid";
   const awardTop = topKind === "award";
   const animeAwardTop = topKind === "anime-award";
+  const curatedListTop = topKind === "curated-list";
   const settingsTop = topKind === "settings";
   const animeTop = topKind === "anime";
   const discoverTop = topKind === "discover";
@@ -1397,6 +1416,9 @@ function Shell({ onReady }: { onReady?: () => void }) {
     "data-layer-inactive": !top ? "" : undefined,
   });
 
+  useEffect(() => startMusicTaskbarButtons(), []);
+  useEffect(() => syncMusicTaskbarArtwork(), [settings.musicArtworkAppIcon]);
+
   const overlayPinned = useOverlayPinned();
   const settingsAlive = useIdleEvict(settingsTop, overlayPinned);
   const animeAlive = useIdleEvict(animeTop);
@@ -1437,6 +1459,7 @@ function Shell({ onReady }: { onReady?: () => void }) {
   const gridAlive = useKeepAlive(gridTop, !!grid, stackKinds.includes("grid"));
   const awardAlive = useKeepAlive(awardTop, awardTop);
   const animeAwardAlive = useKeepAlive(animeAwardTop, animeAwardTop && !!animeAwardSource);
+  const curatedListAlive = useKeepAlive(curatedListTop, curatedListTop && !!curatedListId);
   const pickerAlive = useKeepAlive(pickerTop, !!picker);
   const moviesAlive = useIdleEvict(moviesTop);
   const kidsAlive = useIdleEvict(kidsTop);
@@ -1866,6 +1889,13 @@ function Shell({ onReady }: { onReady?: () => void }) {
                   key={`anime-award-${animeAwardSource}`}
                   sourceId={animeAwardSource}
                 />
+              </Suspense>
+            </div>
+          )}
+          {curatedListAlive && curatedListId && (
+            <div {...layerProps(curatedListTop)}>
+              <Suspense fallback={null}>
+                <CuratedListView key={`curated-list-${curatedListId}`} listId={curatedListId} />
               </Suspense>
             </div>
           )}

@@ -4,9 +4,6 @@ import android.graphics.Canvas
 import android.graphics.ColorFilter
 import android.graphics.PixelFormat
 
-/** Extensions subclass this and override draw, setAlpha, setColorFilter and getOpacity, so each
- *  one is open with a working body: an abstract member here is an error the loader only finds
- *  when the line runs. */
 open class Drawable {
 
     private var boundsLeft: Int = 0

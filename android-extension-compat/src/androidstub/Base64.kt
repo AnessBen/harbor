@@ -14,8 +14,6 @@ const val NO_CLOSE: Int = 16
 private const val STANDARD = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
 private const val WEB_SAFE = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
 
-/** Extensions sign request URLs with these flags, so the alphabet, the padding and the wrapping
- * all have to match the platform exactly or the signature they send is a different string. */
 fun encodeToString(input: ByteArray, flags: Int): String {
     val alphabet = if (flags and URL_SAFE != 0) WEB_SAFE else STANDARD
     val out = StringBuilder()
@@ -53,8 +51,6 @@ fun encodeToString(input: ByteArray, flags: Int): String {
 fun encode(input: ByteArray, flags: Int): ByteArray =
     encodeToString(input, flags).toByteArray(Charsets.US_ASCII)
 
-/** Lenient the way the platform decoder is: either alphabet, missing padding and stray characters
- * all decode, because payloads scraped out of a page rarely arrive clean. */
 fun decode(input: String, flags: Int): ByteArray {
     val values = IntArray(4)
     val out = ByteArrayOutputStream(input.length * 3 / 4 + 3)

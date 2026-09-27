@@ -1,7 +1,5 @@
 package io.ktor.http
 
-/** Renders a query string back out. A name with several values repeats the name, and a name with
- * an empty value keeps its '=' so the round trip through a parse returns the same shape. */
 fun Parameters.formUrlEncode(): String {
     val out = StringBuilder()
     for (entry in entries) {

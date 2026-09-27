@@ -1,6 +1,8 @@
 package harbor.capstan.test
 
+import com.harbor.capstan.CallTrace
 import com.harbor.capstan.ExtensionLoader
+import com.harbor.capstan.HttpCall
 import com.harbor.capstan.LoaderConfig
 import com.harbor.capstan.StreamLink
 import com.lagradost.cloudstream3.SubtitleFile
@@ -16,36 +18,15 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import java.io.File
 
-/** Scores the extractor registry against the hosts the sample extensions actually reach.
- *
- * Three separate questions are asked, because answering only the first is how a layer reports
- * green while the user sees an empty stream list:
- *   layer    does the layer's own registry hold an extractor for this host
- *   live     does the layer alone, with no extension loaded, turn a real url of that host into a
- *            playable link
- *   winner   once every extension is loaded, whose extractor actually runs
- *
- * The live pass runs before any extension is loaded on purpose. An extension that ships its own
- * extractor for a host masks the layer's, so measuring after loading would score the extensions
- * rather than the layer, and the extensions that ship nothing are exactly the ones that depend on
- * the layer being right.
- *
- * Run without arguments for the registry passes only. Pass --live to add the network pass, and set
- * `LIVE_HOST=stub` to run that pass behind the host the host gate asserts against, so a probe that
- * failed is on record as having failed with a host present rather than without one.
- */
-
 private class HostRow(
     val host: String,
     val extensions: List<String>,
     val evidence: String,
-    val probe: String?,
+    var probe: String?,
+    val mint: String? = null,
+    var mintNote: String? = null,
 )
 
-/** One live attempt: what the extractor produced, and what those links actually served.
- *
- * [served] is the fact a user feels. A link is a claim until something fetches it, and an
- * extractor that emits a url the host then refuses is a silent failure, not a pass. */
 private class Run(val links: Int, val fetched: Int, val served: Int, val note: String)
 
 private class Outcome(
@@ -72,6 +53,7 @@ fun main(args: Array<String>) {
     HostLink.channel = host
     val layerCount = extractorApis.size
 
+    if (live) rows.forEach(::mintProbe)
     val outcomes = rows.map { scoreLayer(it, live) }
 
     val config = LoaderConfig(cacheDir = File(root, "out/cache"), callTimeoutMs = 120_000)
@@ -89,8 +71,6 @@ fun main(args: Array<String>) {
                 if (id !in before) owners[id] = loaded.name
             }
         }
-        // Counted before the live pass, because an extension can register more extractors the
-        // first time one of its own is called and that would inflate the registry size.
         val extensionCount = extractorApis.size - layerCount
         for (outcome in outcomes) scoreWinner(outcome, owners, live)
 
@@ -105,8 +85,6 @@ fun main(args: Array<String>) {
     HostLink.channel = null
 }
 
-/** Whether a host was there to clear a challenge for these probes, and what it managed. A run with
- * no host attached has not shown that a clearance would not have helped. */
 private fun hostSection(host: GateHost?): String {
     val out = StringBuilder("\n## The host channel\n\n")
     if (host == null) {
@@ -132,37 +110,78 @@ private fun ExtractorApi.identity(): String = "${this::class.java.name}@${System
 private fun named(url: String): ExtractorApi? =
     extractorsFor(url).firstOrNull { hostOf(it.mainUrl).isNotEmpty() }
 
+private fun mintProbe(row: HostRow) {
+    val page = row.mint ?: return
+    val found = ArrayList<String>()
+    try {
+        runBlocking {
+            withTimeout(PROBE_TIMEOUT_MS) {
+                loadExtractor(page, null, { _: SubtitleFile -> }, { link: ExtractorLink -> found.add(link.url) })
+            }
+        }
+    } catch (t: Throwable) {
+        row.mintNote = "$page threw ${t::class.java.simpleName}: ${t.message?.take(60)}"
+        return
+    }
+    row.probe = found.firstOrNull { hostOf(it) == row.host }
+    if (row.probe == null) row.mintNote = "$page produced no ${row.host} url of ${found.size} links"
+}
+
+private fun liveRun(row: HostRow, live: Boolean): Run? {
+    if (!live) return null
+    val url = row.probe ?: return row.mintNote?.let { Run(0, 0, 0, it) }
+    return probe(url)
+}
+
 private fun scoreLayer(row: HostRow, live: Boolean): Outcome {
     val best = named(row.probe ?: "https://${row.host}/")
-    val run = if (live && row.probe != null) probe(row.probe) else null
-    return Outcome(row, best?.name, run, null, "")
+    return Outcome(row, best?.name, liveRun(row, live), null, "")
 }
 
 private fun scoreWinner(outcome: Outcome, owners: Map<String, String>, live: Boolean) {
     val best = named(outcome.row.probe ?: "https://${outcome.row.host}/")
     outcome.winner = best?.name
     outcome.winnerOwner = best?.let { owners[it.identity()] ?: "layer" } ?: "none"
-    if (!live || outcome.row.probe == null) return
-    outcome.shipped = probe(outcome.row.probe)
+    outcome.shipped = if (outcome.winnerOwner == "layer" && outcome.live != null) outcome.live
+    else liveRun(outcome.row, live)
 }
 
 private fun probe(url: String): Run {
     val produced = ArrayList<ExtractorLink>()
-    val note = try {
-        runBlocking {
-            withTimeout(PROBE_TIMEOUT_MS) {
-                loadExtractor(url, null, { _: SubtitleFile -> }, { link: ExtractorLink -> produced.add(link) })
+    val traced = CallTrace.tracing {
+        try {
+            runBlocking {
+                withTimeout(PROBE_TIMEOUT_MS) {
+                    loadExtractor(url, null, { _: SubtitleFile -> }, { link: ExtractorLink -> produced.add(link) })
+                }
             }
+            null
+        } catch (t: Throwable) {
+            "${t::class.java.simpleName}: ${t.message?.take(60)}"
         }
-        if (produced.isNotEmpty()) "" else "no links"
-    } catch (t: Throwable) {
-        "${t::class.java.simpleName}: ${t.message?.take(60)}"
     }
-    if (produced.isEmpty()) return Run(0, 0, 0, note)
+    if (produced.isEmpty()) return Run(0, 0, 0, traced.value ?: emptyBecause(traced.http))
     val probes = LinkProbes.probe(produced.map(::streamLink), PROBE_LINKS)
     val served = probes.count { it.served }
     val why = if (served > 0) "" else probes.firstOrNull()?.line()?.substringBefore("  ").orEmpty()
     return Run(produced.size, probes.size, served, why)
+}
+
+private fun emptyBecause(http: List<HttpCall>): String {
+    if (http.isEmpty()) return "no links, no request left the machine"
+    val refused = http.filter { it.status != 0 && !it.ok }
+    if (refused.isNotEmpty()) {
+        val last = refused.last()
+        return "no links, ${refused.size} of ${http.size} refused, " +
+            "last ${last.status} on ${last.url.take(70)}"
+    }
+    val threw = http.filter { it.status == 0 }
+    if (threw.isNotEmpty()) {
+        val last = threw.last()
+        return "no links, ${threw.size} of ${http.size} never completed, " +
+            "last ${last.error} on ${last.url.take(70)}"
+    }
+    return "no links, ${http.size} requests all answered"
 }
 
 private fun streamLink(link: ExtractorLink) = StreamLink(
@@ -213,6 +232,8 @@ private fun render(outcomes: List<Outcome>, live: Boolean, layerCount: Int, exte
     out.append("The layer column is measured with no extension loaded. The winner column is who\n")
     out.append("runs once all thirteen are loaded, because an extension shipping its own extractor\n")
     out.append("for a host takes that host off the layer.\n\n")
+    out.append("A host that signs its addresses is probed with a url minted off the page a session\n")
+    out.append("reaches it through, because a captured one is dead within hours.\n\n")
     out.append("Registry: ${layerCount + extensionCount} extractors, ")
     out.append("$layerCount from the layer, $extensionCount from extensions.\n\n")
     out.append("| host | extensions | evidence | in the layer | winner | owner |")
@@ -244,6 +265,8 @@ private const val PROBE_TIMEOUT_MS = 60_000L
 
 private const val PROBE_LINKS = 3
 
+private fun String?.field(): String? = this?.trim()?.takeIf { it.isNotEmpty() && it != "-" }
+
 private fun readHosts(file: File): List<HostRow> {
     if (!file.isFile) return emptyList()
     return file.readLines().mapNotNull { line ->
@@ -255,7 +278,8 @@ private fun readHosts(file: File): List<HostRow> {
             host = parts[0].trim(),
             extensions = parts[1].split(',').map { it.trim() }.filter { it.isNotEmpty() },
             evidence = parts[2].trim(),
-            probe = parts.getOrNull(3)?.trim()?.takeIf { it.isNotEmpty() && it != "-" },
+            probe = parts.getOrNull(3).field(),
+            mint = parts.getOrNull(4).field(),
         )
     }
 }

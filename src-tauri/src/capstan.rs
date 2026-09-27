@@ -319,3 +319,22 @@ pub async fn capstan_load_links(
     }
     call(&app, "loadLinks", params).await
 }
+
+#[tauri::command]
+pub async fn capstan_catalogue(app: AppHandle, provider_id: String) -> Result<Value, String> {
+    call(&app, "catalogue", json!({ "providerId": provider_id })).await
+}
+
+#[tauri::command]
+pub async fn capstan_catalogue_page(
+    app: AppHandle,
+    provider_id: String,
+    row: String,
+    page: Option<u32>,
+) -> Result<Value, String> {
+    let mut params = json!({ "providerId": provider_id, "row": row });
+    if let Some(page) = page {
+        params["page"] = json!(page);
+    }
+    call(&app, "cataloguePage", params).await
+}

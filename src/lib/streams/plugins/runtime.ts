@@ -1,6 +1,7 @@
 import { PluginWorker } from "@/lib/manga/plugins/worker-host";
 import { dwarn } from "@/lib/debug";
 import { runExtensionPlugin } from "./extension/run";
+import { acquire, release } from "./gate";
 import { PRELUDE_VERSION } from "./provider-compat/prelude";
 import { settingsFingerprint, workerPluginFor } from "./source";
 import { saveStreamPlugin, streamPluginById } from "./store";
@@ -15,7 +16,6 @@ import type {
 
 const IDLE_MS = 5 * 60_000;
 const MAX_IDLE_WORKERS = 4;
-const GLOBAL_CONCURRENCY = 8;
 const LOG_MAX = 200;
 const AUTO_PAUSE_FAILURES = 3;
 const READY_TIMEOUT = 10_000;
@@ -29,8 +29,6 @@ const health = new Map<string, PluginHealth>();
 const logs = new Map<string, PluginLogLine[]>();
 const listeners = new Set<() => void>();
 let sweepTimer: ReturnType<typeof setInterval> | null = null;
-let inflight = 0;
-const queue: Array<() => void> = [];
 
 function notify(): void {
   for (const l of listeners) l();
@@ -51,7 +49,7 @@ export function pluginLog(id: string): PluginLogLine[] {
   return logs.get(id) ?? [];
 }
 
-function pushLog(id: string, level: string, text: string): void {
+export function pushLog(id: string, level: string, text: string): void {
   const list = logs.get(id) ?? [];
   list.push({ at: Date.now(), level, text: text.slice(0, 600) });
   while (list.length > LOG_MAX) list.shift();
@@ -163,25 +161,6 @@ function sweep(): void {
 function startSweep(): void {
   if (sweepTimer) return;
   sweepTimer = setInterval(sweep, 60_000);
-}
-
-function acquire(): Promise<void> {
-  if (inflight < GLOBAL_CONCURRENCY) {
-    inflight += 1;
-    return Promise.resolve();
-  }
-  return new Promise((resolve) => {
-    queue.push(() => {
-      inflight += 1;
-      resolve();
-    });
-  });
-}
-
-function release(): void {
-  inflight -= 1;
-  const next = queue.shift();
-  if (next) next();
 }
 
 function isAbort(e: unknown): boolean {

@@ -1,19 +1,13 @@
-"""Drives the bridge over stdin and stdout the way the desktop app will, against real extensions.
-
-Every check here is a property the Rust side depends on: one response per request id, an error
-frame that carries a message rather than a trace, a failure that costs only its own request, and a
-second request answered while a slow one is still running.
-"""
 import json
 import subprocess
 import sys
 import threading
 import queue
 
-java, classpath, data_dir, sample, broken = sys.argv[1:6]
+java, jvm, classpath, data_dir, sample, broken = sys.argv[1:7]
 
 proc = subprocess.Popen(
-    [java, "-cp", classpath, "com.harbor.capstan.bridge.Bridge", "--data-dir", data_dir],
+    [java, jvm, "-cp", classpath, "com.harbor.capstan.bridge.Bridge", "--data-dir", data_dir],
     stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=None,
     text=True, encoding="utf-8", bufsize=1,
 )
@@ -51,8 +45,6 @@ reverse = []
 
 
 def take(timeout=180):
-    """The next response. A frame carrying `host` is a request to this side, not an answer to
-    anything asked, so it is recorded and stepped over the way a client with no browser does."""
     while True:
         frame = frames.get(timeout=timeout)
         if frame is None:
@@ -72,6 +64,10 @@ def call(rid, method, **params):
 
 def result(frame):
     return frame.get("result") or {}
+
+
+def code(frame):
+    return (frame.get("error") or {}).get("code")
 
 
 print("ping")
@@ -97,6 +93,8 @@ extension_id = installed.get("id")
 provider_id = (installed.get("providers") or [None])[0]
 check("install named its entry class", bool(installed.get("entryClass")), installed)
 check("install reported a provider", bool(provider_id), installed)
+check("install reported an empty unavailable list",
+      installed.get("unavailable") == [], installed.get("unavailable"))
 
 print("providers")
 frame = call("4", "providers")
@@ -111,11 +109,51 @@ frame = call("5", "extensions")
 listed = result(frame).get("extensions") or []
 check("one extension installed", len(listed) == 1, listed)
 
+print("catalogue")
+frame = call("c1", "catalogue", providerId=provider_id)
+check("catalogue ok", frame.get("ok") is True, frame)
+rows = result(frame).get("rows")
+check("catalogue answered a rows array", isinstance(rows, list), frame)
+check("catalogue reports the provider's own flag",
+      isinstance(result(frame).get("hasMainPage"), bool), frame)
+check("every row carries a name, a payload and both flags",
+      all(isinstance(r.get("name"), str) and r["name"]
+          and isinstance(r.get("data"), str)
+          and isinstance(r.get("horizontalImages"), bool)
+          and isinstance(r.get("declared"), bool) for r in (rows or [])), rows)
+
+frame = call("c2", "catalogue", providerId="nope/nope")
+check("catalogue on an unknown provider", code(frame) == "provider_not_found", frame)
+frame = call("c3", "cataloguePage", providerId=provider_id)
+check("cataloguePage with no row named", code(frame) == "bad_request", frame)
+frame = call("c4", "cataloguePage", providerId=provider_id, row="no such row here")
+check("cataloguePage with a row the provider does not have", code(frame) == "bad_request", frame)
+
+if rows:
+    frame = call("c5", "cataloguePage", providerId=provider_id, row=rows[0]["name"], page=1)
+    check("cataloguePage ok", frame.get("ok") is True, frame)
+    page = result(frame)
+    check("cataloguePage echoes the row it fetched", page.get("row") == rows[0]["name"], page)
+    check("cataloguePage echoes the page", page.get("page") == 1, page)
+    check("cataloguePage reports hasNext", isinstance(page.get("hasNext"), bool), page)
+    sections = page.get("sections")
+    check("cataloguePage answered a sections array", isinstance(sections, list), page)
+    check("every section carries a name and an items array",
+          all(isinstance(s.get("name"), str) and isinstance(s.get("items"), list)
+              for s in (sections or [])), sections)
+    items = [i for s in (sections or []) for i in s["items"]]
+    check("every browsed item is shaped like a search result",
+          all(isinstance(i.get("name"), str) and isinstance(i.get("url"), str) for i in items), items[:3])
+    other = rows[0]["name"].upper() if rows[0]["name"].islower() else rows[0]["name"].lower()
+    frame = call("c6", "cataloguePage", providerId=provider_id, row=other)
+    check("a row name matches without regard to case", frame.get("ok") is True, frame)
+    check("the echoed row is the provider's own spelling",
+          result(frame).get("row") == rows[0]["name"], result(frame))
+else:
+    print("  note this provider declares no rows, so the page checks have nothing to fetch")
+
 print("a url the provider cannot use costs only its own request")
 frame = call("6", "load", providerId=provider_id, url="not-a-url://nowhere")
-# A provider that simply finds nothing is not an error. Either shape is correct here, so what is
-# checked is that the frame is well formed and that the message never carries a stack trace, which
-# is the property the Rust side actually depends on.
 if frame.get("ok") is False:
     message = (frame.get("error") or {}).get("message", "")
     check("error carries a message", bool(message), frame.get("error"))
@@ -123,22 +161,12 @@ if frame.get("ok") is False:
 else:
     check("nothing found is reported as nothing found",
           result(frame).get("found") is False, frame)
-    # The note is a claim about the service, so it is only ever attached when an address the
-    # provider uses actually refused. A url the provider never fetched must carry none.
     check("nothing found with nothing refused carries no note",
           result(frame).get("note") is None, result(frame).get("note"))
 frame = call("7", "ping")
 check("process still answering", frame.get("ok") is True, frame)
 
 print("bad arguments and bad names")
-
-
-def code(frame):
-    """The error code, or None when the bridge answered ok. Never raises, so one wrong
-    answer is reported as one failed check instead of ending the run."""
-    return (frame.get("error") or {}).get("code")
-
-
 frame = call("8", "search", providerId="nope/nope", query="x")
 check("unknown provider", code(frame) == "provider_not_found", frame)
 frame = call("9", "frobnicate")

@@ -5,9 +5,6 @@ import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-/** A working cookie jar. The clearance flows poll this after every page load and treat what comes
- * back as the session they will reuse for later requests, so storage, host matching and expiry have
- * to behave, and a stub that always answered null would make those loops spin until they time out. */
 class CookieManager private constructor() {
 
     private class Entry(
@@ -78,8 +75,6 @@ class CookieManager private constructor() {
         callback?.onReceiveValue(true)
     }
 
-    /** Nothing is written to disk, so there is no buffer to push. Kept because page code calls it
-     * before reading the jar and expects the read that follows to see everything. */
     fun flush() {}
 
     internal fun storeAll(url: String?, setCookieHeaders: List<String>) {

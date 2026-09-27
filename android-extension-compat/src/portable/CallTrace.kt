@@ -7,11 +7,6 @@ import com.lagradost.nicehttp.RequestRecord
 import com.lagradost.nicehttp.requestWatch
 import java.util.Collections
 
-/** One url an extension asked the layer to turn into a stream, and what the registry did with it.
- *
- * [registryEntries] is the coverage fact: empty means nobody wrote a class for this host and the
- * attempt fell through to the generic reader, which is a different failure from an entry that ran
- * and came back empty. */
 data class ResolveAttempt(
     val url: String,
     val host: String,
@@ -22,10 +17,6 @@ data class ResolveAttempt(
     val covered: Boolean get() = registryEntries.isNotEmpty()
 }
 
-/** One request that left the machine. Status 0 means the call never completed.
- *
- * [contentType] is load bearing: a site that answers an api path with 200 and a page of html is
- * serving a challenge, and that reads as success everywhere except here. */
 data class HttpCall(
     val method: String,
     val url: String,
@@ -39,7 +30,6 @@ data class HttpCall(
 
     val html: Boolean get() = contentType.startsWith("text/html")
 
-    /** What the caller asked for, as far as the url says, against what came back. */
     val apiPathAnsweredWithPage: Boolean get() = ok && html && url.contains("/api/")
 }
 
@@ -47,14 +37,9 @@ data class Traced<T>(
     val value: T,
     val resolves: List<ResolveAttempt>,
     val http: List<HttpCall>,
-    /** What the extension itself said while it ran. An extension that gives up on purpose usually
-     * says so here and nowhere else. */
     val logs: List<String>,
 )
 
-/** Records what an extension did on the wire while [block] runs.
- *
- * Only one recording can be in flight, because the watches it installs are process wide. */
 object CallTrace {
 
     private val lock = Any()

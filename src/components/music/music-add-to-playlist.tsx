@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Check, ListPlus, Loader2, Plus } from "lucide-react";
+import { Check, ListPlus, Loader2, Plus } from "@/components/icons/music-icons";
 import { useT } from "@/lib/i18n";
 import {
   addTrackToMusicPlaylist,

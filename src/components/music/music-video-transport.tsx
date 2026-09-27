@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type PointerEvent } from "react";
-import { LoaderCircle, Pause, Play, SkipBack, SkipForward } from "lucide-react";
+import { LoaderCircle, Pause, Play, SkipBack, SkipForward } from "@/components/icons/music-icons";
 import { fmtTime } from "@/components/player/transport/transport-utils";
 import { useT } from "@/lib/i18n";
 import {

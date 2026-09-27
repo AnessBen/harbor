@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ChevronLeft, ListPlus, Play, Plus } from "lucide-react";
+import { ChevronLeft, ListPlus, Play, Plus } from "@/components/icons/music-icons";
 import { MusicTrackGrid } from "@/components/music/music-track-grid";
 import { useT } from "@/lib/i18n";
 import { artistCreditParts } from "@/lib/music/search-artists";
@@ -11,14 +11,17 @@ import type { MusicTrack } from "@/lib/music/types";
 export function MusicSimilarPage({
   seed,
   tracks,
+  state = "ready",
   onBack,
 }: {
   seed: MusicTrack;
   tracks: MusicTrack[];
+  state?: "loading" | "ready" | "error";
   onBack: () => void;
 }) {
   const t = useT();
   const [saved, setSaved] = useState<"idle" | "saving" | "done" | "error">("idle");
+  const busy = state === "loading";
 
   const leads = useMemo(() => {
     const names = new Set<string>();
@@ -63,7 +66,11 @@ export function MusicSimilarPage({
           {t("music.similar.title", { title: seed.title })}
         </h1>
         <p className="text-sm text-ink-muted">
-          {t("music.similar.subtitle", { count: tracks.length, artists: leads })}
+          {busy
+            ? t("music.similar.building")
+            : state === "error"
+              ? t("music.similar.error")
+              : t("music.similar.subtitle", { count: tracks.length, artists: leads })}
         </p>
       </header>
 
@@ -71,7 +78,8 @@ export function MusicSimilarPage({
         <button
           type="button"
           onClick={playAll}
-          className="inline-flex min-h-11 items-center gap-2 rounded-md bg-ink px-4 text-sm font-semibold text-canvas"
+          disabled={busy || tracks.length === 0}
+          className="inline-flex min-h-11 items-center gap-2 rounded-md bg-ink px-4 text-sm font-semibold text-canvas disabled:opacity-60"
         >
           <Play size={16} aria-hidden="true" />
           {t("music.similar.playAll")}
@@ -79,7 +87,8 @@ export function MusicSimilarPage({
         <button
           type="button"
           onClick={queueAll}
-          className="inline-flex min-h-11 items-center gap-2 rounded-md bg-elevated px-4 text-sm font-semibold text-ink"
+          disabled={busy || tracks.length === 0}
+          className="inline-flex min-h-11 items-center gap-2 rounded-md bg-elevated px-4 text-sm font-semibold text-ink disabled:opacity-60"
         >
           <ListPlus size={16} aria-hidden="true" />
           {t("music.card.addToQueue")}
@@ -87,7 +96,7 @@ export function MusicSimilarPage({
         <button
           type="button"
           onClick={save}
-          disabled={saved === "saving" || saved === "done"}
+          disabled={busy || tracks.length === 0 || saved === "saving" || saved === "done"}
           className="inline-flex min-h-11 items-center gap-2 rounded-md bg-elevated px-4 text-sm font-semibold text-ink disabled:opacity-60"
         >
           <Plus size={16} aria-hidden="true" />
@@ -102,6 +111,8 @@ export function MusicSimilarPage({
       <MusicTrackGrid
         title={t("music.similar.heading")}
         tracks={tracks}
+        status={state}
+        error={state === "error" ? t("music.similar.error") : undefined}
         count={tracks.length}
         numbered
         onPlay={start}

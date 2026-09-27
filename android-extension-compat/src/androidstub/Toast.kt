@@ -24,8 +24,6 @@ open class Toast(val context: Context?) {
         const val LENGTH_SHORT: Int = 0
         const val LENGTH_LONG: Int = 1
 
-        // The host sets this to surface a toast in its own interface. Unset, a toast is recorded
-        // and goes nowhere, which is the benign outcome when nothing can display it.
         @JvmStatic
         var sink: ((Toast) -> Unit)? = null
 

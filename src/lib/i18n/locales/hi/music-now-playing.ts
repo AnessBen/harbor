@@ -2,13 +2,15 @@ const musicNowPlaying: Record<string, string> = {
   "music.artist.filmography": "फ़िल्म और टीवी",
   "music.action.error": "कार्रवाई पूरी नहीं हुई। फिर कोशिश करें।",
   "music.radio.error": "रेडियो शुरू नहीं हुआ। फिर कोशिश करें या दूसरा स्रोत चुनें।",
-  "music.download.action": "गाना डाउनलोड करें",
-  "music.download.done": "डाउनलोड किया गया",
-  "music.download.busy": "डाउनलोड हो रहा है",
-  "music.download.retry": "फिर से डाउनलोड करें",
+  "music.download.action": "गाना सहेजें",
+  "music.download.done": "सहेजा गया",
+  "music.download.busy": "सहेजा जा रहा है",
+  "music.download.retry": "फिर से सहेजें",
   "music.download.unsupported": "यह स्रोत डाउनलोड करने योग्य ऑडियो नहीं देता। दूसरा स्रोत आज़माएँ।",
   "music.download.missing": "फ़ाइल नहीं मिली। फिर से डाउनलोड करें।",
   "music.download.failed": "डाउनलोड विफल। फिर कोशिश करें या दूसरा स्रोत चुनें।",
+  "music.download.changeFolder": "बदलें",
+  "music.download.defaultFolder": "डिफ़ॉल्ट उपयोग करें",
   "music.download.empty": "ऑफ़लाइन सुनने के लिए प्लेयर या गाने के मेन्यू से गाने डाउनलोड करें।",
   "music.download.folder": "फ़ोल्डर में दिखाएँ",
   "music.download.delete": "डाउनलोड हटाएँ",
@@ -71,12 +73,16 @@ const musicNowPlaying: Record<string, string> = {
   "music.buy.search": "{store} पर खोजें",
 
   "music.artist.about": "कलाकार के बारे में",
+  "music.artist.save": "कलाकार सहेजें",
+  "music.artist.unsave": "सहेजे गए कलाकारों से हटाएँ",
 
   "music.artist.origin": "मूल स्थान",
 
   "music.artist.began": "जन्म / स्थापना",
 
   "music.artist.aliases": "अन्य नाम",
+
+  "music.artist.label": "लेबल",
 
   "music.artist.connections": "सदस्य और सहयोगी",
 
@@ -87,6 +93,9 @@ const musicNowPlaying: Record<string, string> = {
   "music.artist.merch": "मर्चेंडाइज़",
 
   "music.artist.official": "आधिकारिक वेबसाइट",
+
+  "music.artist.kicker": "कलाकार",
+  "music.artist.listenOn": "यहाँ सुनें",
 };
 
 export default musicNowPlaying;

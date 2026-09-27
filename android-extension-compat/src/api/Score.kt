@@ -3,10 +3,6 @@ package com.lagradost.cloudstream3
 import java.util.Locale
 import kotlin.math.roundToInt
 
-/**
- * A rating normalised to a fixed internal scale so that ratings collected from different sites,
- * some out of 5, some out of 10, some out of 100, stay comparable once they reach the host.
- */
 class Score private constructor(private val normalized: Int) {
 
     fun toDouble(maxValue: Int = 10): Double = normalized.toDouble() * maxValue / SCALE
@@ -47,6 +43,8 @@ class Score private constructor(private val normalized: Int) {
 
         fun from10(value: Double?): Score? = from(value, 10)
 
+        fun from10(value: Float?): Score? = from(value?.toDouble(), 10)
+
         fun from10(value: Int?): Score? = from(value, 10)
 
         fun from10(value: String?): Score? = from(value, 10)
@@ -61,7 +59,6 @@ class Score private constructor(private val normalized: Int) {
 
         fun from1000(value: String?): Score? = from(value, 1000)
 
-        /** Site ratings arrive as "8.4", "8,4", "84%", "8.4 / 10" and "7.8 out of 10". */
         private fun parse(raw: String?): Double? {
             val head = raw?.trim()?.substringBefore('/') ?: return null
             val number = NUMBER.find(head)?.value ?: return null

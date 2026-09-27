@@ -1,3 +1,4 @@
+import mediaStart from "./ar/media-start";
 import listenTogether from "./ar/listen-together";
 import music from "./ar/music";
 import sportsConsent from "./ar/sports-consent";
@@ -47,7 +48,10 @@ import audit from "./ar/audit";
 import plugins from "./ar/plugins";
 import brands from "./ar/brands";
 
+import nytTv from "./ar/nyt-tv";
+
 const ar: Record<string, string> = {
+  ...mediaStart,
   ...videoCast,
   ...music,
   ...ebookSources,
@@ -97,6 +101,7 @@ const ar: Record<string, string> = {
   ...esportsArena,
   ...bpSports,
   ...listenTogether,
+  ...nytTv,
 };
 
 export default ar;

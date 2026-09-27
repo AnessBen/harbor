@@ -6,13 +6,8 @@ import com.harbor.capstan.LinkSet
 import com.harbor.capstan.Provider
 import com.harbor.capstan.SearchItem
 
-/** The three calls a viewer triggers, in order, against the live site.
- *
- * Every one of them runs inside a trace, so a call that comes back empty is still accounted for by
- * the requests it made, the status each one got, and whatever the extension said while it ran. */
 object LiveDrive {
 
-    /** How many of a provider's links get fetched. Enough to prove the path, not a load test. */
     private const val PROBE_LIMIT = 3
 
     fun run(
@@ -79,7 +74,6 @@ object LiveDrive {
     private fun since(startedNanos: Long): Long = (System.nanoTime() - startedNanos) / 1_000_000
 }
 
-/** A compact one line rendering of a request, short enough to read a whole trace at once. */
 fun HttpCall.line(): String {
     val outcome = error ?: "$status ${contentType.ifEmpty { "?" }} ${bodyBytes}B"
     return "$method $outcome ${millis}ms ${url.take(160)}"

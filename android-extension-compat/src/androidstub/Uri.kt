@@ -3,8 +3,6 @@ package android.net
 import java.net.URLDecoder
 import java.net.URLEncoder
 
-/** Keeps the exact text it was parsed from, because extensions compare toString against strings
- * they built themselves and any normalising would break that comparison. */
 open class Uri(private val raw: String) {
 
     private val schemeEnd: Int = run {

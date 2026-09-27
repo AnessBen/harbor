@@ -1,7 +1,5 @@
 package android.graphics
 
-/** Records the outline an extension builds so a renderer can walk it later. The cursor drawable
- *  the dialogs ship is seven line segments and a close, and it has to survive a transform. */
 open class Path {
 
     enum class Verb { MOVE, LINE, CLOSE }
@@ -91,8 +89,6 @@ open class Path {
         destination.transform(matrix)
     }
 
-    /** Left, top, right, bottom. All zeroes for an empty path, which is what a renderer wants
-     *  when it has nothing to draw. */
     fun computeBounds(): FloatArray {
         if (nodes.isEmpty()) return floatArrayOf(0f, 0f, 0f, 0f)
         var left = Float.MAX_VALUE

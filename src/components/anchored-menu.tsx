@@ -1,5 +1,9 @@
-import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
+import { useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
+
+const GAP = 6;
+const EDGE = 8;
+const MIN_HEIGHT = 120;
 
 export function AnchoredMenu({
   anchorRef,
@@ -14,21 +18,29 @@ export function AnchoredMenu({
   width?: number;
   children: ReactNode;
 }) {
-  const [pos, setPos] = useState<{ top: number; left: number; width: number } | null>(null);
+  const [pos, setPos] = useState<{
+    top: number;
+    left: number;
+    width: number;
+    maxHeight: number;
+    up: boolean;
+  } | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!open) return;
     const place = () => {
       const r = anchorRef.current?.getBoundingClientRect();
       if (!r) return;
       const w = Math.max(r.width, width ?? 0);
-      const left = Math.min(Math.max(8, r.left), window.innerWidth - w - 8);
-      const menuH = menuRef.current?.offsetHeight ?? 240;
-      const spaceBelow = window.innerHeight - r.bottom - 8;
-      const openUp = menuH + 6 > spaceBelow && r.top - 8 > spaceBelow;
-      const top = openUp ? Math.max(8, r.top - 6 - menuH) : r.bottom + 6;
-      setPos({ top, left, width: w });
+      const left = Math.min(Math.max(EDGE, r.left), window.innerWidth - w - EDGE);
+      const menuH = menuRef.current?.offsetHeight ?? 0;
+      const above = r.top - GAP - EDGE;
+      const below = window.innerHeight - r.bottom - GAP - EDGE;
+      const up = menuH > below && above > below;
+      const maxHeight = Math.max(MIN_HEIGHT, up ? above : below);
+      const top = up ? Math.max(EDGE, r.top - GAP - Math.min(menuH, maxHeight)) : r.bottom + GAP;
+      setPos({ top, left, width: w, maxHeight, up });
     };
     place();
     let raf: number | null = requestAnimationFrame(() => {
@@ -56,12 +68,23 @@ export function AnchoredMenu({
     };
   }, [open, anchorRef, width, onClose]);
 
-  if (!open || !pos) return null;
+  if (!open) return null;
 
   return createPortal(
     <>
       <div className="fixed inset-0 z-[300]" onMouseDown={onClose} />
-      <div ref={menuRef} className="fixed z-[310]" style={{ top: pos.top, left: pos.left, width: pos.width }}>
+      <div
+        ref={menuRef}
+        data-anchored-up={pos?.up || undefined}
+        className="fixed z-[310] flex flex-col"
+        style={{
+          top: pos?.top ?? 0,
+          left: pos?.left ?? 0,
+          width: pos?.width,
+          maxHeight: pos?.maxHeight,
+          visibility: pos ? undefined : "hidden",
+        }}
+      >
         {children}
       </div>
     </>,

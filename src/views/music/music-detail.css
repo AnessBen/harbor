@@ -26,6 +26,12 @@
 .music-detail-facts svg {
   flex-shrink: 0;
 }
+.music-detail-hero-actions {
+  margin-block-start: 22px;
+}
+.music-detail-page .music-detail-actions:empty {
+  display: none;
+}
 .music-detail-page .music-detail-actions {
   gap: 10px;
 }

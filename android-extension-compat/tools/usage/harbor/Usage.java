@@ -151,25 +151,37 @@ public final class Usage {
     return a;
   }
 
+  static String opt(String[] argv, String name, String fallback) {
+    for (int i = 1; i + 1 < argv.length; i++) {
+      if (argv[i].equals(name)) return argv[i + 1];
+    }
+    return fallback;
+  }
+
   public static void main(String[] argv) throws Exception {
     Path root = Paths.get(argv[0]);
+    String specPath = opt(argv, "--spec", "spec/required.json");
+    String outPath = opt(argv, "--out", "out/usage.json");
     JsonObject spec = JsonParser.parseReader(
-        Files.newBufferedReader(root.resolve("spec/required.json"))).getAsJsonObject();
+        Files.newBufferedReader(root.resolve(specPath))).getAsJsonObject();
     Usage u = new Usage(new HashSet<>(spec.getAsJsonObject("required").keySet()));
     int classes = 0, jars = 0;
-    File[] fs = root.resolve("samples/jars").toFile().listFiles();
-    Arrays.sort(fs);
-    for (File f : fs) {
-      if (!f.getName().endsWith(".jar")) continue;
-      jars++;
-      try (ZipFile z = new ZipFile(f)) {
-        for (Enumeration<? extends ZipEntry> en = z.entries(); en.hasMoreElements(); ) {
-          ZipEntry e = en.nextElement();
-          if (!e.getName().endsWith(".class")) continue;
-          try (InputStream in = z.getInputStream(e)) {
-            u.scan(in.readAllBytes());
+    for (String dir : opt(argv, "--jars", "samples/jars").split(",")) {
+      File[] fs = root.resolve(dir.trim()).toFile().listFiles();
+      if (fs == null) throw new FileNotFoundException("no jar directory " + dir);
+      Arrays.sort(fs);
+      for (File f : fs) {
+        if (!f.getName().endsWith(".jar")) continue;
+        jars++;
+        try (ZipFile z = new ZipFile(f)) {
+          for (Enumeration<? extends ZipEntry> en = z.entries(); en.hasMoreElements(); ) {
+            ZipEntry e = en.nextElement();
+            if (!e.getName().endsWith(".class")) continue;
+            try (InputStream in = z.getInputStream(e)) {
+              u.scan(in.readAllBytes());
+            }
+            classes++;
           }
-          classes++;
         }
       }
     }
@@ -188,7 +200,7 @@ public final class Usage {
     out.add("types", typ);
     out.add("conflicts", arr(u.conflicts));
     Files.createDirectories(root.resolve("out"));
-    try (Writer w = Files.newBufferedWriter(root.resolve("out/usage.json"))) {
+    try (Writer w = Files.newBufferedWriter(root.resolve(outPath))) {
       new GsonBuilder().setPrettyPrinting().create().toJson(out, w);
     }
     System.out.printf("USAGE %d jars %d classes, methods %d, fields %d, types %d, conflicts %d%n",

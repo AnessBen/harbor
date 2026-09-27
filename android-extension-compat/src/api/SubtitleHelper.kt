@@ -2,11 +2,6 @@ package com.lagradost.cloudstream3.utils
 
 import java.util.Locale
 
-/** Turns whatever language tag a player page carries into an English language name.
- *
- * Player pages label tracks with anything from "en" to "pt-BR" to "Brazilian Portuguese", so the
- * lookup goes through the JDK locale tables first and only falls back to a small table for the
- * tags those tables answer wrongly or not at all. */
 object SubtitleHelper {
 
     private val extra = mapOf(
@@ -51,6 +46,5 @@ object SubtitleHelper {
         return if (fallback.isNotEmpty() && !fallback.equals(primary, ignoreCase = true)) fallback else null
     }
 
-    /** The reverse lookup, used when a page names the language instead of tagging it. */
     fun fromEnglishLanguageNameToTag(name: String): String? = byEnglishName[name.trim().lowercase()]
 }

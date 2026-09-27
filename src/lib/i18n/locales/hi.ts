@@ -1,3 +1,4 @@
+import mediaStart from "./hi/media-start";
 import listenTogether from "./hi/listen-together";
 import music from "./hi/music";
 import sportsConsent from "./hi/sports-consent";
@@ -21,7 +22,10 @@ import plugins from "./hi/plugins";
 import brands from "./hi/brands";
 import bpSports from "./hi/bp-sports";
 
+import nytTv from "./hi/nyt-tv";
+
 const hi: Record<string, string> = {
+  ...mediaStart,
   ...videoCast,
   ...music,
   ...ebookSources,
@@ -45,6 +49,7 @@ const hi: Record<string, string> = {
   ...esportsArena,
   ...bpSports,
   ...listenTogether,
+  ...nytTv,
 };
 
 export default hi;

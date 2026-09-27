@@ -1,24 +1,14 @@
-"""Drives the real bridge against two services that are refusing, and reads what it says about them.
-
-A provider that fetched nothing and a provider that fetched a refusal both hand back an empty list,
-and only the second one is the service's doing. This asks the bridge which it was, over the same two
-pipes the desktop app uses, and prints the answer with the evidence beside it.
-
-Live by nature: the verdict per service is whatever the service is doing at the time. What is
-asserted rather than reported is the shape, and the one rule that matters, which is that a note is
-present when the addresses refused and absent when they answered.
-"""
 import json
 import queue
 import subprocess
 import sys
 import threading
 
-java, classpath, data_dir = sys.argv[1:4]
-archives = sys.argv[4:]
+java, jvm, classpath, data_dir = sys.argv[1:5]
+archives = sys.argv[5:]
 
 proc = subprocess.Popen(
-    [java, "-cp", classpath, "com.harbor.capstan.bridge.Bridge", "--data-dir", data_dir],
+    [java, jvm, "-cp", classpath, "com.harbor.capstan.bridge.Bridge", "--data-dir", data_dir],
     stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=None,
     text=True, encoding="utf-8", bufsize=1,
 )

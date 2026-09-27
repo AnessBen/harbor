@@ -3,9 +3,10 @@ package androidx.fragment.app
 import android.app.Activity
 import android.content.Context
 import android.view.Window
+import androidx.lifecycle.LifecycleOwner
 import harbor.compat.host.PlatformHost
 
-open class FragmentActivity @JvmOverloads constructor(base: Context? = null) : Activity(base) {
+open class FragmentActivity @JvmOverloads constructor(base: Context? = null) : Activity(base), LifecycleOwner {
 
     private val fragments = FragmentManager().also { it.owner = this }
     private val activityWindow: Window by lazy { Window(this) }
@@ -17,14 +18,12 @@ open class FragmentActivity @JvmOverloads constructor(base: Context? = null) : A
 
     open fun getWindow(): Window = activityWindow
 
-    open fun isFinishing(): Boolean = finishing
+    override fun isFinishing(): Boolean = finishing
 
-    open fun isDestroyed(): Boolean = destroyed
+    override fun isDestroyed(): Boolean = destroyed
 
     open fun isStarted(): Boolean = started
 
-    /** Extensions post their dialog work here from a scrape. Without a host loop the work still
-     * has to happen, so it runs now, and a failure in it stays out of the scrape that posted it. */
     open fun runOnUiThread(action: Runnable?) {
         val task = action ?: return
         try {

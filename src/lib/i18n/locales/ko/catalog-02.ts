@@ -187,6 +187,8 @@ const catalog02: Record<string, string> = {
   Budget: "예산",
   "Budget exhausted, resets at midnight UTC.": "한도를 모두 사용했습니다. UTC 자정에 초기화됩니다.",
   "Buffer fill": "버퍼 채움",
+  "Reveal the dot on hover": "마우스를 올리면 점 표시",
+  "The dot stays out of the way and appears when you point at the bar. Turn this off to keep it on screen the whole time.": "점은 평소에는 숨어 있다가 막대에 포인터를 올리면 나타납니다. 끄면 항상 표시됩니다.",
   "Buffer fill brightness": "버퍼 채움 밝기",
   "Buffer size": "버퍼 크기",
   Buffering: "버퍼링 중",

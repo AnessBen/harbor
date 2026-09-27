@@ -21,16 +21,15 @@ import {
   AudioLines,
   BarChart3,
   Heart,
-  ListMusic,
   Maximize,
-  Mic2,
   Palette,
   Search,
   SlidersHorizontal,
   Speaker,
   Video,
   Wallpaper,
-} from "lucide-react";
+} from "@/components/icons/music-icons";
+import { MusicGlyph } from "@/components/icons/music-glyph";
 import { Poster } from "@/components/poster";
 import { useMusicTrackContextMenu } from "./music-track-menu";
 import { useUpNextSuggestions } from "@/lib/music/up-next";
@@ -107,9 +106,31 @@ export function MusicNowPlaying({
   const closeRef = useRef<HTMLButtonElement>(null);
   const [panel, setPanel] = useState<"queue" | "signal" | "about" | "lyrics">("queue");
   const [searching, setSearching] = useState(false);
+  const [searchExit, setSearchExit] = useState(false);
+  const searchRef = useRef<HTMLButtonElement>(null);
+  const searchSlotRef = useRef<HTMLDivElement>(null);
+  const closeSearch = useCallback(() => {
+    if (searchSlotRef.current?.contains(document.activeElement))
+      searchRef.current?.focus({ preventScroll: true });
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setSearchExit(false);
+      setSearching(false);
+      return;
+    }
+    setSearchExit(true);
+  }, []);
+  useEffect(() => {
+    if (!searchExit) return;
+    const id = window.setTimeout(() => {
+      setSearchExit(false);
+      setSearching(false);
+    }, 190);
+    return () => window.clearTimeout(id);
+  }, [searchExit]);
   const [karaoke, setKaraoke] = useState(false);
   const [lyrics, setLyrics] = useState<LyricLine[]>([]);
   const [lyricsState, setLyricsState] = useState<"loading" | "ready" | "empty">("loading");
+  const [hasLyrics, setHasLyrics] = useState<boolean | null>(null);
   const lyricsRef = useRef<HTMLOListElement>(null);
   const [outputs, setOutputs] = useState<Array<{ name: string; description: string }>>([]);
   const current = player.current;
@@ -244,6 +265,26 @@ export function MusicNowPlaying({
   );
   const activeLyric = lyricIndexAt(lyrics, shiftedLyricTime(player.currentTime, lyricOffset));
   useEffect(() => {
+    if (!current) return;
+    let alive = true;
+    setHasLyrics(null);
+    void loadTrackLyrics(current)
+      .then((lines) => {
+        if (alive) setHasLyrics(!!lines && lines.length > 0);
+      })
+      .catch(() => {
+        if (alive) setHasLyrics(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [current]);
+  useEffect(() => {
+    if (hasLyrics !== false) return;
+    setKaraoke(false);
+    setPanel((value) => (value === "lyrics" ? "queue" : value));
+  }, [hasLyrics]);
+  useEffect(() => {
     if (panel !== "lyrics" || !current) return;
     let alive = true;
     setLyrics([]);
@@ -284,6 +325,9 @@ export function MusicNowPlaying({
 
   const next = musicUpcoming(player.queue, player.queueIndex, 40);
   const suggested = useUpNextSuggestions(current, panel === "queue" && next.length === 0);
+
+  const lyricsOff = hasLyrics === false;
+  const tabOpen = (id: string) => id !== "lyrics" || !lyricsOff;
 
   if (!current || !display) return null;
   const liked = isMusicLiked(player.likedIds, current);
@@ -362,10 +406,11 @@ export function MusicNowPlaying({
             <button
               type="button"
               aria-pressed={karaoke}
+              disabled={lyricsOff}
               onClick={() => setKaraoke((open) => !open)}
               title={t("Karaoke")}
             >
-              <Mic2 size={17} aria-hidden="true" />
+              <MusicGlyph name="microphone" size={17} />
               <span>{t("Karaoke")}</span>
             </button>
           </div>
@@ -471,9 +516,11 @@ export function MusicNowPlaying({
                   role="tab"
                   aria-selected={panel === id}
                   aria-controls={searching ? undefined : `music-now-panel-${id}`}
+                  disabled={!tabOpen(id)}
+                  title={tabOpen(id) ? undefined : t("No lyrics for this track")}
                   tabIndex={panel === id ? 0 : -1}
                   onClick={() => {
-                    setSearching(false);
+                    closeSearch();
                     setPanel(id);
                   }}
                   onKeyDown={(event) => {
@@ -488,17 +535,23 @@ export function MusicNowPlaying({
                             ? 1
                             : -1
                           : 0;
+                    let hop = index;
+                    if (step)
+                      for (let turn = 0; turn < ids.length; turn += 1) {
+                        hop = (hop + step + ids.length) % ids.length;
+                        if (tabOpen(ids[hop])) break;
+                      }
                     const target =
                       event.key === "Home"
-                        ? ids[0]
+                        ? ids.find(tabOpen)
                         : event.key === "End"
-                          ? ids.at(-1)!
+                          ? [...ids].reverse().find(tabOpen)
                           : step
-                            ? ids[(index + step + ids.length) % ids.length]
+                            ? ids[hop]
                             : null;
                     if (target) {
                       event.preventDefault();
-                      setSearching(false);
+                      closeSearch();
                       setPanel(target);
                       document.getElementById(`music-now-tab-${target}`)?.focus();
                     }
@@ -516,10 +569,18 @@ export function MusicNowPlaying({
                 </button>
               ))}
               <button
+                ref={searchRef}
                 type="button"
-                onClick={() => setSearching(true)}
+                onClick={() => {
+                  if (searching && !searchExit) {
+                    closeSearch();
+                    return;
+                  }
+                  setSearchExit(false);
+                  setSearching(true);
+                }}
                 className="music-now-all-queue"
-                aria-pressed={searching}
+                aria-pressed={searching && !searchExit}
                 aria-label={t("music.searchPlaceholder")}
                 title={t("music.searchPlaceholder")}
               >
@@ -531,13 +592,17 @@ export function MusicNowPlaying({
                 className="music-now-all-queue"
                 aria-label={t("music.transport.openQueue")}
               >
-                <ListMusic size={17} aria-hidden="true" />
+                <MusicGlyph name="queue" size={17} aria-hidden="true" />
               </button>
             </div>
 
             {searching ? (
-              <div className="music-now-search-slot">
-                <MusicNowSearch onClose={() => setSearching(false)} />
+              <div
+                ref={searchSlotRef}
+                className="music-now-search-slot"
+                data-exit={searchExit ? "1" : undefined}
+              >
+                <MusicNowSearch onClose={closeSearch} />
               </div>
             ) : (
               <div
@@ -598,7 +663,7 @@ export function MusicNowPlaying({
                     </>
                   ) : (
                     <div className="music-now-empty">
-                      <Mic2 size={23} aria-hidden="true" />
+                      <MusicGlyph name="lyrics" size={23} />
                       <p>
                         {t(
                           lyricsState === "loading" ? "Finding lyrics" : "No lyrics for this track",
@@ -639,7 +704,7 @@ export function MusicNowPlaying({
                       </ol>
                     ) : (
                       <div className="music-now-empty">
-                        <ListMusic size={23} aria-hidden="true" />
+                        <MusicGlyph name="queue" size={23} aria-hidden="true" />
                         <p>{suggested.loading ? t("music.now.queueBuilding") : t("music.now.queueEmpty")}</p>
                         <button type="button" onClick={() => onExplore("artist")}>
                           {t("music.now.exploreArtist")}

@@ -7,4 +7,6 @@ import android.view.View
 open class ImageView(context: Context?) : View(context) {
     var imageDrawable: Drawable? = null
     var scaleType: Int = 0
+    var contentDescription: CharSequence? = null
+    var rotation: Float = 0f
 }

@@ -53,6 +53,7 @@ export type HarborRankExplanation = {
   leadRoles: number;
   avgRating: number | null;
   ratedTitles: number;
+  localTitles?: number;
   awardsDataMissing: boolean;
   topTitles: TopTitle[];
   stills?: string[];
@@ -77,10 +78,23 @@ export type PersonRankEntry = {
   country?: string | null;
 };
 
+export type FeaturedListRef = { key: string; title: string; file: string };
+
+export type FeaturedPerson = {
+  id: number;
+  rank: number;
+  name: string;
+  profilePath: string | null;
+  department: PeopleDept;
+  deathday?: string | null;
+  knownFor?: KnownForEntry[];
+};
+
 export type RankManifest = {
   computedAt: number;
   sources: RankSource[];
   departments: PeopleDept[];
+  featured?: FeaturedListRef[];
   countries: Array<{
     iso: string;
     name: string;
@@ -176,6 +190,37 @@ export async function fetchRankManifest(): Promise<RankManifest | null> {
   return manifestInflight;
 }
 
+const featuredMem = new Map<string, { at: number; list: FeaturedPerson[] }>();
+const featuredInflight = new Map<string, Promise<FeaturedPerson[]>>();
+
+export async function fetchFeaturedPeople(file: string): Promise<FeaturedPerson[]> {
+  if (!/^[a-z0-9-]+\.json$/.test(file)) return [];
+  const mem = featuredMem.get(file);
+  if (mem && Date.now() - mem.at < STALE_MS) return mem.list;
+  const existing = featuredInflight.get(file);
+  if (existing) return existing;
+  const run = (async () => {
+    try {
+      const res = await safeFetch(`${FEED_BASE}/${file}`, { cache: "no-cache" });
+      if (!res.ok) return [];
+      if ((res.headers.get("content-type") ?? "").includes("html")) return [];
+      const raw = await res.json();
+      if (!Array.isArray(raw)) return [];
+      const list = raw.filter(
+        (p): p is FeaturedPerson => typeof p?.id === "number" && typeof p?.name === "string",
+      );
+      featuredMem.set(file, { at: Date.now(), list });
+      return list;
+    } catch {
+      return [];
+    } finally {
+      featuredInflight.delete(file);
+    }
+  })();
+  featuredInflight.set(file, run);
+  return run;
+}
+
 export function peekRankSnapshot(
   source: RankSource,
   dept: PeopleDept,
@@ -209,6 +254,7 @@ export async function fetchRankList(
     try {
       const res = await safeFetch(listUrl(source, dept, country), { cache: "no-cache" });
       if (!res.ok) return null;
+      if ((res.headers.get("content-type") ?? "").includes("html")) return null;
       const result = buildResult(source, await res.json());
       if (!result) return null;
       listMem.set(key, { at: Date.now(), result });

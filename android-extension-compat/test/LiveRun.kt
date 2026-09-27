@@ -6,7 +6,6 @@ import com.harbor.capstan.MediaItem
 import com.harbor.capstan.ResolveAttempt
 import com.harbor.capstan.SearchItem
 
-/** One candidate taken from a search hit as far as it would go. */
 class Candidate(
     val hit: SearchItem,
     val detail: MediaItem?,
@@ -25,8 +24,6 @@ class Candidate(
     val linkCount: Int get() = links?.links?.size ?: 0
 }
 
-/** One provider driven end to end, with the verdict derived from what was recorded rather than
- * from a judgement made at the time. */
 class LiveRun(
     val file: String,
     val providerName: String,
@@ -37,18 +34,12 @@ class LiveRun(
     val searchHttp: List<HttpCall> = emptyList(),
     val searchLogs: List<String> = emptyList(),
     val candidates: List<Candidate> = emptyList(),
-    /** Set when the gate changed something about the provider before driving it. */
     val note: String? = null,
-    /** Whether a host was there to answer the layer's reverse requests during this pass. */
     val hostAttached: Boolean = false,
-    /** Every reverse request the layer made during this pass, and what the host did about it. */
     val asks: List<HostAsk> = emptyList(),
 ) {
-    /** The provider, plus a marker when this pass was not the one the extension ships with. */
     val label: String get() = if (note == null) providerName else "$providerName (repointed)"
 
-    /** Why a failing pass failed is a different question with and without a host, and a run that
-     * cannot say which of the two it was cannot be read at all. */
     val hostState: String
         get() = when {
             !hostAttached -> "no host attached"

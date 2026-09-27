@@ -1,4 +1,18 @@
+import type { MetaType } from "@/lib/cinemeta";
+
 export type StreamPluginFormat = "harbor" | "provider-script" | "android-extension";
+
+/** One browsable row a plugin offers of its own, named the way the plugin names it. */
+export type PluginCatalogue = {
+  pluginId: string;
+  pluginName: string;
+  pluginIcon?: string;
+  providerId: string;
+  /** Present when the row came from a listing, which is the only place it is shown. */
+  providerName?: string;
+  type: MetaType;
+  row: string;
+};
 
 export type NativeExtensionRef = {
   extensionId: string;

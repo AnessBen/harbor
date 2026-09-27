@@ -190,6 +190,8 @@ const extra: Record<string, string> = {
   Browsing: "Просмотр",
   Budget: "Бюджет",
   "Buffer fill": "Заполнение буфера",
+  "Reveal the dot on hover": "Показывать точку при наведении",
+  "The dot stays out of the way and appears when you point at the bar. Turn this off to keep it on screen the whole time.": "Точка не мешает и появляется, когда вы наводите курсор на полосу. Отключите, чтобы она была видна постоянно.",
   "Buffer fill brightness": "Яркость заполнения буфера",
   Buffering: "Буферизация",
   Build: "Сборка",

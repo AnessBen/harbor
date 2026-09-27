@@ -1,6 +1,5 @@
-import { MusicBackButton } from "./music-back-button";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { Check, ChevronDown, LoaderCircle, Search, X } from "lucide-react";
+import { Check, ChevronDown, LoaderCircle, Search, X } from "@/components/icons/music-icons";
 import { AnchoredMenu } from "@/components/anchored-menu";
 import {
   useMusicConnections,
@@ -13,7 +12,6 @@ import type { MusicCatalogItem } from "@/lib/music/types";
 export function MusicMast({
   onSubmit,
   onClear,
-  onBack,
   onPick,
   initialQuery = "",
   searching = false,
@@ -21,7 +19,6 @@ export function MusicMast({
 }: {
   onSubmit: (query: string, connector: string | null) => void;
   onClear?: () => void;
-  onBack?: () => void;
   onPick?: (item: MusicCatalogItem) => void;
   initialQuery?: string;
   searching?: boolean;
@@ -134,12 +131,9 @@ export function MusicMast({
       className={`music-page-mast flex min-w-0 flex-wrap items-center justify-between gap-5 ${className}`}
     >
       <div className="min-w-0">
-        <div className="flex items-center gap-3">
-          {onBack && <MusicBackButton onClick={onBack} mast />}
-          <h1 tabIndex={-1} className="text-[32px] font-bold leading-tight tracking-tight text-ink">
-            {t("music.title")}
-          </h1>
-        </div>
+        <h1 tabIndex={-1} className="text-[32px] font-bold leading-tight tracking-tight text-ink">
+          {t("music.title")}
+        </h1>
         <div
           aria-live="polite"
           className="mt-2 flex min-h-5 flex-wrap items-center gap-2 text-[13px] text-ink-subtle"

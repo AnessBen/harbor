@@ -1,3 +1,4 @@
+import mediaStart from "./zh/media-start";
 import listenTogether from "./zh/listen-together";
 import music from "./zh/music";
 import sportsConsent from "./zh/sports-consent";
@@ -28,7 +29,10 @@ import plugins from "./zh/plugins";
 import brands from "./zh/brands";
 import bpSports from "./zh/bp-sports";
 
+import nytTv from "./zh/nyt-tv";
+
 const zh: Record<string, string> = {
+  ...mediaStart,
   ...videoCast,
   ...music,
   ...ebookSources,
@@ -59,6 +63,7 @@ const zh: Record<string, string> = {
   ...esportsArena,
   ...bpSports,
   ...listenTogether,
+  ...nytTv,
 };
 
 export default zh;

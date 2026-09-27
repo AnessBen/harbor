@@ -3,12 +3,6 @@
 
 package com.lagradost.cloudstream3
 
-/**
- * The builders every extension uses to hand results back. Each one fills in the provider name from
- * the receiver, resolves relative urls against the provider's `mainUrl`, then lets the extension's
- * initializer set the rest.
- */
-
 fun newHomePageResponse(
     name: String,
     list: List<SearchResponse>,
@@ -34,8 +28,6 @@ fun List<SearchResponse>.toNewSearchResponseList(
     hasNext: Boolean? = null,
 ): SearchResponseList = SearchResponseList(this, hasNext)
 
-/** The handle a provider hands back here is what `loadLinks` receives later, and that arrives as a
- * string, so anything that is not one already is carried as json. */
 private fun dataHandle(data: Any?): String = when (data) {
     null -> ""
     is String -> data
@@ -46,7 +38,8 @@ fun <T> MainAPI.newEpisode(
     data: T,
     initializer: Episode.() -> Unit = { },
 ): Episode {
-    val episode = Episode(dataHandle(data))
+    val handle = dataHandle(data)
+    val episode = Episode(if (data is String) fixUrl(handle) else handle)
     episode.initializer()
     return episode
 }
@@ -111,11 +104,6 @@ suspend fun MainAPI.newMovieLoadResponse(
     return response
 }
 
-/** The same builder for builds that declare the handle as an object rather than a string. Those
- * compile to a different descriptor, so this has to be a second function rather than a change to
- * the one above: an extension asking for either signature finds it, and one asking for the other
- * would otherwise die with NoSuchMethodError the first time it loads a page. No default on the
- * initializer keeps a call from being ambiguous between the two. */
 suspend fun MainAPI.newMovieLoadResponse(
     name: String,
     url: String,

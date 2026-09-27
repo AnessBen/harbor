@@ -8,12 +8,6 @@ import com.google.gson.JsonPrimitive
 
 class JSONException(message: String) : Exception(message)
 
-/** Reads and writes the JSON text form, and coerces between the types a scraped payload arrives
- * as and the type the caller asked for.
- *
- * Coercion is the whole point of this API as extensions use it: a site that sends `"1080"` where
- * it sent `1080` last week must not take the scrape down, so a string that reads as a number is
- * a number here, and a value that cannot be coerced is absent rather than fatal. */
 internal object JsonValue {
 
     fun parse(text: String): Any {
@@ -38,7 +32,6 @@ internal object JsonValue {
         else -> value.asString
     }
 
-    /** Keeps whole numbers whole. A round trip through Double would turn an id into 1.23457E14. */
     fun number(text: String): Any {
         if (text.none { it == '.' || it == 'e' || it == 'E' }) {
             text.toIntOrNull()?.let { return it }
@@ -72,7 +65,6 @@ internal object JsonValue {
         else -> null
     }
 
-    /** Anything a caller hands to put, reduced to the value model this package stores. */
     fun wrap(value: Any?): Any = when (value) {
         null -> JSONObject.NULL
         is JSONObject, is JSONArray, is String, is Boolean, is Number -> value
@@ -135,7 +127,6 @@ internal object JsonValue {
     }
 }
 
-/** Reads one value out of a JSON document, the way the platform type does. */
 class JSONTokener(private val text: String) {
 
     private var consumed = false

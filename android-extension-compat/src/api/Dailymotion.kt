@@ -7,8 +7,6 @@ import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.SubtitleHelper
 import com.lagradost.cloudstream3.utils.extractorLog
 
-/** Dailymotion, reached through the player metadata endpoint the web player itself uses. The
- * endpoint answers with the hls master plus every subtitle track, so no page scraping is needed. */
 open class Dailymotion : ExtractorApi() {
 
     override val name: String = "Dailymotion"
@@ -17,8 +15,6 @@ open class Dailymotion : ExtractorApi() {
 
     override val requiresReferer: Boolean = false
 
-    /** The metadata endpoint always lives on the main domain, even when the link that reached the
-     * extractor was a short link or a geo player. */
     protected open val apiBase: String = "https://www.dailymotion.com"
 
     override suspend fun getUrl(
@@ -63,7 +59,6 @@ open class Dailymotion : ExtractorApi() {
         }
     }
 
-    /** Handles the watch page, the embed page and the dai.ly short link. */
     private fun videoId(url: String): String? {
         PATTERNS.forEach { pattern ->
             pattern.find(url)?.groupValues?.getOrNull(1)?.takeIf { it.isNotBlank() }?.let { return it }

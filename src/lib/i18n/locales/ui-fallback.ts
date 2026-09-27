@@ -1,5 +1,7 @@
 // Newly introduced UI copy remains usable until each locale provides an override.
 const uiFallback: Record<string, string> = {
+  "Sends HDR to the display through macOS EDR instead of mapping it down to SDR. Needs HDR-to-SDR tonemapping off, mpv embedded, and a display with HDR headroom. Takes effect on the next video. Experimental: color can look flat, and an SDR video after an HDR one may need a window resize.":
+    "Sends HDR to the display through macOS EDR instead of mapping it down to SDR. Needs HDR-to-SDR tonemapping off, mpv embedded, and a display with HDR headroom. Takes effect on the next video. Experimental: color can look flat, and an SDR video after an HDR one may need a window resize.",
   "Hide this tab": "Hide this tab",
   "Show this tab": "Show this tab",
   "Nothing hidden.": "Nothing hidden.",

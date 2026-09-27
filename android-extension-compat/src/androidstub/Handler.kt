@@ -6,9 +6,6 @@ import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
 
-/** Real scheduling, because extensions drive tickers and retry loops through it: a dialog posts
- * itself every second and cancels on dismiss, so a handler that dropped work would hang the flow
- * it belongs to. */
 open class Handler @JvmOverloads constructor(private val looper: Looper? = null) {
 
     private val pending = ConcurrentHashMap<Runnable, CopyOnWriteArrayList<ScheduledFuture<*>>>()

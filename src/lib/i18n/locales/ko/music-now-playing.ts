@@ -2,14 +2,16 @@ const musicNowPlaying: Record<string, string> = {
   "music.artist.filmography": "영화 및 TV",
   "music.action.error": "작업을 완료하지 못했습니다. 다시 시도하세요.",
   "music.radio.error": "라디오를 시작하지 못했습니다. 다시 시도하거나 다른 소스를 선택하세요.",
-  "music.download.action": "곡 다운로드",
-  "music.download.done": "다운로드됨",
-  "music.download.busy": "다운로드 중",
-  "music.download.retry": "다시 다운로드",
+  "music.download.action": "곡 저장",
+  "music.download.done": "저장됨",
+  "music.download.busy": "저장 중",
+  "music.download.retry": "다시 저장",
   "music.download.unsupported":
     "이 소스는 다운로드 가능한 오디오 파일을 제공하지 않습니다. 다른 소스를 선택하세요.",
   "music.download.missing": "파일이 없습니다. 다시 다운로드하세요.",
   "music.download.failed": "다운로드에 실패했습니다. 다시 시도하거나 다른 소스를 선택하세요.",
+  "music.download.changeFolder": "변경",
+  "music.download.defaultFolder": "기본값 사용",
   "music.download.empty": "플레이어나 곡 메뉴에서 다운로드하여 오프라인으로 들으세요.",
   "music.download.folder": "폴더에서 보기",
   "music.download.delete": "다운로드 삭제",
@@ -72,12 +74,16 @@ const musicNowPlaying: Record<string, string> = {
   "music.buy.search": "{store}에서 검색",
 
   "music.artist.about": "아티스트 소개",
+  "music.artist.save": "아티스트 저장",
+  "music.artist.unsave": "저장한 아티스트에서 제거",
 
   "music.artist.origin": "출신",
 
   "music.artist.began": "출생 / 결성",
 
   "music.artist.aliases": "다른 이름",
+
+  "music.artist.label": "레이블",
 
   "music.artist.connections": "멤버 및 협업 아티스트",
 
@@ -88,6 +94,9 @@ const musicNowPlaying: Record<string, string> = {
   "music.artist.merch": "굿즈",
 
   "music.artist.official": "공식 웹사이트",
+
+  "music.artist.kicker": "아티스트",
+  "music.artist.listenOn": "들을 수 있는 곳",
 };
 
 export default musicNowPlaying;

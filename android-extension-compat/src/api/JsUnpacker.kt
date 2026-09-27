@@ -2,12 +2,8 @@ package com.lagradost.cloudstream3.utils
 
 import java.util.regex.Pattern
 
-/** Decoder for the "p,a,c,k,e,d" javascript packer that most embed players ship their source list
- * inside. The packed form is a payload plus a symbol table, where every word in the payload that
- * decodes to a table index is replaced by the table entry. */
 class JsUnpacker(private val packedJS: String?) {
 
-    /** The unpacked javascript, or null when the input was not packed or was truncated. */
     fun unpack(): String? {
         val js = packedJS ?: return null
         val matcher = HEADER.matcher(js)
@@ -57,8 +53,6 @@ class JsUnpacker(private val packedJS: String?) {
         return out.toString()
     }
 
-    /** Decodes a word written in an arbitrary base. Above base 36 the packer uses its own digit
-     * alphabet, which is why this cannot just be Integer.parseInt. */
     private class Unbaser(private val base: Int) {
 
         fun unbase(value: String): Int? {

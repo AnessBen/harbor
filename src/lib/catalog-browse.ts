@@ -4,6 +4,15 @@ import {
   isCollectionCatalog,
   type CatalogExtra,
 } from "./addons";
+import type { Meta, MetaType } from "./cinemeta";
+import {
+  extensionCatalogueBase,
+  extensionCataloguePage,
+  extensionCataloguesSync,
+  isExtensionCatalogueBase,
+  refreshExtensionCatalogues,
+  subscribeExtensionCatalogues,
+} from "./streams/plugins";
 
 const NON_CONTENT = new Set(["addon_catalog"]);
 
@@ -31,9 +40,45 @@ export type BrowseCatalog = {
   genres: string[];
 };
 
+/** A plugin's own rows, in the shape every browse surface already reads. `base` carries the plugin
+ * and provider, because that is the field a pinned catalogue persists and reads back.
+ *
+ * The rows come from whatever the last look found, and a fresh look runs behind this call rather
+ * than in front of it: the first one has to start a runtime and load every installed extension, and
+ * the addon catalogues alongside them are not made to wait for that. */
+function extensionCatalogs(): BrowseCatalog[] {
+  void refreshExtensionCatalogues();
+  const rows = extensionCataloguesSync();
+  const perPlugin = new Map<string, Set<string>>();
+  for (const row of rows) {
+    const seen = perPlugin.get(row.pluginId) ?? new Set<string>();
+    seen.add(row.providerId);
+    perPlugin.set(row.pluginId, seen);
+  }
+  return rows.map((row) => {
+    const many = (perPlugin.get(row.pluginId)?.size ?? 1) > 1;
+    const name = many && row.providerName ? `${row.row} · ${row.providerName}` : row.row;
+    return {
+      key: `${row.pluginId}-${row.providerId}-${row.row}`,
+      addonName: row.pluginName,
+      addonLogo: row.pluginIcon,
+      base: extensionCatalogueBase(row.pluginId, row.providerId),
+      type: row.type,
+      id: row.row,
+      name,
+      genreExtra: null,
+      genres: [],
+    };
+  });
+}
+
+export function subscribeBrowseCatalogs(cb: () => void): () => void {
+  return subscribeExtensionCatalogues(cb);
+}
+
 export async function listBrowseCatalogs(authKey: string | null): Promise<BrowseCatalog[]> {
+  const out: BrowseCatalog[] = extensionCatalogs();
   const addons = await gatherCatalogAddons(authKey).catch(() => []);
-  const out: BrowseCatalog[] = [];
   for (const addon of addons) {
     const base = addon.transportUrl.replace(/\/manifest\.json$/, "");
     for (const cat of addon.manifest.catalogs ?? []) {
@@ -58,7 +103,13 @@ export async function listBrowseCatalogs(authKey: string | null): Promise<Browse
   return out;
 }
 
-export function browseFetcher(cat: BrowseCatalog, genre: string | null) {
+export function browseFetcher(
+  cat: BrowseCatalog,
+  genre: string | null,
+): (page: number, loaded?: number) => Promise<Meta[]> {
+  if (isExtensionCatalogueBase(cat.base)) {
+    return (page: number) => extensionCataloguePage(cat.base, cat.id, cat.type as MetaType, page);
+  }
   const extras: CatalogExtra[] | undefined =
     genre && cat.genreExtra ? [{ name: cat.genreExtra, value: genre }] : undefined;
   const cursor = { base: cat.base, type: cat.type, id: cat.id, extras };

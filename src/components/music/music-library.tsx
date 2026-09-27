@@ -1,15 +1,16 @@
-import { MusicBackButton } from "./music-back-button";
 import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { open, save } from "@tauri-apps/plugin-dialog";
-import { FileDown, FileUp, FolderOpen, LoaderCircle, Plus, Search, X } from "lucide-react";
+import { FileDown, FileUp, FolderOpen, LoaderCircle, Plus, Search, X } from "@/components/icons/music-icons";
 import { Dropdown } from "@/components/dropdown";
-import { pushBackHandler } from "@/lib/back-intercept";
+import { useSectionBack } from "@/lib/section-back";
 import { MusicDownloads } from "./music-downloads";
 import { MusicLocalCollection } from "./music-local-collection";
 import { MusicSpotifyLibrary } from "./music-spotify-library";
 import { useMusicConnections } from "./music-connections";
 import { MusicLastFm } from "@/components/music/music-lastfm";
 import { MusicCoverCard } from "./music-cover-card";
+import { useMusicItemMenu } from "./music-item-menu";
+import { MusicPlaylistGridSkeleton } from "@/components/music/music-skeletons";
 import { MusicPlaylistCover } from "./music-playlist-cover";
 import { MusicServiceLogo } from "./music-service-logo";
 import { LibraryTrackList, PlaylistHeader } from "@/components/music/music-library-parts";
@@ -153,13 +154,10 @@ export function MusicLibrary({
     });
     return () => cancelAnimationFrame(frame);
   }, [selectedId, view, library.playlists]);
+  useSectionBack(closePlaylist, active && !!selectedId && view === "playlists");
   useEffect(() => {
     if (!active || !selectedId || view !== "playlists") return;
     playlistHeading.current?.focus({ preventScroll: true });
-    const remove = pushBackHandler(() => {
-      closePlaylist();
-      return true;
-    });
     const escape = (event: KeyboardEvent) => {
       if (
         event.key !== "Escape" ||
@@ -172,10 +170,7 @@ export function MusicLibrary({
       closePlaylist();
     };
     window.addEventListener("keydown", escape, true);
-    return () => {
-      remove();
-      window.removeEventListener("keydown", escape, true);
-    };
+    return () => window.removeEventListener("keydown", escape, true);
   }, [active, selectedId, view, closePlaylist]);
   const openPlaylist = (playlist: MusicPlaylist, button: HTMLButtonElement) => {
     let scroll: Element | null = button.parentElement;
@@ -325,6 +320,7 @@ export function MusicLibrary({
     ...track,
     kind: "track",
   }));
+  const recentMenu = useMusicItemMenu({ onOpen: (item) => onOpen(item, recentItems) });
   const trackView = view === "saved" || view === "recent" || (!!selected && view === "playlists");
 
   return (
@@ -366,10 +362,16 @@ export function MusicLibrary({
             </button>
           </div>
           <div className="music-library-recent-covers">
-            {recentItems.slice(0, 8).map((item) => (
-              <MusicCoverCard key={item.id} item={item} onOpen={() => onOpen(item, recentItems)} />
+            {recentItems.slice(0, 8).map((item, index) => (
+              <MusicCoverCard
+                key={item.id}
+                item={item}
+                onOpen={() => onOpen(item, recentItems)}
+                onMenu={recentMenu.openFor(item, index)}
+              />
             ))}
           </div>
+          {recentMenu.menu}
         </section>
       )}
 
@@ -417,7 +419,6 @@ export function MusicLibrary({
 
       {view !== "spotify" && (
         <>
-          {selected && view === "playlists" && <MusicBackButton onClick={closePlaylist} />}
           <div className="music-library-browser-toolbar">
             <div className="music-library-browser-title">
               <h3>
@@ -555,10 +556,7 @@ export function MusicLibrary({
                 </form>
               )}
               {loading ? (
-                <p role="status" className="music-library-empty">
-                  <LoaderCircle size={18} className="animate-spin motion-reduce:animate-none" />
-                  {t("music.library.reading")}
-                </p>
+                <MusicPlaylistGridSkeleton />
               ) : playlists.length > 0 ? (
                 <div className="music-library-cover-grid">
                   {playlists.map((playlist) => (

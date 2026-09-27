@@ -2,6 +2,8 @@ package com.harbor.capstan
 
 import com.lagradost.cloudstream3.AnimeLoadResponse
 import com.lagradost.cloudstream3.Episode
+import com.lagradost.cloudstream3.HomePageList
+import com.lagradost.cloudstream3.HomePageResponse
 import com.lagradost.cloudstream3.LiveStreamLoadResponse
 import com.lagradost.cloudstream3.LoadResponse
 import com.lagradost.cloudstream3.MainAPI
@@ -34,6 +36,11 @@ internal object ResultMapping {
         quality = item.quality?.name,
         scoreOutOf10 = item.score?.toDouble(10),
     )
+
+    fun cataloguePage(response: HomePageResponse?): CataloguePage {
+        if (response == null) return CataloguePage(emptyList(), false)
+        return CataloguePage(response.items.map(::catalogueSection), response.hasNext)
+    }
 
     fun media(response: LoadResponse): MediaItem = MediaItem(
         name = response.name,
@@ -69,6 +76,12 @@ internal object ResultMapping {
 
     fun subtitle(file: SubtitleFile): SubtitleItem =
         SubtitleItem(lang = file.lang, url = file.url, headers = file.headers)
+
+    private fun catalogueSection(list: HomePageList): CatalogueSection = CatalogueSection(
+        name = list.name,
+        horizontalImages = list.isHorizontalImages,
+        items = list.list.map(::search),
+    )
 
     private fun playableData(response: LoadResponse): String? = when (response) {
         is MovieLoadResponse -> response.dataUrl

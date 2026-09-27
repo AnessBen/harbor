@@ -3,9 +3,6 @@ package android.content.res
 import android.util.AttributeSet
 import org.xmlpull.v1.XmlPullParser
 
-/** Stands in for a compiled layout. The host has no resource table, so every instance reports an
- * empty document rather than failing: an inflater walking it produces an empty view and the
- * extension carries on. */
 open class XmlResourceParser : XmlPullParser, AttributeSet {
 
     open fun getEventType(): Int = END_DOCUMENT

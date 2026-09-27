@@ -1,7 +1,5 @@
 package io.ktor.http
 
-/** Fills a builder from a url string. A relative string keeps whatever the builder already holds,
- * which is how the original library lets a base url be extended. */
 fun URLBuilder.takeFrom(urlString: String): URLBuilder {
     var rest = urlString.trim()
     if (rest.isEmpty()) return this
@@ -36,8 +34,6 @@ fun URLBuilder.takeFrom(urlString: String): URLBuilder {
     return this
 }
 
-/** The index of the ':' that ends a scheme, or -1. A scheme is letters, digits, '+', '-' and '.'
- * after a leading letter, so "localhost:8080" is not one and neither is "12:30". */
 private fun schemeEnd(text: String): Int {
     val colon = text.indexOf(':')
     if (colon <= 0) return -1

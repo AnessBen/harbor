@@ -1,3 +1,4 @@
+import mediaStart from "./es/media-start";
 import listenTogether from "./es/listen-together";
 import music from "./es/music";
 import sportsConsent from "./es/sports-consent";
@@ -40,7 +41,10 @@ import plugins from "./es/plugins";
 import brands from "./es/brands";
 import bpSports from "./es/bp-sports";
 
+import nytTv from "./es/nyt-tv";
+
 const es: Record<string, string> = {
+  ...mediaStart,
   ...videoCast,
   ...music,
   ...ebookSources,
@@ -83,6 +87,7 @@ const es: Record<string, string> = {
   ...esportsArena,
   ...bpSports,
   ...listenTogether,
+  ...nytTv,
 };
 
 export default es;

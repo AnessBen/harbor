@@ -1,3 +1,4 @@
+import mediaStart from "./ru/media-start";
 import listenTogether from "./ru/listen-together";
 import music from "./ru/music";
 import sportsConsent from "./ru/sports-consent";
@@ -53,7 +54,10 @@ import plugins from "./ru/plugins";
 import brands from "./ru/brands";
 import bpSports from "./ru/bp-sports";
 
+import nytTv from "./ru/nyt-tv";
+
 const ru: Record<string, string> = {
+  ...mediaStart,
   ...videoCast,
   ...music,
   ...ebookSources,
@@ -108,6 +112,7 @@ const ru: Record<string, string> = {
   ...esportsArena,
   ...bpSports,
   ...listenTogether,
+  ...nytTv,
 };
 
 export default ru;

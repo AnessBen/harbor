@@ -97,8 +97,15 @@ export default defineConfig(({ mode }) => {
           "**/src-tauri/**",
           "**/android-native/**",
           "**/android/**",
+          "**/android-extension-compat/**",
           "**/.gradle/**",
           "**/target/**",
+          "**/work/**",
+          "**/scratchpad/**",
+          "**/.firecrawl/**",
+          "**/.diag/**",
+          "**/_private/**",
+          "**/harbor-install-recovery/**",
         ],
       },
       proxy: Object.fromEntries(
@@ -123,7 +130,11 @@ export default defineConfig(({ mode }) => {
       alias: { "@": "/src" },
     },
     assetsInclude: ["**/*.onnx", "**/*.tflite"],
-    optimizeDeps: { exclude: ["onnxruntime-web", "@mediapipe/tasks-vision"] },
+    optimizeDeps: {
+      // Scan only app entries, not the installer or local HTML previews.
+      entries: ["index.html", "index-tv.html"],
+      exclude: ["onnxruntime-web", "@mediapipe/tasks-vision"],
+    },
     worker: { format: "es" },
   };
 });

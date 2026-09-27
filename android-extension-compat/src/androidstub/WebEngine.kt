@@ -13,17 +13,6 @@ import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.ThreadFactory
 import java.util.concurrent.TimeUnit
 
-/** Fetches documents for [WebView] over plain HTTP and drives the page callbacks from the result.
- *
- * This is the whole of the page pipeline. There is no renderer and no script engine here, so what a
- * view can honestly do is retrieve a document, learn its title, and keep the cookies the server set
- * along the way. A page whose content is produced by script arrives empty.
- *
- * A challenge page is the one exception. It cannot be cleared here either, so it is handed to the
- * attached host, which has a browser, and whatever clearance comes back is replayed on one retry.
- * With no host attached nothing is asked and the challenge page is returned as it always was.
- * Either way every load ends in a page-finished callback, so a caller times out on its own
- * schedule instead of hanging. */
 internal object WebEngine {
 
     private const val MAX_REDIRECTS = 5
@@ -130,16 +119,10 @@ internal object WebEngine {
         val body: String = "",
     )
 
-    /** Hands a challenge page to the attached host and keeps what it cleared.
-     *
-     * True when the caller should fetch again, which only happens when a host answered with a
-     * clearance. With no host attached this returns false without asking anything, so a standalone
-     * run reaches the same challenge page it always did. */
     private fun clearChallenge(view: WebView, url: String, step: Step): Boolean {
         if (!HostLink.isChallenge(step.status, step.mitigated, step.body)) return false
         val solution = HostLink.solveChallenge(url) ?: return false
         val jar = CookieManager.getInstance()
-        // One call per pair: the jar reads everything after the first semicolon as attributes.
         for (pair in solution.cookie.split(';')) {
             val one = pair.trim()
             if (one.contains('=')) jar.setCookie(url, one)

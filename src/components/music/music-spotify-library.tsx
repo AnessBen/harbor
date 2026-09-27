@@ -1,4 +1,3 @@
-import { MusicBackButton } from "./music-back-button";
 import { MusicCollectionControls } from "./music-collection-controls";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -9,9 +8,9 @@ import {
   LoaderCircle,
   Plus,
   RefreshCw,
-} from "lucide-react";
+} from "@/components/icons/music-icons";
 import { useT } from "@/lib/i18n";
-import { pushBackHandler } from "@/lib/back-intercept";
+import { useSectionBack } from "@/lib/section-back";
 import { connectSource } from "@/lib/music/catalog";
 import { enqueueMusic } from "@/lib/music/player";
 import {
@@ -140,13 +139,10 @@ export function MusicSpotifyLibrary({
     return () => cancelAnimationFrame(frame);
   }, [selected, page]);
 
+  useSectionBack(back, active && !!selected);
   useEffect(() => {
     if (!active || !selected) return;
     heading.current?.focus({ preventScroll: true });
-    const remove = pushBackHandler(() => {
-      back();
-      return true;
-    });
     const escape = (event: KeyboardEvent) => {
       if (
         event.key !== "Escape" ||
@@ -159,10 +155,7 @@ export function MusicSpotifyLibrary({
       back();
     };
     window.addEventListener("keydown", escape, true);
-    return () => {
-      remove();
-      window.removeEventListener("keydown", escape, true);
-    };
+    return () => window.removeEventListener("keydown", escape, true);
   }, [active, selected, back]);
 
   const openPlaylist = (playlist: SpotifyLibraryPlaylist, button: HTMLButtonElement) => {
@@ -244,7 +237,6 @@ export function MusicSpotifyLibrary({
     (!failure && page && !page.canCreate);
   return (
     <section ref={root} className="music-spotify-library">
-      {selected && <MusicBackButton onClick={back} label={t("music.spotifyLibrary.back")} />}
       <header className="music-spotify-header">
         <MusicServiceLogo source="spotify" size={32} />
         <div className="min-w-0 flex-1">

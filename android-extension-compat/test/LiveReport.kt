@@ -2,7 +2,6 @@ package harbor.capstan.test
 
 import java.time.LocalDate
 
-/** Renders the live run as markdown. Every number here came out of a real request. */
 object LiveReport {
 
     private const val BR = "\n"
@@ -29,10 +28,6 @@ object LiveReport {
         return out.toString()
     }
 
-    /** Whether a host was there to answer the layer's reverse requests, and what it managed.
-     *
-     * Without this the report cannot tell a pass that had no chance of clearing a challenge from one
-     * that had a host and failed anyway, and those are different findings about different code. */
     private fun host(runs: List<LiveRun>): String {
         val out = StringBuilder("## The host channel\n\n")
         val attached = runs.count { it.hostAttached }
@@ -82,8 +77,6 @@ object LiveReport {
         return out.toString()
     }
 
-    /** A provider that swallows a refused fetch reports an empty list, which is indistinguishable
-     * from an honest miss until you look at what the server answered. */
     private fun refusals(runs: List<LiveRun>): String {
         val out = StringBuilder("## Requests the sites refused or challenged\n\n")
         val bad = runs.flatMap { run ->
@@ -105,8 +98,6 @@ object LiveReport {
         return out.toString()
     }
 
-    /** The question this gate exists to answer: when a provider handed the layer a url, did the
-     * registry have a class for that host. */
     private fun coverage(runs: List<LiveRun>): String {
         val out = StringBuilder("## Extractor registry coverage\n\n")
         val all = runs.flatMap { run -> run.attempts.map { run to it } }

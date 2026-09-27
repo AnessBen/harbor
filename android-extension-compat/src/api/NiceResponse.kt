@@ -19,6 +19,8 @@ class NiceResponse(
         }
     }
 
+    val textLarge: String get() = text
+
     val url: String get() = okhttpResponse.request.url.toString()
 
     val code: Int get() = okhttpResponse.code

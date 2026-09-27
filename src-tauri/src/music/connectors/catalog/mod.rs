@@ -580,6 +580,7 @@ mod tests {
             artwork: String::new(),
             year: Some(2022),
             track_count: None,
+            explicit: None,
         }
     }
 

@@ -5,9 +5,6 @@ import android.graphics.ColorFilter
 import android.graphics.Paint
 import android.graphics.PixelFormat
 
-/** Every dialog surface in the sample extensions is one of these: a rounded rectangle with a
- *  solid or two stop fill and a stroke. All of it is read back by the renderer, so all of it
- *  is stored. */
 open class GradientDrawable : Drawable {
 
     enum class Orientation {
@@ -59,7 +56,6 @@ open class GradientDrawable : Drawable {
 
     fun getCornerRadius(): Float = radius
 
-    /** Eight floats, one x and one y per corner, top left first. */
     fun setCornerRadii(cornerRadii: FloatArray?) {
         radii = cornerRadii?.copyOf()
         if (cornerRadii != null) radius = 0f

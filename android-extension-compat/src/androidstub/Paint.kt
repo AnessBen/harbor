@@ -1,7 +1,5 @@
 package android.graphics
 
-/** Stroke and fill state. Extensions build two of these per custom drawable and read nothing
- *  back, so every setter stores a value a renderer can later act on. */
 open class Paint(initialFlags: Int = 0) {
 
     enum class Style { FILL, STROKE, FILL_AND_STROKE }
@@ -38,7 +36,6 @@ open class Paint(initialFlags: Int = 0) {
 
     private var filter: ColorFilter? = null
 
-    /** Android folds alpha into the packed colour rather than keeping it beside it. */
     fun setAlpha(alpha: Int) {
         val a = alpha.coerceIn(0, 255)
         color = (color and 0x00FFFFFF) or (a shl 24)

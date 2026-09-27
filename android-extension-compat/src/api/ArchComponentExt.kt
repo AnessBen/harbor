@@ -35,6 +35,10 @@ suspend fun <T> suspendSafeApiCall(apiCall: suspend () -> T): T? = try {
     null
 }
 
+fun <T> safe(apiCall: () -> T): T? = normalSafeApiCall(apiCall)
+
+suspend fun <T> safeAsync(apiCall: suspend () -> T): T? = suspendSafeApiCall(apiCall)
+
 suspend fun <T> safeApiCall(apiCall: suspend () -> T): Resource<T> = withContext(Dispatchers.IO) {
     try {
         Resource.Success(apiCall())

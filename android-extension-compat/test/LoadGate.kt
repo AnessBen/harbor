@@ -6,14 +6,9 @@ import com.harbor.capstan.LoadWatch
 import com.harbor.capstan.LoadedExtension
 import com.harbor.capstan.LoaderConfig
 import com.harbor.capstan.ProviderInfo
+import com.harbor.capstan.UnconvertedMethod
 import harbor.compat.host.PlatformHost
 import java.io.File
-
-/** Runs every sample extension through the real loader and records where each one got to.
- *
- * The stages come from the loader itself rather than from a copy of its steps here, so a stage
- * this gate reports as reached is one production code actually reached.
- */
 
 class ProviderReport(val info: ProviderInfo)
 
@@ -24,6 +19,7 @@ class GateRow(
     val entryClass: String,
     val providers: List<ProviderReport>,
     val extractors: List<String>,
+    val unavailable: List<UnconvertedMethod>,
     val failure: Failure?,
 ) {
     val ok: Boolean get() = failure == null
@@ -44,12 +40,13 @@ private const val TIMEOUT_MS = 120_000L
 
 fun main(args: Array<String>) {
     val root = File(args.getOrNull(0) ?: ".").absoluteFile
-    val samples = File(root, "samples")
+    val from = System.getenv("LOAD_SAMPLES")?.takeIf { it.isNotBlank() }?.let(::File) ?: File(root, "samples")
+    val samples = from
         .listFiles { f: File -> f.isFile && f.name.endsWith(".cs3") }
         ?.sortedBy { it.name }
         .orEmpty()
     if (samples.isEmpty()) {
-        System.err.println("no samples under $root")
+        System.err.println("no samples under " + from)
         kotlin.system.exitProcess(1)
     }
 
@@ -90,14 +87,13 @@ private fun run(loader: ExtensionLoader, file: File, groups: GroupIndex, cache: 
         entryClass = extension?.entryClassName ?: reached.firstOrNull { it.first == LoadStage.ENTRY }?.second ?: "",
         providers = extension?.providers?.map { ProviderReport(it.info) }.orEmpty(),
         extractors = extension?.extractorNames.orEmpty(),
+        unavailable = extension?.unavailable.orEmpty(),
         failure = outcome.exceptionOrNull()?.let { describe(it, groups, cache, reached) },
     )
     extension?.close()
     return row
 }
 
-/** The type an exception names is the whole point of the failure line: it is the single fact that
- * says which part of the surface owes the fix. */
 private fun describe(
     failure: Throwable,
     groups: GroupIndex,
@@ -120,7 +116,6 @@ private fun describe(
 
 private val TYPE_IN_MESSAGE = Regex("""[A-Za-z_][\w$]*(?:[./][A-Za-z_][\w$]*){2,}""")
 
-/** Maps a class named in a failure back to the group of the compat surface that owns it. */
 class GroupIndex(private val byClass: Map<String, String>) {
 
     fun owner(className: String): String {

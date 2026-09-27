@@ -4,10 +4,6 @@ import com.fleeksoft.ksoup.select.Elements
 import org.jsoup.nodes.Document as SourceDocument
 import org.jsoup.nodes.Element as SourceElement
 
-/** The document model extensions link against, over the parser already on the host.
- *
- * This is a facade and not a second parser: every query below is answered by the same engine the
- * rest of the layer scrapes with, so an extension written against either name sees one behaviour. */
 open class Element internal constructor(internal val source: SourceElement) {
 
     fun attr(name: String): String = source.attr(name)

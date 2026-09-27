@@ -1,10 +1,5 @@
 package io.ktor.http
 
-/** The URL types extensions link against.
- *
- * Extensions reach for these to take a link apart, so what matters is that the parts come back
- * the same way the original library returns them: the path still encoded, the query already split,
- * and the scheme carrying its default port. */
 class URLProtocol(val name: String, val defaultPort: Int) {
 
     override fun equals(other: Any?): Boolean = other is URLProtocol && other.name == name
@@ -29,7 +24,6 @@ class URLProtocol(val name: String, val defaultPort: Int) {
     }
 }
 
-/** A query string, kept as the multimap it is: one name can carry several values. */
 interface Parameters {
 
     val names: Set<String>

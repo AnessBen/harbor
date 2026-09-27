@@ -2,14 +2,16 @@ const musicNowPlaying: Record<string, string> = {
   "music.artist.filmography": "Кино и телевидение",
   "music.action.error": "Не удалось выполнить действие. Повторите попытку.",
   "music.radio.error": "Не удалось запустить радио. Повторите или выберите другой источник.",
-  "music.download.action": "Скачать трек",
-  "music.download.done": "Скачано",
-  "music.download.busy": "Скачивание",
-  "music.download.retry": "Повторить скачивание",
+  "music.download.action": "Сохранить трек",
+  "music.download.done": "Сохранено",
+  "music.download.busy": "Сохранение",
+  "music.download.retry": "Повторить сохранение",
   "music.download.unsupported":
     "Этот источник не предоставляет аудиофайл для скачивания. Выберите другой.",
   "music.download.missing": "Файл отсутствует. Скачайте его снова.",
   "music.download.failed": "Не удалось скачать. Повторите или выберите другой источник.",
+  "music.download.changeFolder": "Изменить",
+  "music.download.defaultFolder": "По умолчанию",
   "music.download.empty":
     "Скачивайте треки в плеере или меню трека для прослушивания без интернета.",
   "music.download.folder": "Показать в папке",
@@ -73,12 +75,16 @@ const musicNowPlaying: Record<string, string> = {
   "music.buy.search": "Искать в {store}",
 
   "music.artist.about": "Об исполнителе",
+  "music.artist.save": "Сохранить исполнителя",
+  "music.artist.unsave": "Удалить из сохранённых исполнителей",
 
   "music.artist.origin": "Происхождение",
 
   "music.artist.began": "Рождение / основание",
 
   "music.artist.aliases": "Другие имена",
+
+  "music.artist.label": "Лейбл",
 
   "music.artist.connections": "Участники и соавторы",
 
@@ -89,6 +95,9 @@ const musicNowPlaying: Record<string, string> = {
   "music.artist.merch": "Мерч",
 
   "music.artist.official": "Официальный сайт",
+
+  "music.artist.kicker": "Исполнитель",
+  "music.artist.listenOn": "Слушать в",
 };
 
 export default musicNowPlaying;

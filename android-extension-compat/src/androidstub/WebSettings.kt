@@ -1,8 +1,5 @@
 package android.webkit
 
-/** Real state, not inert setters. Extensions read the user agent back out after editing it and use
- * it as the identity for their own HTTP requests, so a setter that dropped the value would make
- * every later request disagree with the one that collected the cookies. */
 open class WebSettings {
 
     private var userAgent: String = DEFAULT_USER_AGENT
@@ -15,6 +12,7 @@ open class WebSettings {
     private var databases: Boolean = false
     private var cacheMode: Int = 0
     private var mediaPlaybackGesture: Boolean = true
+    private var blockImages: Boolean = false
     private var useWide: Boolean = false
     private var loadOverview: Boolean = false
     private var builtInZoom: Boolean = false
@@ -42,6 +40,9 @@ open class WebSettings {
 
     open fun setLoadsImagesAutomatically(flag: Boolean) { loadImages = flag }
     open fun getLoadsImagesAutomatically(): Boolean = loadImages
+
+    open fun setBlockNetworkImage(flag: Boolean) { blockImages = flag }
+    open fun getBlockNetworkImage(): Boolean = blockImages
 
     open fun setMixedContentMode(mode: Int) { mixedContent = mode }
     open fun getMixedContentMode(): Int = mixedContent
@@ -86,8 +87,6 @@ open class WebSettings {
         const val LOAD_NO_CACHE = 2
         const val LOAD_CACHE_ONLY = 3
 
-        /** Carries the marker that identifies an in-app browser, because extensions look for it and
-         * strip it themselves when they want the request to read as a plain browser. */
         const val DEFAULT_USER_AGENT: String =
             "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) " +
                 "Version/4.0 Chrome/120.0.6099.230 Mobile Safari/537.36; wv"

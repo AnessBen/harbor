@@ -7,7 +7,7 @@ import okhttp3.RequestBody
 import okhttp3.Response
 import java.util.concurrent.TimeUnit
 
-class Requests(
+open class Requests(
     var baseClient: OkHttpClient = OkHttpClient.Builder()
         .followRedirects(true)
         .followSslRedirects(true)
@@ -19,10 +19,10 @@ class Requests(
     var defaultReferer: String? = null,
     var defaultData: Map<String, String> = emptyMap(),
     var defaultCookies: Map<String, String> = emptyMap(),
-    var responseParser: ResponseParser? = JsonResponseParser(),
     var defaultCacheTime: Int = 0,
     var defaultCacheTimeUnit: TimeUnit = TimeUnit.MINUTES,
-    var defaultTimeOut: Long = 30L
+    var defaultTimeOut: Long = 30L,
+    var responseParser: ResponseParser? = JsonResponseParser()
 ) {
     suspend fun get(
         url: String,
@@ -175,7 +175,7 @@ class Requests(
 
         val request = requestOf(
             method,
-            buildUrl(url, params),
+            buildUrl(url, params, referer ?: defaultReferer),
             buildHeaders(defaultHeaders, headers, referer, defaultReferer, cookies, defaultCookies),
             payload,
             cacheControl(cacheTime, cacheUnit)

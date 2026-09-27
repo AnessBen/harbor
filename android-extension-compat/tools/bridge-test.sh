@@ -9,7 +9,7 @@ win(){ for j in "$@"; do cygpath -w "$j"; done | tr '\n' ';'; }
 LIBS=$(win "$R"/libs/*.jar)
 printf 'this is not an extension\n' > "$T/broken.cs3"
 python "$R/test/bridge/drive.py" \
-  "$JAVA_HOME/bin/java" \
+  "$JAVA_HOME/bin/java" -Xmx${CAPSTAN_XMX:-2g} \
   "$(cygpath -w "$R/out/capstan.jar");$LIBS" \
   "$(cygpath -w "$T/data")" \
   "$(cygpath -w "$R/samples/DailymotionProvider.cs3")" \

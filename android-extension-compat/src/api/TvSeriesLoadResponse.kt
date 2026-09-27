@@ -22,4 +22,6 @@ class TvSeriesLoadResponse(
     override var recommendations: List<SearchResponse>? = null
     override var actors: List<ActorData>? = null
     override var syncData: MutableMap<String, String> = mutableMapOf()
+
+    var showStatus: ShowStatus? = null
 }

@@ -1,8 +1,6 @@
 package android.text
 
-/** Built by the donation dialogs and then cast straight to CharSequence before it reaches a
- *  text view, so implementing CharSequence is part of the contract, not a convenience. */
-open class SpannableStringBuilder() : CharSequence {
+open class SpannableStringBuilder() : Editable {
 
     class Span(val what: Any?, val start: Int, val end: Int, val flags: Int)
 
@@ -16,8 +14,6 @@ open class SpannableStringBuilder() : CharSequence {
     override val length: Int
         get() = buffer.length
 
-    /** Out of range reads give a space rather than an exception: a malformed span must not take
-     *  down the screen that is rendering it. */
     override fun get(index: Int): Char =
         if (index >= 0 && index < buffer.length) buffer[index] else ' '
 
@@ -44,7 +40,7 @@ open class SpannableStringBuilder() : CharSequence {
         return this
     }
 
-    fun clear() {
+    override fun clear() {
         buffer.setLength(0)
         marks.clear()
     }

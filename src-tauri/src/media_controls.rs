@@ -708,14 +708,20 @@ pub fn media_controls_update(
     );
 }
 
-/// Music never goes through media_controls_update, so the Windows thumbnail
-/// toolbar would sit on play/unliked for the whole session without this.
 #[tauri::command]
-pub fn media_controls_music_state(playing: bool, liked: bool) {
+pub fn media_controls_music_state(playing: bool, liked: bool, muted: bool) {
     #[cfg(windows)]
-    crate::taskbar::update(playing, liked);
+    crate::taskbar::update(playing, liked, muted);
     #[cfg(not(windows))]
-    let _ = (playing, liked);
+    let _ = (playing, liked, muted);
+}
+
+#[tauri::command]
+pub fn media_controls_music_art(art_url: Option<String>, app_icon: bool) {
+    #[cfg(windows)]
+    crate::taskbar::set_artwork(art_url, app_icon);
+    #[cfg(not(windows))]
+    let _ = (art_url, app_icon);
 }
 
 #[tauri::command]

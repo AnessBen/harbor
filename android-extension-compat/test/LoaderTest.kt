@@ -7,10 +7,6 @@ import com.harbor.capstan.Provider
 import harbor.compat.host.PlatformHost
 import java.io.File
 
-/** Loads every sample extension and says, per file, whether it came up and what it registered.
- *
- * The second pass exists to show the converted jar is reused: it repeats the same work against a
- * warm cache, so the two timings are the cost with and without conversion. */
 fun main(args: Array<String>) {
     val root = File(args.getOrNull(0) ?: ".").absoluteFile
     val samples = File(root, "samples").listFiles { f: File -> f.isFile && f.name.endsWith(".cs3") }
@@ -65,8 +61,6 @@ private fun pass(loader: ExtensionLoader, samples: List<File>, label: String): P
     return PassResult(loaded, providers, extractors, (System.nanoTime() - started) / 1_000_000)
 }
 
-/** Optional and off by default, because it puts a real request on the wire. It is the only way to
- * see the suspend boundary actually cross into an extension and come back with data. */
 private fun probe(loader: ExtensionLoader, samples: List<File>, query: String) {
     println()
     println("--- search probe \"$query\"")
@@ -78,8 +72,6 @@ private fun probe(loader: ExtensionLoader, samples: List<File>, query: String) {
     }
 }
 
-/** Search, then load the first hit, then ask for its links. The three calls the host API exposes,
- * run against the live site in the order a viewer would trigger them. */
 private fun chain(provider: Provider, query: String): String {
     val started = System.nanoTime()
     val results = runCatching { provider.search(query) }

@@ -4,6 +4,8 @@ required.py measures WHICH members the extensions need. out/usage.json, produced
 in tools/usage, measures HOW each one is referenced. Both halves are facts read out of shipped
 bytecode. This script joins them and rewrites spec/groups/*.txt so the groups stay a disjoint,
 complete cover of the contract.
+
+Usage: spec.py <root> [--spec rel] [--usage rel] [--groups rel|none]
 """
 
 import json
@@ -63,8 +65,12 @@ def enrich(doc, usage):
     return doc
 
 
-def write_groups(root, keys):
-    d = os.path.join(root, "spec", "groups")
+def opt(argv, name, fallback):
+    return argv[argv.index(name) + 1] if name in argv else fallback
+
+
+def write_groups(root, keys, rel):
+    d = os.path.join(root, rel)
     buckets = {}
     for key in keys:
         buckets.setdefault(group(key.split("|")[1]), []).append(key)
@@ -80,16 +86,18 @@ def write_groups(root, keys):
 
 if __name__ == "__main__":
     root = sys.argv[1]
-    spec = os.path.join(root, "spec", "required.json")
+    spec = os.path.join(root, opt(sys.argv, "--spec", "spec/required.json"))
+    groups = opt(sys.argv, "--groups", "spec/groups")
     with open(spec, encoding="utf-8") as fh:
         doc = json.load(fh)
-    with open(os.path.join(root, "out", "usage.json"), encoding="utf-8") as fh:
+    with open(os.path.join(root, opt(sys.argv, "--usage", "out/usage.json")), encoding="utf-8") as fh:
         usage = json.load(fh)
     doc = enrich(doc, usage)
     with open(spec, "w", encoding="utf-8", newline="\n") as fh:
         json.dump(doc, fh, indent=1, sort_keys=True)
-    sizes = write_groups(root, doc["required"])
     shaped = sum(1 for r in doc["required"].values() if len(r) > 1)
     print(f"SPEC {len(doc['required'])} members, {shaped} carry usage facts, "
           f"{len(doc['usage_conflicts'])} conflicts")
-    print("  groups " + " ".join(f"{k}={v}" for k, v in sizes.items()))
+    if groups != "none":
+        sizes = write_groups(root, doc["required"], groups)
+        print("  groups " + " ".join(f"{k}={v}" for k, v in sizes.items()))

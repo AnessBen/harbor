@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { ExternalLink, LoaderCircle } from "lucide-react";
+import { ExternalLink, LoaderCircle } from "@/components/icons/music-icons";
 import { MusicCoverCard } from "./music-cover-card";
+import { useMusicItemMenu } from "./music-item-menu";
 import { MusicSectionEmpty, MusicSectionError, MusicSectionHead } from "./music-track-grid";
 import { MusicDiscoveryIcon } from "./music-discovery-icon";
 import { MusicServiceLogo } from "./music-service-logo";
@@ -41,6 +42,7 @@ export function MusicDiscoveryChartRow({
 }) {
   const t = useT();
   const items: MusicCatalogItem[] = tracks.map((track) => ({ ...track, kind: "track" }));
+  const itemMenu = useMusicItemMenu({ onOpen: (item) => onOpen(item, items) });
   const heading = title ?? t("music.row.charts");
   const sourceLabel = (
     <span className="inline-flex items-center gap-2">
@@ -78,7 +80,12 @@ export function MusicDiscoveryChartRow({
           ))
         : items.map((item, index) => (
             <div key={item.id} className="music-discovery-chart-card">
-              <MusicCoverCard item={item} badge={null} onOpen={() => onOpen(item, items)} />
+              <MusicCoverCard
+                item={item}
+                badge={null}
+                onOpen={() => onOpen(item, items)}
+                onMenu={itemMenu.openFor(item, index)}
+              />
               {positions[index] !== null && positions[index] !== undefined && (
                 <span className="music-discovery-chart-rank">
                   {String(positions[index]).padStart(2, "0")}
@@ -86,6 +93,7 @@ export function MusicDiscoveryChartRow({
               )}
             </div>
           ))}
+      {itemMenu.menu}
     </Row>
   );
 }

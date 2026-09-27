@@ -2,13 +2,15 @@ const musicNowPlaying: Record<string, string> = {
   "music.artist.filmography": "الأفلام والتلفزيون",
   "music.action.error": "تعذّر إكمال الإجراء. أعد المحاولة.",
   "music.radio.error": "تعذّر تشغيل الراديو. أعد المحاولة أو اختر مصدرًا آخر.",
-  "music.download.action": "تنزيل الأغنية",
-  "music.download.done": "تم التنزيل",
-  "music.download.busy": "جارٍ التنزيل",
-  "music.download.retry": "إعادة محاولة التنزيل",
+  "music.download.action": "حفظ الأغنية",
+  "music.download.done": "محفوظة",
+  "music.download.busy": "جارٍ الحفظ",
+  "music.download.retry": "أعد محاولة الحفظ",
   "music.download.unsupported": "لا يوفر هذا المصدر ملف صوت قابلًا للتنزيل. جرّب مصدرًا آخر.",
   "music.download.missing": "الملف مفقود. نزّله مرة أخرى.",
   "music.download.failed": "فشل التنزيل. أعد المحاولة أو استخدم مصدرًا آخر.",
+  "music.download.changeFolder": "تغيير",
+  "music.download.defaultFolder": "استخدام الافتراضي",
   "music.download.empty": "نزّل الأغاني من المشغّل أو قائمة الأغنية للاستماع دون اتصال.",
   "music.download.folder": "إظهار في المجلد",
   "music.download.delete": "حذف التنزيل",
@@ -71,12 +73,16 @@ const musicNowPlaying: Record<string, string> = {
   "music.buy.search": "البحث في {store}",
 
   "music.artist.about": "عن الفنان",
+  "music.artist.save": "حفظ الفنان",
+  "music.artist.unsave": "إزالة من الفنانين المحفوظين",
 
   "music.artist.origin": "المنشأ",
 
   "music.artist.began": "الميلاد / التأسيس",
 
   "music.artist.aliases": "أسماء أخرى",
+
+  "music.artist.label": "العلامة التجارية",
 
   "music.artist.connections": "الأعضاء والمتعاونون",
 
@@ -87,6 +93,9 @@ const musicNowPlaying: Record<string, string> = {
   "music.artist.merch": "منتجات الفنان",
 
   "music.artist.official": "الموقع الرسمي",
+
+  "music.artist.kicker": "الفنان",
+  "music.artist.listenOn": "استمع على",
 };
 
 export default musicNowPlaying;

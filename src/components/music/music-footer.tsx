@@ -168,8 +168,12 @@ export function MusicFooter({ className = "" }: { className?: string }) {
       <details className="mb-5 text-xs leading-relaxed text-ink-muted">
         <summary className="w-fit cursor-pointer">{t("music.legal.title")}</summary>
         <p className="mt-3 max-w-[90ch]">{t("music.legal.services")}</p>
+        <p className="mt-3 max-w-[90ch]">{t("music.legal.saving")}</p>
         <p className="mt-3 max-w-[90ch]">{t("music.legal.data")}</p>
         <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2">
+          <button type="button" onClick={() => openSettings("licenses")} className="underline">
+            {t("music.legal.readFull")}
+          </button>
           <a
             href="https://www.spotify.com/legal/end-user-agreement/"
             target="_blank"

@@ -3,7 +3,6 @@ package harbor.capstan.test
 import com.harbor.capstan.LoadStage
 import java.time.LocalDate
 
-/** Renders the gate result as the markdown table the run is judged on. */
 object GateReport {
 
     fun render(rows: List<GateRow>): String {
@@ -17,7 +16,19 @@ object GateReport {
 
         out.append(summary(rows)).append('\n')
         out.append(providers(rows)).append('\n')
+        if (rows.any { it.unavailable.isNotEmpty() }) out.append(unavailable(rows)).append('\n')
         if (passed != rows.size) out.append(failures(rows)).append('\n')
+        return out.toString()
+    }
+
+    private fun unavailable(rows: List<GateRow>): String {
+        val out = StringBuilder("## Loaded with a path missing\n\n")
+        out.append("Dalvik accepts a method the class file format does not. These archives load and run,\n")
+        out.append("with the named path replaced by a throw that says so.\n\n")
+        out.append("| extension | method | why |\n| --- | --- | --- |\n")
+        for (row in rows) {
+            for (note in row.unavailable) out.append("| `${row.file}` | `${note.display}` | ${note.reason} |\n")
+        }
         return out.toString()
     }
 

@@ -1,6 +1,5 @@
 package android.graphics
 
-/** A real 3x3 affine transform. Paths are handed one and expect their points to move. */
 open class Matrix {
 
     private val m = FloatArray(9)
@@ -68,7 +67,6 @@ open class Matrix {
 
     fun mapY(x: Float, y: Float): Float = m[3] * x + m[4] * y + m[5]
 
-    /** Transforms interleaved x, y pairs in place. A short or odd array is left alone. */
     fun mapPoints(points: FloatArray?) {
         if (points == null) return
         var i = 0

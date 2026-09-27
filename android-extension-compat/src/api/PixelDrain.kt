@@ -5,10 +5,6 @@ import com.lagradost.cloudstream3.utils.ExtractorApi
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.newExtractorLink
 
-/** PixelDrain.
- *
- * Nothing has to be scraped. The file page and the download api answer the same id, so the api url
- * is the link and the page it came from is the referer it has to be asked for under. */
 open class PixelDrain : ExtractorApi() {
 
     override val name: String = "PixelDrain"
@@ -35,4 +31,8 @@ open class PixelDrain : ExtractorApi() {
 
 class PixelDrainDev : PixelDrain() {
     override val mainUrl = "https://pixeldrain.dev"
+}
+
+class PixelDrainNet : PixelDrain() {
+    override val mainUrl = "https://pixeldrain.net"
 }

@@ -11,11 +11,6 @@ import com.lagradost.cloudstream3.utils.absolute
 import com.lagradost.cloudstream3.utils.extractorLog
 import com.lagradost.cloudstream3.utils.getQualityFromName
 
-/** Invidious instances.
- *
- * Instances come and go, so the api call is aimed at the host of the url that arrived rather than
- * at the registered main url, and a new instance only has to be added to the registry to be
- * reachable by host match. */
 open class Invidious : ExtractorApi() {
 
     override val name: String = "Invidious"

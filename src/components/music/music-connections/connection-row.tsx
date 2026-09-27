@@ -7,8 +7,8 @@ import {
   LoaderCircle,
   Radio,
   Server,
-  type LucideIcon,
-} from "lucide-react";
+  type MusicIconComponent,
+} from "@/components/icons/music-icons";
 import { MusicServiceLogo } from "../music-service-logo";
 import { SpotifySetupFields } from "./spotify-setup";
 import { useT } from "@/lib/i18n";
@@ -37,7 +37,7 @@ export const PRIMARY_BUTTON =
 export const SECONDARY_BUTTON =
   "inline-flex h-11 items-center gap-2 rounded-full border border-edge px-4 text-[12px] font-medium text-ink transition-colors duration-200 ease-out hover:bg-elevated disabled:opacity-40";
 
-const KIND_ICON: Record<MusicConnectionKind, LucideIcon> = {
+const KIND_ICON: Record<MusicConnectionKind, MusicIconComponent> = {
   streaming: AudioLines,
   server: Server,
   local: HardDrive,

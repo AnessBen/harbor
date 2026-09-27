@@ -1,3 +1,4 @@
+import mediaStart from "./ko/media-start";
 import listenTogether from "./ko/listen-together";
 import music from "./ko/music";
 import sportsConsent from "./ko/sports-consent";
@@ -26,7 +27,10 @@ import plugins from "./ko/plugins";
 import brands from "./ko/brands";
 import bpSports from "./ko/bp-sports";
 
+import nytTv from "./ko/nyt-tv";
+
 const ko: Record<string, string> = {
+  ...mediaStart,
   ...videoCast,
   ...music,
   ...ebookSources,
@@ -55,6 +59,7 @@ const ko: Record<string, string> = {
   ...esportsArena,
   ...bpSports,
   ...listenTogether,
+  ...nytTv,
 };
 
 export default ko;

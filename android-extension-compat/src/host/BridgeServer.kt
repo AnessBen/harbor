@@ -24,8 +24,6 @@ import kotlin.system.exitProcess
 
 private const val CALL_CEILING_MS = 120_000L
 
-/** A backstop above the loader's own ceiling, which is the limit that can actually interrupt a
- * call at one of its suspension points. */
 private const val DEFAULT_TIMEOUT_MS = CALL_CEILING_MS + 10_000L
 
 class BridgeServer(
@@ -61,10 +59,6 @@ class BridgeServer(
         }
     }
 
-    /** One request, one response, whatever happens inside.
-     *
-     * Everything below this line runs extension code, so the catch is deliberately total: a
-     * provider that throws on a malformed page must cost its own request and nothing else. */
     private suspend fun answer(request: BridgeRequest) {
         try {
             val timeout = request.long("timeoutMs", DEFAULT_TIMEOUT_MS).coerceIn(1_000L, 600_000L)
@@ -83,6 +77,8 @@ class BridgeServer(
         "uninstall" -> catalog.uninstall(request.string("id"))
         "extensions" -> extensions()
         "providers" -> providers()
+        "catalogue" -> catalogue(request)
+        "cataloguePage" -> cataloguePage(request)
         "search" -> search(request)
         "load" -> load(request)
         "loadLinks" -> loadLinks(request)
@@ -112,6 +108,37 @@ class BridgeServer(
         for (entry in catalog.providerList()) list.add(BridgeEncode.provider(entry))
         val out = JsonObject()
         out.add("providers", list)
+        return out
+    }
+
+    private fun catalogue(request: BridgeRequest): JsonObject {
+        val entry = catalog.provider(request.string("providerId"))
+        val rows = JsonArray()
+        for (row in entry.provider.catalogue) rows.add(BridgeEncode.catalogueRow(row))
+        val out = JsonObject()
+        out.addProperty("providerId", entry.id)
+        out.addProperty("hasMainPage", entry.provider.info.hasMainPage)
+        out.add("rows", rows)
+        return out
+    }
+
+    private fun cataloguePage(request: BridgeRequest): JsonObject {
+        val entry = catalog.provider(request.string("providerId"))
+        val asked = request.string("row")
+        val row = entry.provider.rowNamed(asked)
+            ?: throw BridgeError(CODE_BAD_REQUEST, "no catalogue row '$asked' on ${entry.id}")
+        val page = request.int("page", 1).coerceAtLeast(1)
+        val since = System.currentTimeMillis()
+        val fetched = entry.provider.cataloguePage(row.name, page)
+        val sections = JsonArray()
+        for (section in fetched.sections) sections.add(BridgeEncode.catalogueSection(section))
+        val out = JsonObject()
+        out.addProperty("providerId", entry.id)
+        out.addProperty("row", row.name)
+        out.addProperty("page", page)
+        out.addProperty("hasNext", fetched.hasNext)
+        out.add("sections", sections)
+        if (fetched.items == 0) note(out, entry.provider, since)
         return out
     }
 
@@ -164,10 +191,6 @@ class BridgeServer(
         return out
     }
 
-    /** Why an empty answer is empty, when the addresses this provider uses refused during the call.
-     *
-     * Absent whenever the service answered normally, so a client can read the presence of this
-     * field as "the service, not the extension" and its absence as "no evidence either way". */
     private fun note(out: JsonObject, provider: Provider, since: Long) {
         val text = provider.why(since) ?: return
         out.addProperty("note", text)

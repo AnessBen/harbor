@@ -6,8 +6,6 @@ import org.xmlpull.v1.XmlPullParser
 
 open class LayoutInflater(val context: Context?) {
 
-    // There is no resource table off device, so a layout resolves to an empty container. Callers
-    // then find no children by id, which is the same answer Android gives for an absent id.
     open fun inflate(parser: XmlPullParser?, root: ViewGroup?, attachToRoot: Boolean): View {
         val view = FrameLayout(context)
         if (root == null) return view

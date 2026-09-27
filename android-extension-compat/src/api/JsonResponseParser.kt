@@ -19,7 +19,6 @@ class JsonResponseParser(private val mapper: ObjectMapper = shared) : ResponsePa
 
     override fun writeValueAsString(obj: Any): String = mapper.writeValueAsString(obj)
 
-    // Servers prepend anti hijack prefixes such as )]}' and XSSI guards to JSON bodies.
     private fun trimToJson(text: String): String {
         val start = text.indexOfFirst { it == '{' || it == '[' }
         if (start <= 0) return text

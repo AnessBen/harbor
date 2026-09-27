@@ -11,7 +11,7 @@ SET=${*:-"AniDb InvidiousProvider"}
 ARGS=""
 for name in $SET; do ARGS="$ARGS $(cygpath -w "$R/samples/$name.cs3")"; done
 python "$R/test/bridge/outage.py" \
-  "$JAVA_HOME/bin/java" \
+  "$JAVA_HOME/bin/java" -Xmx${CAPSTAN_XMX:-2g} \
   "$(cygpath -w "$R/out/capstan.jar");$LIBS" \
   "$(cygpath -w "$T/data")" \
   $ARGS

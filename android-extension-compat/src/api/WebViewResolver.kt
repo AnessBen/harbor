@@ -4,12 +4,6 @@ import com.lagradost.nicehttp.DEFAULT_USER_AGENT
 import okhttp3.Interceptor
 import okhttp3.Response
 
-/**
- * No browser engine is available in this runtime, so the page cannot be rendered and its script
- * cannot run. The resolver still does the part that works without one: it fetches the page and
- * looks through the returned text for a link matching [interceptUrl], which is where most players
- * put the stream anyway. When nothing matches, the original response is passed through untouched.
- */
 class WebViewResolver(
     val interceptUrl: Regex,
     val additionalUrls: List<Regex> = emptyList(),

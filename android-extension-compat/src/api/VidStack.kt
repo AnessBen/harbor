@@ -10,16 +10,8 @@ import com.lagradost.cloudstream3.utils.absolute
 import com.lagradost.cloudstream3.utils.extractorLog
 import com.lagradost.cloudstream3.utils.hostOf
 import com.lagradost.cloudstream3.utils.httpsify
+import kotlinx.coroutines.delay
 
-/** The vidstack player family: megaplay and its mirrors, and the uns.bio players.
- *
- * Extensions subclass this and override nothing but the name and the domain, so the two api
- * shapes below have to be picked apart from the page rather than from which subclass is running.
- * Which one a host speaks is decided by whether its player page carries a numeric player id.
- *
- * The megaplay shape: the page carries data-id, /stream/getSources answers with plaintext
- * subtitle tracks beside an encrypted stream url.
- * The uns.bio shape: /api/v1/video answers with one hex blob that is the whole player config. */
 open class VidStack : ExtractorApi() {
 
     override val name: String = "VidStack"
@@ -39,36 +31,38 @@ open class VidStack : ExtractorApi() {
         val headers = mapOf("User-Agent" to USER_AGENT, "X-Requested-With" to "XMLHttpRequest")
         val playback = mapOf("User-Agent" to USER_AGENT, "Origin" to base, "Referer" to "$base/")
 
+        val asks = VidStackAsks()
         val page = playerPage(url, pageReferer)
 
         val playerId = page?.let { PLAYER_ID.find(it)?.groupValues?.get(1) }
         if (playerId != null &&
-            emitFromSources(base, playerId, url, headers, playback, subtitleCallback, callback)
+            emitFromSources(base, playerId, url, headers, playback, asks, subtitleCallback, callback)
         ) {
             return
         }
 
-        if (emitFromConfig(base, videoId(url), url, headers, playback, subtitleCallback, callback)) return
+        if (emitFromConfig(base, videoId(url), url, headers, playback, asks, subtitleCallback, callback)) return
 
         if (page != null &&
             emitPlayerPage(name, name, url, page, pageReferer, playback, subtitleCallback, callback)
         ) {
             return
         }
-        extractorLog("$name found no sources on $url")
+        if (page == null) extractorLog("$name read no page from $url")
+        else extractorLog("$name found no sources on $url")
     }
 
-    /** The megaplay endpoint. Subtitles arrive in the clear, the stream url does not. */
     private suspend fun emitFromSources(
         base: String,
         playerId: String,
         pageUrl: String,
         headers: Map<String, String>,
         playback: Map<String, String>,
+        asks: VidStackAsks,
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit,
     ): Boolean {
-        val body = fetch("$base/stream/getSources?id=$playerId", pageUrl, headers) ?: return false
+        val body = fetch("$base/stream/getSources?id=$playerId", pageUrl, headers, asks) ?: return false
         val tree = jsonTree(body) ?: return false
 
         emitTracks(tree.path("tracks"), pageUrl, subtitleCallback)
@@ -82,18 +76,19 @@ open class VidStack : ExtractorApi() {
         return emitStream(name, name, absolute(pageUrl, clean(stream)), pageUrl, null, playback, callback)
     }
 
-    /** The uns.bio endpoint. One hex blob holds the whole player config, stream url included. */
     private suspend fun emitFromConfig(
         base: String,
         id: String,
         pageUrl: String,
         headers: Map<String, String>,
         playback: Map<String, String>,
+        asks: VidStackAsks,
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit,
+        tries: Int = 2,
     ): Boolean {
         if (id.isBlank()) return false
-        val body = fetch("$base/api/v1/video?id=$id", pageUrl, headers) ?: return false
+        val body = fetch("$base/api/v1/video?id=$id", pageUrl, headers, asks) ?: return false
 
         val text = decodeHex(body)?.let { aesCbcDecrypt(it, CONFIG_KEY, CONFIG_IV) } ?: body
         val tree = jsonTreeMaybeBase64(text)
@@ -108,16 +103,40 @@ open class VidStack : ExtractorApi() {
 
         val stream = candidates.mapNotNull { absoluteStream(it, base) }
             .minByOrNull { rankOf(it, base) }
-            ?: return false
+        if (stream != null) return emitStream(name, name, stream, pageUrl, null, playback, callback)
 
-        return emitStream(name, name, stream, pageUrl, null, playback, callback)
+        val pause = capacityPause(tree)
+        if (pause == null || tries <= 1) return false
+        delay(pause)
+        return emitFromConfig(base, id, pageUrl, headers, playback, asks, subtitleCallback, callback, tries - 1)
     }
 
-    private suspend fun fetch(url: String, referer: String, headers: Map<String, String>): String? = try {
-        app.get(url, referer = referer, headers = headers).text.takeIf { it.isNotBlank() }
-    } catch (t: Throwable) {
-        extractorLog("$name request failed for $url: ${t.message}")
-        null
+    private suspend fun fetch(
+        url: String,
+        referer: String,
+        headers: Map<String, String>,
+        asks: VidStackAsks,
+    ): String? {
+        var asked = 0
+        while (asks.take()) {
+            asked++
+            val answer = try {
+                if (asked == 1) app.get(url, referer = referer, headers = headers)
+                else app.get(url, referer = referer, headers = headers, timeout = RETRY_TIMEOUT_S)
+            } catch (t: Throwable) {
+                extractorLog("$name request failed for $url: ${t.message}, $asked asked")
+                return null
+            }
+            if (answer.isSuccessful) {
+                if (asked > 1) extractorLog("$name read $url on ask $asked")
+                return answer.text.takeIf { it.isNotBlank() }
+            }
+            if (asks.pause(answer.code)) continue
+            extractorLog("$name ${refusalNote(answer.code)} ${answer.code} on $url, $asked asked")
+            return null
+        }
+        extractorLog("$name had no asks left for $url")
+        return null
     }
 
     private fun emitTracks(tracks: JsonNode, pageUrl: String, subtitleCallback: (SubtitleFile) -> Unit) {
@@ -138,7 +157,6 @@ open class VidStack : ExtractorApi() {
         }
     }
 
-    /** The megaplay payload decrypts to either one object or a list of them. */
     private fun decryptSources(encrypted: String): String? {
         val raw = decodeBase64Url(encrypted) ?: return null
         return aesCbcDecrypt(raw, SOURCES_KEY, SOURCES_IV)
@@ -156,12 +174,6 @@ open class VidStack : ExtractorApi() {
         return tree.firstString("file", "source", "url")
     }
 
-    /** The config names its stream after the cdn that will serve it, so the field to read is
-     * whichever one holds a playlist, not a field with a fixed name. Poster and thumbnail fields
-     * are dropped by name, because a thumbnail track is a real vtt and would otherwise win.
-     *
-     * Every match is kept rather than the first, because the same episode is listed on several
-     * cdns and which of them a viewer can reach is not something field order decides. */
     private fun streamsInConfig(tree: JsonNode): List<String> {
         val playlists = ArrayList<String>()
         val files = ArrayList<String>()
@@ -182,12 +194,6 @@ open class VidStack : ExtractorApi() {
         return playlists + files
     }
 
-    /** A candidate as an absolute url, or null when it is not one.
-     *
-     * The null cases are the point. A config whose first block failed to decrypt leaves readable
-     * text further in, the loose regex then matches inside the corrupt bytes, and gluing that to
-     * the host produced urls like `https://<host>z!rhtqbj` that fail dns and read to a user as a
-     * broken player. A relative candidate has to start at the root and a host has to be a host. */
     private fun absoluteStream(candidate: String, base: String): String? {
         val raw = unescapeSlashes(candidate.trim())
         if (raw.isEmpty()) return null
@@ -200,9 +206,6 @@ open class VidStack : ExtractorApi() {
         return if (host.isNotEmpty() && HOSTNAME.matches(host)) full else null
     }
 
-    /** A config on these players lists the same stream on the embed's own host, on named cdns and
-     * on bare addresses. The embed host is a proxy that answers wherever the page loaded; the bare
-     * addresses are origins that a home connection often cannot open at all, so they go last. */
     private fun rankOf(url: String, base: String): Int {
         val host = hostOf(url)
         return when {
@@ -212,8 +215,6 @@ open class VidStack : ExtractorApi() {
         }
     }
 
-    /** The player id on the megaplay pages, and the embed id everywhere else. The embed id is in
-     * the fragment on the uns.bio links and in the last path segment on the rest. */
     private fun videoId(url: String): String {
         val fragment = url.substringAfterLast('#', "")
         if (fragment.isNotBlank()) return fragment.substringAfterLast('/')
@@ -221,6 +222,8 @@ open class VidStack : ExtractorApi() {
     }
 
     private companion object {
+        const val RETRY_TIMEOUT_S = 4L
+
         val PLAYER_ID = Regex("""data-id\s*=\s*["'](\d+)["']""")
         val LOOSE_STREAM = Regex("""(?:https?://)?[^"'\s]*\.m3u8[^"'\s]*""")
         val HOSTNAME = Regex("""[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+""")
@@ -230,9 +233,6 @@ open class VidStack : ExtractorApi() {
 
         val CONFIG_KEY = "kiemtienmua911ca".toByteArray(Charsets.UTF_8)
 
-        /** Recovered on 2026-09-24 by solving for it rather than guessing: CBC leaves every block
-         * but the first correct under a wrong IV, so D(C0) came out of the known bad decrypt and
-         * the real IV is that xored with the plaintext the second block proves, `{"source":"https`. */
         val CONFIG_IV = "1234567890oiuytr".toByteArray(Charsets.UTF_8)
     }
 }
@@ -247,29 +247,27 @@ class MegaPlayOne : VidStack() {
     override val mainUrl = "https://megaplay-1.buzz"
 }
 
-/** Served by the same engine as megaplay, not by the wish players its name suggests. */
-class Vidwish : VidStack() {
-    override val name = "Vidwish"
-    override val mainUrl = "https://vidwish.live"
-}
-
-class VidTube : VidStack() {
-    override val name = "Vidtube"
-    override val mainUrl = "https://vidtube.site"
-}
-
 class VidStackIo : VidStack() {
     override val name = "Vidstack"
     override val mainUrl = "https://vidstack.io"
 }
 
-/** The uns.bio players, which speak the config shape above.
- *
- * Registered on the parent domain rather than one class per site, because the registry matches a
- * parent host and this operator adds a subdomain for every site it serves: animeav1, allanime and
- * watchanime today. Two extensions ship their own copy of this and win while they are loaded, so
- * what this entry buys is a fallback for the day one of them drops it. */
 class UnsBio : VidStack() {
     override val name = "UnsBio"
-    override val mainUrl = "https://uns.bio"
+    override val mainUrl = "https://animeav1.uns.bio"
+}
+
+class UpnsLive : VidStack() {
+    override val name = "Upns"
+    override val mainUrl = "https://upns.live"
+}
+
+class UpnsOne : VidStack() {
+    override val name = "Upns"
+    override val mainUrl = "https://upns.one"
+}
+
+class UpnsInk : VidStack() {
+    override val name = "Upns"
+    override val mainUrl = "https://upns.ink"
 }

@@ -1,8 +1,9 @@
 import { MusicCollectionControls } from "./music-collection-controls";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { LoaderCircle } from "lucide-react";
+import { LoaderCircle } from "@/components/icons/music-icons";
 import { MusicArtistCard } from "./music-artist-card";
 import { MusicCoverCard } from "./music-cover-card";
+import { useMusicItemMenu } from "./music-item-menu";
 import { MusicTrackRow } from "./music-track-row";
 import { useMusicPlaylistPicker } from "./music-playlist-picker";
 import { enqueueMusic } from "@/lib/music/player";
@@ -30,6 +31,7 @@ export function MusicLocalCollection({
   const [error, setError] = useState("");
   const [revision, setRevision] = useState(0);
   const generation = useRef(0);
+  const itemMenu = useMusicItemMenu({ onOpen: (item) => onOpen(item, items) });
   const load = useCallback(
     (offset: number) => {
       const request = ++generation.current;
@@ -109,7 +111,12 @@ export function MusicLocalCollection({
             ) : item.kind === "artist" ? (
               <MusicArtistCard key={item.id} artist={item} onOpen={() => onOpen(item, items)} />
             ) : (
-              <MusicCoverCard key={item.id} item={item} onOpen={() => onOpen(item, items)} />
+              <MusicCoverCard
+                key={item.id}
+                item={item}
+                onOpen={() => onOpen(item, items)}
+                onMenu={itemMenu.openFor(item, index)}
+              />
             ),
           )}
         </div>
@@ -146,6 +153,7 @@ export function MusicLocalCollection({
           {t("music.library.loadMore")}
         </button>
       )}
+      {itemMenu.menu}
     </section>
   );
 }

@@ -1,6 +1,7 @@
 import { Fragment, type MouseEvent, type ReactNode } from "react";
-import { Play } from "lucide-react";
+import { Play } from "@/components/icons/music-icons";
 import { MusicArtistCard } from "@/components/music/music-artist-card";
+import { useMusicItemMenu } from "@/components/music/music-item-menu";
 import {
   coverCardSeed,
   coverCardSubtitle,
@@ -10,6 +11,7 @@ import {
   type MusicCardBadge,
 } from "@/components/music/music-cover-card";
 import { MusicPlaylistCover } from "@/components/music/music-playlist-cover";
+import { albumExplicitMarks } from "@/lib/music/album-explicit";
 import {
   MusicSectionConnectCard,
   MusicSectionEmpty,
@@ -159,6 +161,7 @@ function WideFeature({
   );
 }
 
+
 export function MusicCatalogRow({
   row,
   status = "ready",
@@ -180,6 +183,8 @@ export function MusicCatalogRow({
   onMenu,
   onViewAll,
   viewAllLabel,
+  titleLogo,
+  grid = false,
   onEndReached,
   className = "",
 }: {
@@ -203,10 +208,20 @@ export function MusicCatalogRow({
   onMenu?: (item: MusicCatalogItem, event: MouseEvent<HTMLElement>) => void;
   onViewAll?: () => void;
   viewAllLabel?: string;
+  titleLogo?: ReactNode;
+  grid?: boolean;
   onEndReached?: () => void;
   className?: string;
 }) {
   const t = useT();
+  const itemMenu = useMusicItemMenu({ onPlay, onOpen });
+  const openMenu = (item: MusicCatalogItem, index: number, event: MouseEvent<HTMLElement>) => {
+    if (onMenu) {
+      onMenu(item, event);
+      return;
+    }
+    itemMenu.open(item, index, event);
+  };
   const heading = row.titleLiteral ? row.title : t(row.title, titleVars);
   const rawSubtitle = row.subtitle
     ? row.titleLiteral
@@ -294,7 +309,7 @@ export function MusicCatalogRow({
             badge={badgeAt(feature, 0)}
             onPlay={onPlay && (() => onPlay(feature, 0))}
             onOpen={onOpen && (() => onOpen(feature, 0))}
-            onMenu={onMenu && ((event) => onMenu(feature, event))}
+            onMenu={(event) => openMenu(feature, 0, event)}
           />
         )}
       </section>
@@ -302,11 +317,14 @@ export function MusicCatalogRow({
   }
 
   const head = (
-    <span className="flex min-w-0 flex-col gap-0.5">
-      <span className="truncate text-[17px] font-medium tracking-tight text-ink">{heading}</span>
-      {caption && (
-        <span className="truncate text-[12px] font-medium text-ink-subtle">{caption}</span>
-      )}
+    <span className="flex min-w-0 items-center gap-2.5">
+      {titleLogo && <span className="grid shrink-0 place-items-center">{titleLogo}</span>}
+      <span className="flex min-w-0 flex-col gap-0.5">
+        <span className="truncate text-[17px] font-medium tracking-tight text-ink">{heading}</span>
+        {caption && (
+          <span className="truncate text-[12px] font-medium text-ink-subtle">{caption}</span>
+        )}
+      </span>
     </span>
   );
 
@@ -327,6 +345,9 @@ export function MusicCatalogRow({
     );
   }
 
+  // Over every loaded item, not the visible slice: a clean/explicit pair split by the
+  // cut would otherwise leave the clean one unlabelled.
+  const explicitMarks = albumExplicitMarks(items);
   const cards: ReactNode[] = visible.map((item, index) =>
     item.kind === "artist" ? (
       <MusicArtistCard
@@ -336,21 +357,32 @@ export function MusicCatalogRow({
         subtitle={artistSubtitle?.(item)}
         onPlay={onPlay && (() => onPlay(item, index))}
         onOpen={onOpen && (() => onOpen(item, index))}
-        onMenu={onMenu && ((event) => onMenu(item, event))}
+        onMenu={(event) => openMenu(item, index, event)}
       />
     ) : (
       <MusicCoverCard
         key={`${coverCardSeed(item)}:${index}`}
         item={item}
         badge={badgeAt(item, index)}
+        explicitMark={explicitMarks.get(item.id) ?? null}
         onPlay={onPlay && (() => onPlay(item, index))}
         onOpen={onOpen && (() => onOpen(item, index))}
-        onMenu={onMenu && ((event) => onMenu(item, event))}
+        onMenu={(event) => openMenu(item, index, event)}
       />
     ),
   );
 
-  return (
+  const body = grid ? (
+    <section className={`flex min-w-0 flex-col gap-4 ${className}`}>
+      {head}
+      <div
+        className="grid gap-x-5 gap-y-7"
+        style={{ gridTemplateColumns: `repeat(auto-fill, minmax(${cellMin}px, 1fr))` }}
+      >
+        {leadingCard ? [<Fragment key="music-row-lead">{leadingCard}</Fragment>, ...cards] : cards}
+      </div>
+    </section>
+  ) : (
     <Row
       title={head}
       shape="square"
@@ -363,5 +395,12 @@ export function MusicCatalogRow({
     >
       {leadingCard ? [<Fragment key="music-row-lead">{leadingCard}</Fragment>, ...cards] : cards}
     </Row>
+  );
+
+  return (
+    <>
+      {body}
+      {itemMenu.menu}
+    </>
   );
 }

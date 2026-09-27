@@ -21,3 +21,11 @@
 
 # The 13 real extension archives the gates run against, and their converted jars.
 /samples/
+
+# Scratch that lands at this root while diagnosing: probe transcripts, captured failing archives,
+# and the JVM's own crash dumps. None of it is a source file.
+/*.zip
+/*.log
+/*-probe.txt
+hs_err_pid*.log
+replay_pid*.log

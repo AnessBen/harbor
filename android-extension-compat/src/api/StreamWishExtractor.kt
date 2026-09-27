@@ -5,10 +5,6 @@ import com.lagradost.cloudstream3.utils.ExtractorApi
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.extractorLog
 
-/** The wish family of embed players.
- *
- * Every mirror serves the same page under a different domain, so the whole family is this class
- * with mainUrl swapped, which is exactly how the extensions subclass it too. */
 open class StreamWishExtractor : ExtractorApi() {
 
     override val name: String = "StreamWish"
@@ -38,19 +34,12 @@ open class StreamWishExtractor : ExtractorApi() {
         extractorLog("$name found no sources on $url")
     }
 
-    /** The url asked for, then the same file id on the mirrors that still serve a readable page.
-     *
-     * Three of these domains answer every id with a loading shell that resolves the source in an
-     * obfuscated script, so reading the page they serve finds nothing however the request is made.
-     * The file ids are shared across the whole family, and the mirrors below still carry the config
-     * in the page, so the id is worth asking them for before giving up on it. */
     private fun candidates(url: String): List<String> {
         val id = fileId(url) ?: return listOf(url)
         val here = hostRoot(url, mainUrl)
         return listOf(url) + READABLE.filter { it != here }.map { "$it/e/$id" }
     }
 
-    /** A download page carries the player in an iframe instead of inline. */
     private fun embedUrl(url: String, page: String, root: String): String? {
         IFRAME.find(page)?.groupValues?.get(1)?.let { return clean(it) }
         val id = url.trimEnd('/').substringAfterLast('/')

@@ -22,8 +22,13 @@ export function buildNowPlayingKey(
 }
 
 export function parseNowPlayingKey(value: string): MusicNowPlaying {
-  const [connectorId, id, phase] = value.split(SEP);
-  return { id: id || null, connectorId: connectorId || null, phase: phase ?? "idle" };
+  const head = value.indexOf(SEP);
+  const tail = value.lastIndexOf(SEP);
+  if (head < 0 || tail <= head) return { id: null, connectorId: null, phase: "idle" };
+  const connectorId = value.slice(0, head);
+  const id = value.slice(head + SEP.length, tail);
+  const phase = value.slice(tail + SEP.length);
+  return { id: id || null, connectorId: connectorId || null, phase: phase || "idle" };
 }
 
 export function nowPlayingMatches(

@@ -2,10 +2,6 @@ package org.json
 
 import com.google.gson.JsonObject as GsonObject
 
-/** The platform's JSON map type.
- *
- * Insertion order is kept because extensions round trip payloads back to a site often enough that
- * a reordered body is a changed request. */
 class JSONObject {
 
     private val values: LinkedHashMap<String, Any>
@@ -148,7 +144,6 @@ class JSONObject {
     }
 
     companion object {
-        /** The value a JSON null parses to, which is not the same as a key being absent. */
         @JvmField
         val NULL: Any = object {
             override fun equals(other: Any?): Boolean = other === this || other == null

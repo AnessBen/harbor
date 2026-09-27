@@ -178,6 +178,15 @@ export function SeekBarPanel() {
         </SettingRow>
 
         <ToggleRow
+          label={t("Reveal the dot on hover")}
+          sub={t(
+            "The dot stays out of the way and appears when you point at the bar. Turn this off to keep it on screen the whole time.",
+          )}
+          value={settings.seekDotHover !== false}
+          onChange={(v) => update({ seekDotHover: v })}
+        />
+
+        <ToggleRow
           label={t("Buffer fill")}
           sub={t(
             "Shows a lighter fill for how much is buffered or downloaded ahead. It hides itself once a stream is fully cached (green dot).",

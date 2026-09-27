@@ -5,6 +5,7 @@ on:
   push:
     tags:
       - "v*"
+      - "V*"
 
 permissions:
   contents: read
@@ -20,6 +21,8 @@ jobs:
   build:
     name: ${{ matrix.platform.name }} (${{ matrix.platform.target }})
     runs-on: ${{ matrix.platform.runner }}
+    timeout-minutes: 120
+    continue-on-error: ${{ matrix.platform.target == 'x86_64-apple-darwin' }}
     strategy:
       fail-fast: false
       matrix:
@@ -29,7 +32,7 @@ jobs:
             target: x86_64-pc-windows-msvc
             bundle: msi
           - name: macOS-AppleSilicon
-            runner: macos-latest
+            runner: macos-15
             target: aarch64-apple-darwin
             bundle: dmg
           - name: macOS-Intel
@@ -176,6 +179,31 @@ jobs:
             echo "::warning::TAURI_SIGNING_PRIVATE_KEY not set — building installers only, no signed updater artifacts."
           fi
 
+      - name: Detect Apple signing identity
+        if: contains(matrix.platform.runner, 'macos')
+        shell: bash
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          for name in APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID; do
+            value="${!name}"
+            if [ -n "$value" ]; then
+              printf '%s<<HARBOR_APPLE_EOF\n%s\nHARBOR_APPLE_EOF\n' "$name" "$value" >> "$GITHUB_ENV"
+            fi
+          done
+          if [ -z "$APPLE_CERTIFICATE" ] && [ -z "$APPLE_SIGNING_IDENTITY" ]; then
+            echo "::warning::No Apple signing secrets, so this macOS bundle is ad-hoc signed: Gatekeeper reports an unidentified developer, the dmg is left unsigned, and users must run xattr -dr com.apple.quarantine on the installed app."
+          elif [ -n "$APPLE_ID" ] && [ -z "$APPLE_TEAM_ID" ]; then
+            echo "::error::APPLE_ID is set without APPLE_TEAM_ID. tauri-bundler rejects that combination after it has already signed the bundle, so the build is stopped here instead."
+            exit 1
+          fi
+
       - name: Prepare bundled macOS libraries
         if: contains(matrix.platform.runner, 'macos')
         id: macos-libraries
@@ -241,6 +269,7 @@ jobs:
             exit 1
           fi
           python3 scripts/macos-bundle-libmpv.py verify-app --app "$APP_PATH"
+          python3 scripts/macos-verify-signature.py --app "$APP_PATH"
 
       - name: Archive verified macOS app for local updater signing
         if: contains(matrix.platform.runner, 'macos')
@@ -270,3 +299,39 @@ jobs:
             src-tauri/target/${{ matrix.platform.target }}/release/bundle/**/*.sig
           retention-days: 14
           if-no-files-found: warn
+
+  publish-macos:
+    name: Publish the Apple silicon installer
+    needs: build
+    if: ${{ !cancelled() && startsWith(github.ref, 'refs/tags/') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download the Apple silicon bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: harbor-macOS-AppleSilicon
+          path: macos-bundles
+
+      - name: Attach the Apple silicon installer to the release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          apple_silicon="$(find macos-bundles -type f -name '*_aarch64.dmg' -print -quit)"
+          if [ -z "$apple_silicon" ]; then
+            echo "::error::The Apple silicon leg produced no *_aarch64.dmg, so there is nothing to attach to $TAG."
+            exit 1
+          fi
+          if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "::warning::$TAG has no release, so $(basename "$apple_silicon") was not attached. This job never creates one, because releases are written by hand. Publish the release for $TAG and re-run this job, or attach the dmg from this run's harbor-macOS-AppleSilicon artifact."
+            exit 0
+          fi
+          gh release upload "$TAG" "$apple_silicon" --repo "$GITHUB_REPOSITORY" --clobber
+          echo "::notice::The Intel dmg is built and kept as the harbor-macOS-Intel workflow artifact, deliberately not attached to a release. Its bundled libmpv closure comes from Homebrew, which no longer builds Intel bottles, so the dmg declares macOS 15.0 or newer and would not launch on the Sonoma, Ventura and Monterey Macs that asked for it. To ship it, add its *_x64.dmg to this upload and drop the Intel entry's continue-on-error in the build job."
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name'

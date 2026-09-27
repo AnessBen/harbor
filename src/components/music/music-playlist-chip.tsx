@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ListMusic } from "lucide-react";
+import { ListMusic } from "@/components/icons/music-icons";
 import { MoreLikeThisIcon } from "@/components/icons/more-like-this-icon";
 import { useT } from "@/lib/i18n";
 import { requestMusicPlaylist } from "@/lib/music/navigation";

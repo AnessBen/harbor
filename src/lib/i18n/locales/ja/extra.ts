@@ -189,6 +189,8 @@ const extra: Record<string, string> = {
   Browsing: "閲覧時",
   Budget: "製作費",
   "Buffer fill": "バッファ部分",
+  "Reveal the dot on hover": "ホバーでドットを表示",
+  "The dot stays out of the way and appears when you point at the bar. Turn this off to keep it on screen the whole time.": "ドットは普段は隠れていて、バーにポインターを合わせると現れます。オフにすると常に表示されます。",
   "Buffer fill brightness": "バッファ部分の明るさ",
   Buffering: "バッファリング中",
   Build: "ビルド",

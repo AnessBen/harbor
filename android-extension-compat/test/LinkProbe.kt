@@ -3,12 +3,9 @@ package harbor.capstan.test
 import com.harbor.capstan.StreamLink
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.Response
 import java.util.concurrent.TimeUnit
 
-/** What a produced link actually serves.
- *
- * A link is a claim until something fetches it. This asks for the first kilobyte with the headers
- * the extension attached, which is the same request a player makes first. */
 class LinkProbe(
     val url: String,
     val status: Int,
@@ -35,20 +32,35 @@ object LinkProbes {
 
     fun probe(links: List<StreamLink>, limit: Int): List<LinkProbe> = links.take(limit).map(::one)
 
+    private fun window(response: Response): Int {
+        val stream = response.body?.byteStream() ?: return 0
+        val buffer = ByteArray(WINDOW.toInt())
+        var read = 0
+        while (read < buffer.size) {
+            val n = stream.read(buffer, read, buffer.size - read)
+            if (n < 0) break
+            read += n
+        }
+        return read
+    }
+
     private fun one(link: StreamLink): LinkProbe {
-        val builder = Request.Builder().url(link.url).header("Range", "bytes=0-${WINDOW - 1}")
-        link.headers.forEach { (name, value) -> runCatching { builder.header(name, value) } }
-        if (link.referer.isNotEmpty() && !link.headers.keys.any { it.equals("referer", true) }) {
-            builder.header("Referer", link.referer)
+        val scheme = link.url.substringBefore(':', "").lowercase()
+        if (scheme != "http" && scheme != "https") {
+            return LinkProbe(link.url, 0, "", 0, "not an http url, scheme ${scheme.ifEmpty { "none" }}")
         }
         return try {
+            val builder = Request.Builder().url(link.url).header("Range", "bytes=0-${WINDOW - 1}")
+            link.headers.forEach { (name, value) -> runCatching { builder.header(name, value) } }
+            if (link.referer.isNotEmpty() && !link.headers.keys.any { it.equals("referer", true) }) {
+                builder.header("Referer", link.referer)
+            }
             client.newCall(builder.build()).execute().use { response ->
-                val body = response.body?.bytes()?.size ?: 0
                 LinkProbe(
                     url = link.url,
                     status = response.code,
                     contentType = response.header("content-type").orEmpty().substringBefore(';').trim(),
-                    bytes = body,
+                    bytes = window(response),
                     error = null,
                 )
             }

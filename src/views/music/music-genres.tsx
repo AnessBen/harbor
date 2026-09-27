@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronLeft, LoaderCircle } from "lucide-react";
+import { ChevronLeft } from "@/components/icons/music-icons";
 import { MusicCatalogRow } from "@/components/music/music-catalog-row";
 import {
   MusicBillboardCharts,
@@ -11,6 +11,7 @@ import {
   MusicSectionError,
   MusicSectionHead,
 } from "@/components/music/music-track-grid";
+import { MusicCardsSkeleton } from "@/components/music/music-skeletons";
 import { useT } from "@/lib/i18n";
 import {
   loadMusicDiscoveryChart,
@@ -186,14 +187,7 @@ export function MusicGenres({
           <section className="flex flex-col gap-4">
             <MusicSectionHead title={t("music.tab.explore")} subtitle="Deezer" />
             {genreLoading ? (
-              <div role="status" className="flex items-center gap-3 py-8 text-ink-muted">
-                <LoaderCircle
-                  className="animate-spin motion-reduce:animate-none"
-                  size={20}
-                  aria-hidden="true"
-                />
-                {t("music.loading")}
-              </div>
+              <MusicCardsSkeleton count={8} />
             ) : genreError ? (
               <MusicSectionError onRetry={() => setGenreRetry((value) => value + 1)} />
             ) : !genres.length ? (

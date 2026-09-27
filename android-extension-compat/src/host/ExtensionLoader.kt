@@ -1,9 +1,12 @@
 package com.harbor.capstan
 
+import com.lagradost.cloudstream3.MainActivity
 import com.lagradost.cloudstream3.plugins.BasePlugin
 import com.lagradost.cloudstream3.plugins.CloudstreamPlugin
 import com.lagradost.cloudstream3.plugins.Plugin
+import com.lagradost.cloudstream3.plugins.PluginManager
 import com.lagradost.cloudstream3.utils.registerExtractor
+import harbor.compat.host.AndroidKeyStoreProvider
 import harbor.compat.host.PlatformHost
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
@@ -16,18 +19,11 @@ import java.lang.reflect.InvocationTargetException
 import java.util.zip.ZipFile
 
 class LoaderConfig(
-    /** Where converted jars are kept. Null puts each one beside its own source file. */
     val cacheDir: File? = null,
     val dexToolsDir: File = DexConverter.defaultToolsDir(),
-    /** Ceiling on one call into an extension. Zero removes the ceiling. */
     val callTimeoutMs: Long = 120_000,
 )
 
-/** Turns an extension file on disk into live providers.
- *
- * One loader owns one coroutine scope, and every suspend call into an extension crosses back into
- * blocking code here rather than anywhere further in, so an extension never has to know what kind
- * of thread the host called it on. */
 class ExtensionLoader(private val config: LoaderConfig = LoaderConfig()) : AutoCloseable {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO + CoroutineName("capstan-extension"))
@@ -40,6 +36,7 @@ class ExtensionLoader(private val config: LoaderConfig = LoaderConfig()) : AutoC
 
     init {
         ServiceLedger.install()
+        AndroidKeyStoreProvider.install()
     }
 
     @JvmOverloads
@@ -48,7 +45,13 @@ class ExtensionLoader(private val config: LoaderConfig = LoaderConfig()) : AutoC
         val archive = ExtensionArchive.read(file)
         watch.reached(LoadStage.ARCHIVE, "${archive.dexUnits.size} dex unit(s), manifest v${archive.manifest.version}")
         val jar = converter.jarFor(archive, config.cacheDir ?: defaultCacheDir(file))
-        watch.reached(LoadStage.CONVERT, "${jar.name}, ${jar.length()} bytes")
+        val unavailable = converter.unconverted(jar)
+        watch.reached(
+            LoadStage.CONVERT,
+            "${jar.name}, ${jar.length()} bytes" +
+                if (unavailable.isEmpty()) "" else ", ${unavailable.size} method(s) unavailable: " +
+                    unavailable.joinToString(", ") { it.display },
+        )
         val classLoader = ExtensionClassLoader(jar, compat)
         try {
             sealed(classLoader)
@@ -59,7 +62,9 @@ class ExtensionLoader(private val config: LoaderConfig = LoaderConfig()) : AutoC
             val plugin = instantiate(classLoader, entryName)
             watch.reached(LoadStage.INSTANTIATE, plugin::class.java.name)
             register(plugin)
+            PluginManager.attach(file, plugin)
             plugin.extractorApis.forEach(::registerExtractor)
+            MainActivity.afterPluginsLoadedEvent(true)
             watch.reached(
                 LoadStage.REGISTER,
                 "${plugin.mainApis.size} provider(s), ${plugin.extractorApis.size} extractor(s)",
@@ -72,6 +77,7 @@ class ExtensionLoader(private val config: LoaderConfig = LoaderConfig()) : AutoC
                 providers = plugin.mainApis.map { Provider(it, edge) },
                 extractors = plugin.extractorApis.toList(),
                 classLoader = classLoader,
+                unavailable = unavailable,
             )
         } catch (t: Throwable) {
             runCatching { classLoader.close() }
@@ -80,8 +86,6 @@ class ExtensionLoader(private val config: LoaderConfig = LoaderConfig()) : AutoC
         }
     }
 
-    /** Checks the two halves of the barrier where it is built rather than trusting that it holds:
-     * the host is invisible, and a compat type is the one class both sides already share. */
     private fun sealed(classLoader: ClassLoader) {
         val host = ExtensionLoader::class.java.name
         if (runCatching { classLoader.loadClass(host) }.isSuccess) {
@@ -115,14 +119,10 @@ class ExtensionLoader(private val config: LoaderConfig = LoaderConfig()) : AutoC
         }
     }
 
-    /** Runs the extension's own registration on a dispatcher of ours, so anything it starts there
-     * belongs to this loader's scope and dies with it. */
     private fun register(plugin: BasePlugin) = runBlocking(scope.coroutineContext) {
         if (plugin is Plugin) plugin.load(PlatformHost.applicationContext) else plugin.load()
     }
 
-    /** Fallback for a file that does not name its entry class: the annotation is the other way the
-     * entry point is declared. */
     private fun findEntry(jar: File, classLoader: ClassLoader): String? {
         val names = ZipFile(jar).use { zip ->
             zip.entries().asSequence()

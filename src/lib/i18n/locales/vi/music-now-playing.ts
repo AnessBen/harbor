@@ -2,13 +2,15 @@ const musicNowPlaying: Record<string, string> = {
   "music.artist.filmography": "Phim và truyền hình",
   "music.action.error": "Không thể hoàn tất thao tác. Vui lòng thử lại.",
   "music.radio.error": "Không thể phát radio. Thử lại hoặc chọn nguồn khác.",
-  "music.download.action": "Tải bài hát",
-  "music.download.done": "Đã tải",
-  "music.download.busy": "Đang tải",
-  "music.download.retry": "Thử tải lại",
+  "music.download.action": "Lưu bài hát",
+  "music.download.done": "Đã lưu",
+  "music.download.busy": "Đang lưu",
+  "music.download.retry": "Thử lưu lại",
   "music.download.unsupported": "Nguồn này không cung cấp tệp âm thanh để tải. Hãy thử nguồn khác.",
   "music.download.missing": "Không tìm thấy tệp. Hãy tải lại.",
   "music.download.failed": "Tải thất bại. Thử lại hoặc chọn nguồn khác.",
+  "music.download.changeFolder": "Đổi",
+  "music.download.defaultFolder": "Dùng mặc định",
   "music.download.empty": "Tải bài hát từ trình phát hoặc menu bài hát để nghe ngoại tuyến.",
   "music.download.folder": "Hiện trong thư mục",
   "music.download.delete": "Xóa bản tải xuống",
@@ -71,12 +73,16 @@ const musicNowPlaying: Record<string, string> = {
   "music.buy.search": "Tìm trên {store}",
 
   "music.artist.about": "Về nghệ sĩ",
+  "music.artist.save": "Lưu nghệ sĩ",
+  "music.artist.unsave": "Xóa khỏi nghệ sĩ đã lưu",
 
   "music.artist.origin": "Xuất xứ",
 
   "music.artist.began": "Ngày sinh / thành lập",
 
   "music.artist.aliases": "Tên gọi khác",
+
+  "music.artist.label": "Hãng đĩa",
 
   "music.artist.connections": "Thành viên và cộng tác viên",
 
@@ -87,6 +93,9 @@ const musicNowPlaying: Record<string, string> = {
   "music.artist.merch": "Sản phẩm lưu niệm",
 
   "music.artist.official": "Trang web chính thức",
+
+  "music.artist.kicker": "Nghệ sĩ",
+  "music.artist.listenOn": "Nghe trên",
 };
 
 export default musicNowPlaying;

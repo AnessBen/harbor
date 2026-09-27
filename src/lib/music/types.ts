@@ -105,6 +105,8 @@ export type MusicAlbumRef = {
   artwork: string;
   year?: number;
   trackCount?: number;
+  /** Undefined where the provider does not say. Only a real false means clean. */
+  explicit?: boolean;
 };
 
 export type MusicArtistRef = {

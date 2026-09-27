@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.res.ColorStateList
 import android.content.res.Resources
 import android.graphics.drawable.Drawable
+import java.util.concurrent.atomic.AtomicInteger
 
 open class View(val context: Context?) {
 
@@ -13,6 +14,14 @@ open class View(val context: Context?) {
 
     interface OnFocusChangeListener {
         fun onFocusChange(v: View?, hasFocus: Boolean)
+    }
+
+    interface OnKeyListener {
+        fun onKey(v: View?, keyCode: Int, event: KeyEvent?): Boolean
+    }
+
+    interface OnTouchListener {
+        fun onTouch(v: View?, event: MotionEvent?): Boolean
     }
 
     var id: Int = NO_ID
@@ -29,9 +38,16 @@ open class View(val context: Context?) {
     var height: Int = 0
     var clipToOutline: Boolean = false
     var isClickable: Boolean = false
+    var isEnabled: Boolean = true
     var isFocusable: Boolean = false
     var isFocusableInTouchMode: Boolean = false
     var isFocused: Boolean = false
+    var systemUiVisibility: Int = 0
+    var nextFocusUpId: Int = NO_ID
+    var nextFocusDownId: Int = NO_ID
+    var nextFocusLeftId: Int = NO_ID
+    var nextFocusRightId: Int = NO_ID
+    var nextFocusForwardId: Int = NO_ID
     var paddingLeft: Int = 0
     var paddingTop: Int = 0
     var paddingRight: Int = 0
@@ -39,6 +55,7 @@ open class View(val context: Context?) {
     var isLayoutRequested: Boolean = false
     var onClickListener: OnClickListener? = null
     var onFocusChangeListener: OnFocusChangeListener? = null
+    var onKeyListener: OnKeyListener? = null
 
     private var viewParent: ViewParent? = null
 
@@ -61,8 +78,6 @@ open class View(val context: Context?) {
 
     open fun findViewById(id: Int): View? = if (id != NO_ID && id == this.id) this else null
 
-    // An extension listener is arbitrary third party code. Letting it throw here would kill the
-    // caller that is only delivering an event, so every dispatch swallows what comes back.
     open fun performClick(): Boolean {
         val l = onClickListener ?: return false
         try {
@@ -83,6 +98,20 @@ open class View(val context: Context?) {
             return true
         }
         return true
+    }
+
+    open fun requestFocusFromTouch(): Boolean {
+        if (!isFocusableInTouchMode) isFocusableInTouchMode = isFocusable
+        return requestFocus()
+    }
+
+    open fun dispatchKeyEvent(event: KeyEvent?): Boolean {
+        val l = onKeyListener ?: return false
+        return try {
+            l.onKey(this, event?.keyCode ?: KeyEvent.KEYCODE_UNKNOWN, event)
+        } catch (t: Throwable) {
+            false
+        }
     }
 
     open fun clearFocus() {
@@ -110,5 +139,19 @@ open class View(val context: Context?) {
         const val VISIBLE: Int = 0
         const val INVISIBLE: Int = 4
         const val GONE: Int = 8
+
+        private val generatedId = AtomicInteger(1)
+
+        @JvmStatic
+        fun generateViewId(): Int {
+            while (true) {
+                val current = generatedId.get()
+                val next = if (current + 1 > GENERATED_ID_LIMIT) 1 else current + 1
+                if (generatedId.compareAndSet(current, next)) return current
+            }
+        }
+
+        // Android's own ceiling: above it a generated id collides with an aapt R.id value.
+        private const val GENERATED_ID_LIMIT: Int = 0x00FFFFFF
     }
 }

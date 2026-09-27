@@ -4,8 +4,6 @@ import com.fleeksoft.ksoup.nodes.Element
 import com.fleeksoft.ksoup.nodes.wrapNode
 import org.jsoup.nodes.Element as SourceElement
 
-/** A selection result. It is a list because extension code iterates it directly, which means the
- * loop in the already compiled bytecode is a plain list iteration and has to keep working. */
 class Elements internal constructor(nodes: List<SourceElement>) :
     ArrayList<Element>(nodes.map(::wrapNode)) {
 

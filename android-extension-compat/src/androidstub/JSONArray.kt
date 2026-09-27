@@ -2,8 +2,6 @@ package org.json
 
 import com.google.gson.JsonArray as GsonArray
 
-/** The platform's JSON list type. Out of range is absent rather than fatal on every opt accessor,
- * which is what lets a scrape survive a site that shortened a list. */
 class JSONArray {
 
     private val values: ArrayList<Any>

@@ -1,4 +1,14 @@
 import { isMusicLiked, likedIdsFor, withoutLiked } from "./liked";
+import { dedupeMusicTracks, sameMusicTrack } from "./track-identity";
+import {
+  answerDeckRequests,
+  broadcastDeckState,
+  isDeckWindow,
+  sendDeckAdopted,
+  sendDeckCommand,
+  serveDeckCommands,
+} from "./deck-sync";
+import { createDeckAdoption } from "./deck-primary";
 import { insertIntoQueue, markManuallyQueued, queueInsertIndex } from "./queue-insert";
 import { queueTrackKey } from "./queue-order";
 import { invoke } from "@tauri-apps/api/core";
@@ -70,7 +80,13 @@ const queuedSources = new Map<
   string,
   { until: number; promise: Promise<MusicSourceCandidate[]> }
 >();
-function sourcesFor(track: MusicTrack): Promise<MusicSourceCandidate[]> {
+const SOURCE_TTL_MS = 120_000;
+const PRELOAD_TTL_MS = 1_200_000;
+const SOURCE_CACHE_MAX = 16;
+function sourcesFor(
+  track: MusicTrack,
+  ttlMs: number = SOURCE_TTL_MS,
+): Promise<MusicSourceCandidate[]> {
   const key = `${track.connectorId}:${track.id}:${track.title}:${track.artist}`;
   const saved = queuedSources.get(key);
   if (saved && saved.until > Date.now()) return saved.promise;
@@ -88,9 +104,49 @@ function sourcesFor(track: MusicTrack): Promise<MusicSourceCandidate[]> {
       throw error;
     })
     .finally(() => clearTimeout(timer));
-  queuedSources.set(key, { until: Date.now() + 120_000, promise });
-  while (queuedSources.size > 8) queuedSources.delete(queuedSources.keys().next().value!);
+  queuedSources.set(key, { until: Date.now() + ttlMs, promise });
+  while (queuedSources.size > SOURCE_CACHE_MAX)
+    queuedSources.delete(queuedSources.keys().next().value!);
   return promise;
+}
+
+const warmed = new Map<string, number>();
+const WARM_AGAIN_MS = 600_000;
+const NEAR_END_MS = 45_000;
+let warmTimer: ReturnType<typeof setTimeout> | null = null;
+let nearEndKey: string | null = null;
+
+function warmNeighbours(): void {
+  if (warmTimer) return;
+  warmTimer = setTimeout(() => {
+    warmTimer = null;
+    const around = [state.queue[state.queueIndex + 1], state.queue[state.queueIndex - 1]];
+    const now = Date.now();
+    for (const track of around) {
+      if (!track) continue;
+      const key = `${track.connectorId ?? ""}:${track.id}`;
+      const last = warmed.get(key);
+      if (last !== undefined && now - last < WARM_AGAIN_MS) continue;
+      warmed.set(key, now);
+      if (warmed.size > 24) warmed.delete(warmed.keys().next().value!);
+      void invoke("music_prewarm_track", { track }).catch(() => {});
+      void sourcesFor(track, PRELOAD_TTL_MS).catch(() => {});
+    }
+  }, 400);
+}
+
+function warmBeforeEnd(): void {
+  const total = state.duration;
+  if (!total || total <= 0 || !state.current) return;
+  if ((total - state.currentTime) * 1000 > NEAR_END_MS) return;
+  const key = `${state.current.connectorId ?? ""}:${state.current.id}`;
+  if (nearEndKey === key) return;
+  nearEndKey = key;
+  warmNeighbours();
+}
+
+export function musicSourceCandidates(track: MusicTrack): Promise<MusicSourceCandidate[]> {
+  return sourcesFor(track).catch(() => [] as MusicSourceCandidate[]);
 }
 
 export type MusicAdvance = (queue: MusicTrack[], index: number, auto: boolean) => MusicTrack | null;
@@ -214,6 +270,12 @@ function publish(patch: Partial<MusicPlayerState>): void {
     lastSessionWrite = Date.now();
     saveMusicCheckpoint();
   }
+  broadcastDeckState(state);
+  if (patch.current !== undefined || patch.queueIndex !== undefined || patch.queue !== undefined) {
+    nearEndKey = null;
+    warmNeighbours();
+  }
+  if (patch.currentTime !== undefined) warmBeforeEnd();
   for (const listener of listeners) listener();
 }
 
@@ -286,7 +348,7 @@ export function initializeMusic(): Promise<void> {
         error: null,
         likedIds: bootstrap.likedIds,
         likedTracks: bootstrap.likedTracks,
-        recents: bootstrap.recents,
+        recents: dedupeMusicTracks(bootstrap.recents),
       });
     })
     .catch((error) => {
@@ -307,6 +369,17 @@ function updateMediaSession(track: MusicTrack): void {
     artwork: track.artwork ? [{ src: track.artwork, sizes: "544x544" }] : [],
   });
 }
+
+const deckAdoption = createDeckAdoption({
+  read: getMusicState,
+  publish,
+  announce: updateMediaSession,
+  ended: () => {
+    if (Date.now() - endHandledAt <= 1200) return;
+    endHandledAt = Date.now();
+    nextMusic(true);
+  },
+});
 
 function handlePlaybackEvent(payload: MpvEvent): void {
   if (
@@ -673,7 +746,10 @@ export async function playMusic(
     if (request !== playRequest) return;
     void invoke("music_set_queue", { tracks: queue }).catch(() => {});
     updateMediaSession(track);
-    const recents = [track, ...state.recents.filter((item) => item.id !== track.id)].slice(0, 50);
+    const recents = [track, ...state.recents.filter((item) => !sameMusicTrack(item, track))].slice(
+      0,
+      50,
+    );
     const likedTracks = state.likedIds.includes(track.id)
       ? [track, ...state.likedTracks.filter((item) => item.id !== track.id)]
       : state.likedTracks;
@@ -803,13 +879,17 @@ export async function playMusic(
         publish({
           recents: [
             track,
-            ...state.recents.filter((item) => item.id !== track.id && item.id !== previous.id),
+            ...state.recents.filter(
+              (item) => !sameMusicTrack(item, track) && !sameMusicTrack(item, previous),
+            ),
           ].slice(0, 50),
         });
       }
     }
     if (request !== playRequest) return;
     enginePrimed = true;
+    if (deckAdoption.deck() !== 0 && !getMusicSpeakerState().active)
+      publish({ phase: "playing", error: null });
     const upcoming = queue[queueIndex + 1];
     if (upcoming?.connectorId === "catalog" && !upcoming.playbackUrl)
       void sourcesFor(upcoming).catch(() => {});
@@ -886,6 +966,11 @@ export function setMusicQueue(tracks: MusicTrack[]): void {
   );
 }
 
+export function loopMusic(start: number | null, end: number | null): void {
+  if (getMusicSpeakerState().active || ownsMusicVideo()) return;
+  void invoke("music_deck_loop", { start, end }).catch(() => {});
+}
+
 export function seekMusic(position: number): void {
   if (!Number.isFinite(position)) return;
   if (getMusicSpeakerState().active) {
@@ -925,10 +1010,15 @@ export function musicSimilarTracks(track: MusicTrack): Promise<MusicTrack[]> {
 export function setMusicVolume(volume: number): void {
   if (getMusicSpeakerState().active) return;
   const next = clampMusicVolume(volume, state.current?.connectorId);
+  if (isDeckWindow()) {
+    sendDeckCommand({ kind: "volume", value: next });
+    return;
+  }
   writeMusicPreference(VOLUME_KEY, String(next));
   publish({ volume: next });
   if (ownsMusicVideo()) videoController?.setVolume(next);
   void invoke("music_engine_set_volume", { volume: next }).catch(() => {});
+  void invoke("music_deck_volume", { deck: 1, volume: next }).catch(() => {});
 }
 
 export function nextMusic(auto = false): void {
@@ -993,6 +1083,7 @@ export async function closeMusicPlayer(): Promise<void> {
     }
     if (request !== playRequest) return;
     await invoke("music_engine_stop", { unpause: false });
+    void invoke("music_deck_primary", { deck: 0 }).catch(() => {});
     if (request !== playRequest) return;
     await invoke("music_set_queue", { tracks: [] });
     if (request !== playRequest) return;
@@ -1036,6 +1127,7 @@ export function useMusicPlayer(): MusicPlayerState {
 }
 
 subscribeMusicAudioSettings(() => {
+  if (isDeckWindow()) return;
   const next = clampMusicVolume(state.volume, state.current?.connectorId);
   if (next !== state.volume) setMusicVolume(next);
 });
@@ -1172,3 +1264,25 @@ if (typeof navigator !== "undefined" && "mediaSession" in navigator) {
     if (details.seekTime !== undefined) seekMusic(details.seekTime);
   });
 }
+
+answerDeckRequests(getMusicState);
+serveDeckCommands((command) => {
+  if (command.kind === "toggle") toggleMusicPlayback();
+  else if (command.kind === "next") void nextMusic();
+  else if (command.kind === "previous") void previousMusic();
+  else if (command.kind === "seek") seekMusic(command.seconds);
+  else if (command.kind === "loop") loopMusic(command.start, command.end);
+  else if (command.kind === "volume") setMusicVolume(command.value);
+  else if (command.kind === "like") toggleMusicLiked();
+  else if (command.kind === "dismissError") clearMusicError();
+  else if (command.kind === "adopt")
+    sendDeckAdopted({
+      nonce: command.nonce,
+      deck: command.deck,
+      landed: deckAdoption.adopt(command),
+    });
+  else if (command.kind === "retry") {
+    const track = state.current;
+    if (track) void playMusic(track, state.queue).catch(() => {});
+  }
+});

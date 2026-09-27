@@ -5507,7 +5507,7 @@ const SETTINGS_OPTIONS: SettingsOption[] = [
     label: "True HDR, embedded",
     section: "player",
     tab: "engine",
-    anchorTitle: "Player engine",
+    anchorTitle: "HDR",
     keywords: [
       "embedded hdr",
       "hdr inside harbor",
@@ -7673,6 +7673,13 @@ const SETTINGS_OPTIONS: SettingsOption[] = [
     keywords: ["progress bar discord", "timestamp", "elapsed time", "how far in"],
   },
   {
+    label: "Show what you are listening to",
+    section: "advanced",
+    tab: "privacy",
+    anchorTitle: "Discord Rich Presence",
+    keywords: ["music on discord", "now playing status", "listening presence", "track on discord"],
+  },
+  {
     label: "Watch party join button",
     section: "advanced",
     tab: "privacy",
@@ -9471,6 +9478,19 @@ const SETTINGS_OPTIONS: SettingsOption[] = [
       "sidebar wordmark",
       "brand name",
       "custom wordmark",
+    ],
+  },
+  {
+    label: "Use the album art as the app icon while music plays",
+    section: "theme",
+    tab: "logo",
+    anchorTitle: "Logo & app icon",
+    keywords: [
+      "album art icon",
+      "now playing icon",
+      "cover art taskbar",
+      "song artwork icon",
+      "spotify style icon",
     ],
   },
   {

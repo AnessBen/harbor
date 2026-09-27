@@ -135,6 +135,8 @@ const extra: Record<string, string> = {
   "Browse by country": "Parcourir par pays",
   "Browse channels": "Parcourir les chaînes",
   "Buffer fill": "Remplissage du tampon",
+  "Reveal the dot on hover": "Afficher le point au survol",
+  "The dot stays out of the way and appears when you point at the bar. Turn this off to keep it on screen the whole time.": "Le point reste discret et apparaît quand vous pointez la barre. Désactivez cette option pour le garder visible en permanence.",
   "Buffer fill brightness": "Luminosité du remplissage du tampon",
   Build: "Version",
   "Build a named filter once, then apply it in the source picker to hide everything that doesn't match. Each filter ANDs its dimensions and ignores any you leave blank.":

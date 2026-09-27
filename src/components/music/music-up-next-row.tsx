@@ -1,4 +1,4 @@
-import { Play } from "lucide-react";
+import { Play } from "@/components/icons/music-icons";
 import { Poster } from "@/components/poster";
 import { useT } from "@/lib/i18n";
 import { enqueueMusic, playMusic } from "@/lib/music/player";

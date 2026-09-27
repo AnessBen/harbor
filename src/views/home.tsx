@@ -247,22 +247,27 @@ export function Home({ active = true, onReady }: { active?: boolean; onReady?: (
       }
 
       const dedupRows = isClassic ? false : !settings.homeShowAllAddonRows;
-      const addons = await loadAddonRows(authKey, { dedup: dedupRows }).catch(() => {
+      const addons = await loadAddonRows(authKey, {
+        dedup: dedupRows,
+        onFailed: (n) => {
+          if (n > 0) degraded = true;
+        },
+      }).catch(() => {
         degraded = true;
         return [] as AddonRow[];
       });
       if (cancelled) return;
-      const filtered = isClassic
+      const usable = isClassic
         ? addons
         : addons.filter((a) => !isAnimeRow(a) && !isStreamingServiceRow(a.name));
-      const nextRows = mergeRows(built.rows, filtered, { dedup: dedupRows });
+      const nextRows = mergeRows(built.rows, usable, { dedup: dedupRows });
       startTransition(() => {
         commitRows(nextRows);
       });
       const halfMissing = nextRows.length === 0 || (!isClassic && built.rows.length === 0);
-      if (!degraded) {
+      if (!degraded || !halfMissing) {
         buildRetryRef.current = 0;
-      } else if (halfMissing && buildRetryRef.current < 3) {
+      } else if (buildRetryRef.current < 3) {
         const attempt = buildRetryRef.current;
         buildRetryRef.current = attempt + 1;
         retryTimer = window.setTimeout(() => setBuildTick((n) => n + 1), 1500 * 2 ** attempt);

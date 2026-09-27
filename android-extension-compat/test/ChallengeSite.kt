@@ -5,16 +5,6 @@ import com.sun.net.httpserver.HttpServer
 import java.net.InetSocketAddress
 import java.util.concurrent.atomic.AtomicInteger
 
-/** A site that answers with a Cloudflare shaped challenge until the clearance comes back.
- *
- * The point of running a real server rather than asserting on a mock is that the replay has to
- * survive the whole path: the clearance has to reach a socket as a `Cookie` header on a request
- * whose agent matches, which is the property a real clearance is checked against.
- *
- * [clears] false is the other real case: a site that hands out cookies and challenges anyway, which
- * is what a Cloudflare interactive challenge does. A solver is only honest if that reads as a
- * failure rather than as a solve.
- */
 class ChallengeSite(private val clears: Boolean = true) {
 
     private val server: HttpServer = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)

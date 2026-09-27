@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Music2, Play } from "lucide-react";
+import { Music2, Play } from "@/components/icons/music-icons";
 import { useT } from "@/lib/i18n";
 import { searchTyped } from "@/lib/music/catalog";
 import { musicHealthSnapshot } from "@/lib/music/sources";

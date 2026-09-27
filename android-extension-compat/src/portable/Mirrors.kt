@@ -6,28 +6,14 @@ import com.lagradost.cloudstream3.app
 import java.net.URI
 import java.util.concurrent.ConcurrentHashMap
 
-/** Other deployments of the same federated service.
- *
- * An extension that hardcodes one instance stops working the day that operator turns their api
- * off, and nothing about that is the extension's fault or ours. Where the software publishes a
- * registry of its own instances the list is read from there rather than kept here, so it cannot go
- * stale in this file, and a registry that is unreachable simply yields no alternates.
- */
 internal object Mirrors {
 
-    /** Provider name, lowercased, to the registry its software publishes. */
     private val registries = mapOf("invidious" to "https://api.invidious.io/instances.json")
 
-    /** A path under the api an extension actually calls, used to read each instance for itself.
-     *
-     * The registry's own `api` flag is whatever the operator last typed into it, and an instance
-     * that serves its landing page while refusing every api path reads as healthy without this. */
     private val probePaths = mapOf("invidious" to "/api/v1/search?q=harbor&type=video")
 
     private const val PROBE_TIMEOUT_SECONDS = 8L
 
-    /** Long enough that a walk does not re-read the federation on every call, short enough that an
-     * instance coming back up is found by a session that has been open for a while. */
     private const val PROBE_TTL_MS = 15 * 60_000L
 
     private val listed = ConcurrentHashMap<String, List<String>>()
@@ -42,12 +28,6 @@ internal object Mirrors {
 
     fun known(providerName: String): Boolean = registries.containsKey(providerName.lowercase())
 
-    /** Every instance worth trying except the one already in use, best first.
-     *
-     * Where a probe path is known the list is the instances that answered it, ordered by how
-     * quickly they did, and one that refused is left out rather than spending a whole provider call
-     * to refuse again. Unreachable addresses drop out the same way, in parallel, instead of costing
-     * a connect timeout each inside the walk. */
     suspend fun of(providerName: String, mainUrl: String): List<String> {
         val key = providerName.lowercase()
         val registry = registries[key] ?: return emptyList()
@@ -59,8 +39,6 @@ internal object Mirrors {
         return usable.filter { host(it) != current }
     }
 
-    /** How the last reading of this service went: how many instances answered, out of how many
-     * tried. Null until a walk has read it, or for a provider that is not federated. */
     fun lastReading(providerName: String): Pair<Int, Int>? {
         val key = providerName.lowercase()
         val reading = probed[key] ?: return null

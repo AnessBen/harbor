@@ -191,6 +191,8 @@ const extra: Record<string, string> = {
   Browsing: "Navegando",
   Budget: "Orçamento",
   "Buffer fill": "Preenchimento do buffer",
+  "Reveal the dot on hover": "Mostrar o ponto ao passar o cursor",
+  "The dot stays out of the way and appears when you point at the bar. Turn this off to keep it on screen the whole time.": "O ponto fica fora do caminho e aparece quando você aponta para a barra. Desligue para mantê-lo sempre visível.",
   "Buffer fill brightness": "Brilho do preenchimento do buffer",
   Buffering: "Armazenando em buffer",
   Build: "Build",

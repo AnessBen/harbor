@@ -1,8 +1,16 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type MouseEvent } from "react";
+import { MusicGlyph } from "@/components/icons/music-glyph";
+import { useT } from "@/lib/i18n";
+import { getMusicState, toggleMusicPlayback } from "@/lib/music/player";
 import { musicVideoStream } from "@/lib/music/video";
 import { searchMusicVideos } from "@/lib/music/video-discovery";
 import { useHeroLayers } from "./use-hero-layers";
 import type { MusicCatalogItem, MusicTrack } from "@/lib/music/types";
+
+const PREVIEW_VOLUME = 0.38;
+const TEACH_MS = 2600;
+
+let taught = false;
 
 async function previewUrlFor(track: MusicTrack): Promise<string | null> {
   const direct = await musicVideoStream(track).catch(() => null);
@@ -16,17 +24,34 @@ async function previewUrlFor(track: MusicTrack): Promise<string | null> {
   return stream?.url ?? null;
 }
 
-export function MusicHeroMedia({ item, hovering }: { item?: MusicCatalogItem; hovering: boolean }) {
+export function MusicHeroMedia({
+  item,
+  hovering,
+  onMenu,
+}: {
+  item?: MusicCatalogItem;
+  hovering: boolean;
+  onMenu?: (event: MouseEvent<HTMLElement>) => void;
+}) {
+  const t = useT();
   const [preview, setPreview] = useState<{ key: string; url: string } | null>(null);
   const [readyUrl, setReadyUrl] = useState<string | null>(null);
   const [settled, setSettled] = useState(false);
+  const [seeking, setSeeking] = useState(false);
+  const [muted, setMuted] = useState(true);
+  const [overArt, setOverArt] = useState(false);
+  const [teaching, setTeaching] = useState(false);
+  const [onScreen, setOnScreen] = useState(true);
   const video = useRef<HTMLVideoElement>(null);
+  const art = useRef<HTMLDivElement>(null);
+  const ducked = useRef(false);
   const key = item?.id ?? "";
-  const art = item?.artwork;
-  const layers = useHeroLayers(Array.isArray(art) ? art[0] : art);
+  const artwork = item?.artwork;
+  const layers = useHeroLayers(Array.isArray(artwork) ? artwork[0] : artwork);
   useEffect(() => {
     setPreview(null);
     setReadyUrl(null);
+    setMuted(true);
   }, [key]);
   useEffect(() => {
     if (
@@ -39,11 +64,15 @@ export function MusicHeroMedia({ item, hovering }: { item?: MusicCatalogItem; ho
       return;
     let cancelled = false;
     const timer = setTimeout(() => {
+      setSeeking(true);
       previewUrlFor(item)
         .then((url) => {
           if (!cancelled && url) setPreview({ key, url });
         })
-        .catch(() => {});
+        .catch(() => {})
+        .finally(() => {
+          if (!cancelled) setSeeking(false);
+        });
     }, 700);
     const hide = () => {
       if (document.hidden) {
@@ -56,6 +85,7 @@ export function MusicHeroMedia({ item, hovering }: { item?: MusicCatalogItem; ho
     return () => {
       cancelled = true;
       clearTimeout(timer);
+      setSeeking(false);
       document.removeEventListener("visibilitychange", hide);
     };
   }, [hovering, key, item?.kind, preview?.key]);
@@ -65,14 +95,67 @@ export function MusicHeroMedia({ item, hovering }: { item?: MusicCatalogItem; ho
     if (!(hovering && playing)) setSettled(false);
   }, [hovering, playing]);
   useEffect(() => {
+    const node = art.current;
+    if (!node) return;
+    const watch = new IntersectionObserver(
+      ([entry]) => setOnScreen(entry.intersectionRatio >= 0.35),
+      { threshold: [0, 0.35, 1] },
+    );
+    watch.observe(node);
+    return () => watch.disconnect();
+  }, []);
+  useEffect(() => {
     const el = video.current;
     if (!el || !playing) return;
-    if (hovering) void el.play().catch(() => {});
+    if (hovering && onScreen) void el.play().catch(() => {});
     else el.pause();
-  }, [hovering, playing]);
+  }, [hovering, playing, onScreen]);
+  useEffect(() => {
+    const el = video.current;
+    if (!el) return;
+    el.volume = PREVIEW_VOLUME;
+    el.muted = muted;
+  }, [muted, playing]);
+  const audible = playing && hovering && onScreen && !muted;
+  useEffect(() => {
+    if (audible && !ducked.current && getMusicState().phase === "playing") {
+      ducked.current = true;
+      toggleMusicPlayback();
+      return;
+    }
+    if (!audible && ducked.current) {
+      ducked.current = false;
+      if (getMusicState().phase === "paused") toggleMusicPlayback();
+    }
+  }, [audible]);
+  useEffect(
+    () => () => {
+      if (!ducked.current) return;
+      ducked.current = false;
+      if (getMusicState().phase === "paused") toggleMusicPlayback();
+    },
+    [],
+  );
+  useEffect(() => {
+    if (!(playing && hovering) || taught) return;
+    taught = true;
+    setTeaching(true);
+    const timer = setTimeout(() => setTeaching(false), TEACH_MS);
+    return () => clearTimeout(timer);
+  }, [playing, hovering]);
+  const loading = hovering && seeking && !playing;
+  const state = loading ? "loading" : muted ? "muted" : "live";
+  const shown = loading || (playing && hovering && (overArt || teaching));
   return (
     <>
-      <div className="music-hero-media" aria-hidden="true">
+      <div
+        ref={art}
+        className="music-hero-media"
+        aria-hidden="true"
+        onContextMenu={onMenu}
+        onPointerEnter={() => setOverArt(true)}
+        onPointerLeave={() => setOverArt(false)}
+      >
         {layers.map((layer) => (
           <img key={layer.id} src={layer.src} alt="" />
         ))}
@@ -80,6 +163,7 @@ export function MusicHeroMedia({ item, hovering }: { item?: MusicCatalogItem; ho
       <div
         className="music-hero-video"
         aria-hidden="true"
+        onContextMenu={onMenu}
         data-on={(hovering && playing) || undefined}
         data-settled={(hovering && playing && settled) || undefined}
         onTransitionEnd={(event) => {
@@ -103,6 +187,30 @@ export function MusicHeroMedia({ item, hovering }: { item?: MusicCatalogItem; ho
           />
         )}
       </div>
+      <button
+        type="button"
+        className="music-hero-sound"
+        data-state={state}
+        data-show={shown || undefined}
+        disabled={loading}
+        tabIndex={shown && !loading ? 0 : -1}
+        aria-hidden={!shown || loading}
+        aria-label={t(muted ? "music.unmute" : "music.mute")}
+        aria-pressed={!muted}
+        onPointerEnter={() => setOverArt(true)}
+        onPointerLeave={() => setOverArt(false)}
+        onClick={() => setMuted((value) => !value)}
+      >
+        <span className="music-hero-sound-glyph" data-on={state === "loading" || undefined}>
+          <MusicGlyph name="loading" size={17} className="animate-spin motion-reduce:animate-none" />
+        </span>
+        <span className="music-hero-sound-glyph" data-on={state === "muted" || undefined}>
+          <MusicGlyph name="volume-mute" size={17} />
+        </span>
+        <span className="music-hero-sound-glyph" data-on={state === "live" || undefined}>
+          <MusicGlyph name="volume-high" size={17} />
+        </span>
+      </button>
     </>
   );
 }

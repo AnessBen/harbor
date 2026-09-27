@@ -2,14 +2,16 @@ const musicNowPlaying: Record<string, string> = {
   "music.artist.filmography": "Film i telewizja",
   "music.action.error": "Nie udało się wykonać działania. Spróbuj ponownie.",
   "music.radio.error": "Nie udało się uruchomić radia. Ponów lub wybierz inne źródło.",
-  "music.download.action": "Pobierz utwór",
-  "music.download.done": "Pobrano",
-  "music.download.busy": "Pobieranie",
-  "music.download.retry": "Ponów pobieranie",
+  "music.download.action": "Zapisz utwór",
+  "music.download.done": "Zapisano",
+  "music.download.busy": "Zapisywanie",
+  "music.download.retry": "Spróbuj zapisać ponownie",
   "music.download.unsupported":
     "To źródło nie oferuje pliku audio do pobrania. Wybierz inne źródło.",
   "music.download.missing": "Brak pliku. Pobierz go ponownie.",
   "music.download.failed": "Pobieranie nie powiodło się. Ponów lub wybierz inne źródło.",
+  "music.download.changeFolder": "Zmień",
+  "music.download.defaultFolder": "Użyj domyślnego",
   "music.download.empty": "Pobierz utwory z odtwarzacza lub menu utworu, aby słuchać offline.",
   "music.download.folder": "Pokaż w folderze",
   "music.download.delete": "Usuń pobrany plik",
@@ -72,12 +74,16 @@ const musicNowPlaying: Record<string, string> = {
   "music.buy.search": "Szukaj w {store}",
 
   "music.artist.about": "O artyście",
+  "music.artist.save": "Zapisz artystę",
+  "music.artist.unsave": "Usuń z zapisanych artystów",
 
   "music.artist.origin": "Pochodzenie",
 
   "music.artist.began": "Urodzenie / założenie",
 
   "music.artist.aliases": "Znany także jako",
+
+  "music.artist.label": "Wytwórnia",
 
   "music.artist.connections": "Członkowie i współpracownicy",
 
@@ -88,6 +94,9 @@ const musicNowPlaying: Record<string, string> = {
   "music.artist.merch": "Gadżety",
 
   "music.artist.official": "Oficjalna strona",
+
+  "music.artist.kicker": "Wykonawca",
+  "music.artist.listenOn": "Posłuchaj w",
 };
 
 export default musicNowPlaying;

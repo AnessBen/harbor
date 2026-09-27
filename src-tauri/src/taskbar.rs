@@ -11,12 +11,14 @@ use windows::Win32::UI::Shell::{
     THBF_ENABLED, THBN_CLICKED, THB_FLAGS, THB_ICON, THB_TOOLTIP,
 };
 use windows::Win32::UI::WindowsAndMessaging::{
-    CreateIconFromResourceEx, PostMessageW, RegisterWindowMessageW, HICON, LR_DEFAULTCOLOR, WM_APP,
-    WM_COMMAND,
+    CreateIconFromResourceEx, DestroyIcon, GetSystemMetrics, PostMessageW, RegisterWindowMessageW,
+    SendMessageW, HICON, ICON_BIG, ICON_SMALL, LR_DEFAULTCOLOR, SM_CXICON, SM_CXSMICON, WM_APP,
+    WM_COMMAND, WM_SETICON,
 };
 
 const SUBCLASS_ID: usize = 0x4842_5442;
 const WM_SYNC: u32 = WM_APP + 0x42;
+const WM_ART: u32 = WM_APP + 0x43;
 const NEVER_APPLIED: u32 = u32::MAX;
 pub const EVENT: &str = "harbor://taskbar-button";
 
@@ -36,6 +38,8 @@ const ICO_PAUSE: &[u8] = include_bytes!("../icons/thumbbar/pause.ico");
 const ICO_NEXT: &[u8] = include_bytes!("../icons/thumbbar/next.ico");
 const ICO_FWD: &[u8] = include_bytes!("../icons/thumbbar/fwd.ico");
 const ICO_MUTE: &[u8] = include_bytes!("../icons/thumbbar/mute.ico");
+const ICO_SOUND: &[u8] = include_bytes!("../icons/thumbbar/sound.ico");
+const ICO_FAV_OFF: &[u8] = include_bytes!("../icons/thumbbar/fav-off.ico");
 
 static HANDLE: OnceLock<AppHandle> = OnceLock::new();
 static HWND_RAW: AtomicIsize = AtomicIsize::new(0);
@@ -43,21 +47,23 @@ static ADDED: AtomicBool = AtomicBool::new(false);
 static BUTTON_CREATED_MSG: AtomicU32 = AtomicU32::new(0);
 static WANT_PLAYING: AtomicBool = AtomicBool::new(false);
 static WANT_LIKED: AtomicBool = AtomicBool::new(false);
+static WANT_MUTED: AtomicBool = AtomicBool::new(false);
 static APPLIED: AtomicU32 = AtomicU32::new(NEVER_APPLIED);
+static NEXT_SMALL: AtomicIsize = AtomicIsize::new(0);
+static NEXT_BIG: AtomicIsize = AtomicIsize::new(0);
+static OWNED_SMALL: AtomicIsize = AtomicIsize::new(0);
+static OWNED_BIG: AtomicIsize = AtomicIsize::new(0);
 
 struct Bar(ITaskbarList3);
 unsafe impl Send for Bar {}
 unsafe impl Sync for Bar {}
 static BAR: OnceLock<Bar> = OnceLock::new();
 
-struct Icons([HICON; 8]);
+struct Icons([HICON; 10]);
 unsafe impl Send for Icons {}
 unsafe impl Sync for Icons {}
 static ICONS: OnceLock<Icons> = OnceLock::new();
 
-/// An .ico is a 6 byte ICONDIR then one 16 byte ICONDIRENTRY per image, and the
-/// entry's trailing dword is where that image starts. Reading it beats assuming
-/// 22, which only holds for a single image file.
 fn icon(bytes: &'static [u8]) -> HICON {
     if bytes.len() < 22 {
         return HICON::default();
@@ -81,6 +87,8 @@ fn icons() -> &'static Icons {
             icon(ICO_NEXT),
             icon(ICO_FWD),
             icon(ICO_MUTE),
+            icon(ICO_SOUND),
+            icon(ICO_FAV_OFF),
         ])
     })
 }
@@ -108,10 +116,14 @@ fn button(id: u32, ico: HICON, tip: &str) -> THUMBBUTTON {
     }
 }
 
-fn buttons(playing: bool, liked: bool) -> [THUMBBUTTON; 7] {
+fn buttons(playing: bool, liked: bool, muted: bool) -> [THUMBBUTTON; 7] {
     let ico = icons();
     [
-        button(ID_FAV, ico.0[0], if liked { "Remove from liked" } else { "Like" }),
+        button(
+            ID_FAV,
+            if liked { ico.0[0] } else { ico.0[9] },
+            if liked { "Remove from liked" } else { "Like" },
+        ),
         button(ID_BACK, ico.0[1], "Back 30 seconds"),
         button(ID_PREV, ico.0[2], "Previous"),
         button(
@@ -121,12 +133,14 @@ fn buttons(playing: bool, liked: bool) -> [THUMBBUTTON; 7] {
         ),
         button(ID_NEXT, ico.0[5], "Next"),
         button(ID_FWD, ico.0[6], "Forward 30 seconds"),
-        button(ID_MUTE, ico.0[7], "Mute"),
+        button(
+            ID_MUTE,
+            if muted { ico.0[7] } else { ico.0[8] },
+            if muted { "Unmute" } else { "Mute" },
+        ),
     ]
 }
 
-/// Must run on the thread that owns the window: that is the apartment the
-/// ITaskbarList3 was created in, and the only place the shell accepts it.
 fn apply() {
     let Some(bar) = BAR.get() else {
         return;
@@ -138,12 +152,13 @@ fn apply() {
     let hwnd = HWND(raw as *mut std::ffi::c_void);
     let playing = WANT_PLAYING.load(Ordering::Relaxed);
     let liked = WANT_LIKED.load(Ordering::Relaxed);
-    let stamp = u32::from(playing) | (u32::from(liked) << 1);
+    let muted = WANT_MUTED.load(Ordering::Relaxed);
+    let stamp = u32::from(playing) | (u32::from(liked) << 1) | (u32::from(muted) << 2);
     let added = ADDED.load(Ordering::Relaxed);
     if added && APPLIED.load(Ordering::Relaxed) == stamp {
         return;
     }
-    let set = buttons(playing, liked);
+    let set = buttons(playing, liked, muted);
     unsafe {
         if added {
             if bar.0.ThumbBarUpdateButtons(hwnd, &set).is_ok() {
@@ -168,9 +183,10 @@ unsafe extern "system" fn subclass_proc(
         apply();
         return LRESULT(0);
     }
-    // The shell only takes buttons once it has made the taskbar button, and it
-    // says so with this message. Harbor's window starts hidden, so at setup there
-    // is nothing to attach to and every add before this point is rejected.
+    if msg == WM_ART {
+        apply_art(hwnd);
+        return LRESULT(0);
+    }
     let created = BUTTON_CREATED_MSG.load(Ordering::Relaxed);
     if created != 0 && msg == created {
         ADDED.store(false, Ordering::Relaxed);
@@ -229,11 +245,10 @@ pub fn init(app: &AppHandle) {
     }
 }
 
-/// Safe from any thread: it parks the wanted state and hands the COM work to the
-/// window's own thread.
-pub fn update(playing: bool, liked: bool) {
+pub fn update(playing: bool, liked: bool, muted: bool) {
     WANT_PLAYING.store(playing, Ordering::Relaxed);
     WANT_LIKED.store(liked, Ordering::Relaxed);
+    WANT_MUTED.store(muted, Ordering::Relaxed);
     let raw = HWND_RAW.load(Ordering::Relaxed);
     if raw == 0 {
         return;
@@ -248,8 +263,135 @@ pub fn update(playing: bool, liked: bool) {
     }
 }
 
-/// The video player knows nothing about the music like state, so it leaves it
-/// where the music page last put it instead of stamping it false.
 pub fn set_playing(playing: bool) {
-    update(playing, WANT_LIKED.load(Ordering::Relaxed));
+    update(
+        playing,
+        WANT_LIKED.load(Ordering::Relaxed),
+        WANT_MUTED.load(Ordering::Relaxed),
+    );
+}
+
+fn hicon_from_rgba(rgba: &[u8], size: u32) -> Option<HICON> {
+    let side = size as usize;
+    if rgba.len() < side * side * 4 {
+        return None;
+    }
+    let mask_stride = size.div_ceil(32) as usize * 4;
+    let mut dib = Vec::with_capacity(40 + side * side * 4 + mask_stride * side);
+    dib.extend_from_slice(&40u32.to_le_bytes());
+    dib.extend_from_slice(&(size as i32).to_le_bytes());
+    dib.extend_from_slice(&(size as i32 * 2).to_le_bytes());
+    dib.extend_from_slice(&1u16.to_le_bytes());
+    dib.extend_from_slice(&32u16.to_le_bytes());
+    dib.extend_from_slice(&[0u8; 24]);
+    for y in (0..side).rev() {
+        for x in 0..side {
+            let at = (y * side + x) * 4;
+            dib.extend_from_slice(&[rgba[at + 2], rgba[at + 1], rgba[at], rgba[at + 3]]);
+        }
+    }
+    dib.resize(dib.len() + mask_stride * side, 0);
+    unsafe {
+        CreateIconFromResourceEx(
+            &dib,
+            true,
+            0x0003_0000,
+            size as i32,
+            size as i32,
+            LR_DEFAULTCOLOR,
+        )
+        .ok()
+    }
+}
+
+fn swap(slot: &AtomicIsize, next: HICON) -> HICON {
+    HICON(slot.swap(next.0 as isize, Ordering::Relaxed) as *mut std::ffi::c_void)
+}
+
+fn apply_art(hwnd: HWND) {
+    for (slot, which, owned) in [
+        (&NEXT_SMALL, ICON_SMALL, &OWNED_SMALL),
+        (&NEXT_BIG, ICON_BIG, &OWNED_BIG),
+    ] {
+        let pending = slot.swap(-1, Ordering::Relaxed);
+        if pending == -1 {
+            continue;
+        }
+        let icon = HICON(pending as *mut std::ffi::c_void);
+        unsafe {
+            SendMessageW(
+                hwnd,
+                WM_SETICON,
+                Some(WPARAM(which as usize)),
+                Some(LPARAM(pending)),
+            );
+        }
+        let previous = swap(owned, icon);
+        if !previous.is_invalid() {
+            unsafe {
+                let _ = DestroyIcon(previous);
+            }
+        }
+    }
+}
+
+fn post_art(small: Option<HICON>, big: Option<HICON>) {
+    let raw = HWND_RAW.load(Ordering::Relaxed);
+    if raw == 0 {
+        return;
+    }
+    if let Some(icon) = small {
+        NEXT_SMALL.store(icon.0 as isize, Ordering::Relaxed);
+    }
+    if let Some(icon) = big {
+        NEXT_BIG.store(icon.0 as isize, Ordering::Relaxed);
+    }
+    unsafe {
+        let _ = PostMessageW(
+            Some(HWND(raw as *mut std::ffi::c_void)),
+            WM_ART,
+            WPARAM(0),
+            LPARAM(0),
+        );
+    }
+}
+
+fn icon_sizes() -> (u32, u32) {
+    let (small, big) = unsafe {
+        (
+            GetSystemMetrics(SM_CXSMICON).max(16) as u32,
+            GetSystemMetrics(SM_CXICON).max(32) as u32,
+        )
+    };
+    (small.max(32), big.max(64))
+}
+
+pub fn set_artwork(url: Option<String>, app_icon: bool) {
+    let Some(url) = url.filter(|value| value.starts_with("https://")) else {
+        post_art(Some(HICON::default()), Some(HICON::default()));
+        return;
+    };
+    let (small_px, big_px) = icon_sizes();
+    tauri::async_runtime::spawn(async move {
+        let Ok(response) = reqwest::get(&url).await else {
+            return;
+        };
+        let Ok(bytes) = response.bytes().await else {
+            return;
+        };
+        let Ok(decoded) = image::load_from_memory(&bytes) else {
+            return;
+        };
+        let scaled = decoded.resize_exact(small_px, small_px, image::imageops::FilterType::Lanczos3);
+        let small = hicon_from_rgba(scaled.to_rgba8().as_raw(), small_px);
+        let big = if app_icon {
+            let large = decoded.resize_exact(big_px, big_px, image::imageops::FilterType::Lanczos3);
+            hicon_from_rgba(large.to_rgba8().as_raw(), big_px)
+        } else {
+            Some(HICON::default())
+        };
+        if small.is_some() || big.is_some() {
+            post_art(small, big);
+        }
+    });
 }

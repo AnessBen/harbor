@@ -7,7 +7,7 @@ import okhttp3.Callback
 import okhttp3.FormBody
 import okhttp3.Headers
 import okhttp3.HttpUrl
-import okhttp3.HttpUrl.Companion.toHttpUrl
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.Interceptor
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
@@ -28,8 +28,15 @@ import kotlin.coroutines.resumeWithException
 
 private const val MAX_TEXT_BYTES = 32L * 1024 * 1024
 
-internal fun buildUrl(url: String, params: Map<String, String>): HttpUrl {
-    val parsed = url.trim().toHttpUrl()
+internal fun buildUrl(url: String, params: Map<String, String>, base: String? = null): HttpUrl {
+    val text = url.trim()
+    val parsed = text.toHttpUrlOrNull()
+        ?: base?.trim()?.toHttpUrlOrNull()?.resolve(text)
+        ?: throw IllegalArgumentException(
+            "not a usable address: \"${text.take(120)}\"" +
+                if (text.startsWith("null/") || text.contains("//null")) ", the extension needs configuring first"
+                else ", it is relative and no site was known to resolve it against"
+        )
     if (params.isEmpty()) return parsed
     val builder = parsed.newBuilder()
     params.forEach { (k, v) -> builder.addQueryParameter(k, v) }

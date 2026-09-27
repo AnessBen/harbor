@@ -6,9 +6,10 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.lifecycle.LifecycleOwner
 import harbor.compat.host.PlatformHost
 
-open class Fragment {
+open class Fragment : LifecycleOwner {
 
     @JvmField
     internal var manager: FragmentManager? = null
@@ -27,8 +28,6 @@ open class Fragment {
 
     open fun getActivity(): FragmentActivity? = manager?.owner
 
-    /** A detached fragment answers with the application context rather than null: extensions read
-     * it to build views and to reach preferences, and both work off any context. */
     open fun getContext(): Context = getActivity() ?: PlatformHost.applicationContext
 
     open fun requireContext(): Context = getContext()

@@ -27,6 +27,7 @@ import { useSmoothWheel } from "./smooth-scroll";
 import { useTogether } from "./together/provider";
 import { beginMarathonAdvance } from "./fullscreen-state";
 import { consumeBack } from "./back-intercept";
+import { useSectionBackActive } from "./section-back";
 import type { SubtitleLoadMetadata } from "./subtitles/types";
 
 export type View =
@@ -204,6 +205,7 @@ export type Frame =
   | { kind: "grid"; grid: GridSpec }
   | { kind: "award"; awardType: import("./providers/wikidata").AwardType }
   | { kind: "anime-award"; sourceId: import("./anime-awards").AwardSourceId }
+  | { kind: "curated-list"; listId: string }
   | {
       kind: "picker";
       meta: Meta;
@@ -237,6 +239,7 @@ export type SettingsSection =
   | "language"
   | "player"
   | "streamFilters"
+  | "licenses"
   | "advanced";
 
 type ViewValue = {
@@ -307,6 +310,8 @@ type ViewValue = {
   openAward: (t: import("./providers/wikidata").AwardType) => void;
   animeAwardSource: import("./anime-awards").AwardSourceId | null;
   openAnimeAward: (s: import("./anime-awards").AwardSourceId) => void;
+  curatedListId: string | null;
+  openCuratedList: (id: string) => void;
   homeResetTick: number;
   picker: {
     meta: Meta;
@@ -448,6 +453,8 @@ function frameKey(f: Frame): string {
       return `award:${f.awardType}`;
     case "anime-award":
       return `anime-award:${f.sourceId}`;
+    case "curated-list":
+      return `curated-list:${f.listId}`;
     case "picker": {
       const a = typeof f.attempt === "number" ? `:a${f.attempt}` : "";
       return f.episode
@@ -492,6 +499,7 @@ export function ViewProvider({ children }: { children: ReactNode }) {
   stackRef.current = stack;
   forwardStackRef.current = forwardStack;
   const [chromeHidden, setChromeHidden] = useState(false);
+  const sectionBackActive = useSectionBackActive();
   const [homeResetTick, setHomeResetTick] = useState(0);
   const scrollMem = useRef<Map<string, ScrollSnapshot>>(new Map());
   const rowScrollMem = useRef<Map<string, number>>(new Map());
@@ -638,7 +646,7 @@ export function ViewProvider({ children }: { children: ReactNode }) {
         }
       : null;
   const player = playbackTop.kind === "player" ? playbackTop.src : null;
-  const canGoBack = previewPageStack(stack).length > 1;
+  const canGoBack = previewPageStack(stack).length > 1 || sectionBackActive;
   const canGoForward = forwardStack.length > 0;
 
   const pop = useCallback(() => {
@@ -1120,6 +1128,17 @@ export function ViewProvider({ children }: { children: ReactNode }) {
     [setNavStack],
   );
 
+  const openCuratedList = useCallback(
+    (id: string) => {
+      setNavStack((cur) => {
+        const top = cur[cur.length - 1];
+        if (top.kind === "curated-list" && top.listId === id) return cur;
+        return pushFrame(cur, { kind: "curated-list", listId: id });
+      });
+    },
+    [setNavStack],
+  );
+
   const openFilter = useCallback(
     (f: MetaFilter) => {
       setNavStack((cur) => {
@@ -1338,6 +1357,8 @@ export function ViewProvider({ children }: { children: ReactNode }) {
       openAward,
       animeAwardSource: top.kind === "anime-award" ? top.sourceId : null,
       openAnimeAward,
+      curatedListId: top.kind === "curated-list" ? top.listId : null,
+      openCuratedList,
       homeResetTick,
       picker,
       openPicker,
@@ -1424,6 +1445,7 @@ export function ViewProvider({ children }: { children: ReactNode }) {
       openCollections,
       openAward,
       openAnimeAward,
+      openCuratedList,
       openPicker,
       openPlayer,
       replacePlayerSrc,

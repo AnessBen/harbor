@@ -37,7 +37,11 @@ import {
 } from "@/lib/hero-mute";
 import { getHeroEnded, setHeroEnded } from "@/lib/hero-ended";
 import { usePageVisible } from "@/lib/visibility";
+import { useTrailerVideo } from "@/lib/use-trailer-video";
 import { toggleWatchlist, useInWatchlist } from "@/lib/watchlist";
+
+const HERO_VIDEO_CLASS =
+  "absolute left-1/2 top-1/2 h-[110%] w-[110%] -translate-x-1/2 -translate-y-1/2 object-cover";
 
 export const Hero = memo(function Hero({
   meta,
@@ -76,7 +80,6 @@ export const Hero = memo(function Hero({
     : (meta.background ?? (bgResolved ? meta.poster : undefined));
   const [trailerCandidates, setTrailerCandidates] = useState<string[]>([]);
   const [trailerInfo, setTrailerInfo] = useState<TrailerInfo | null>(null);
-  const [videoReady, setVideoReady] = useState(false);
   const [overControls, setOverControls] = useState(false);
   const audioHero = settings.heroTrailerAudio && playTrailer;
   const muted = useSyncExternalStore(subscribeHeroMuted, getHeroMuted);
@@ -86,7 +89,6 @@ export const Hero = memo(function Hero({
   const logo = pinnedLogo ?? logoState;
   const [logoLoaded, setLogoLoaded] = useState(false);
   const [logoResolved, setLogoResolved] = useState<boolean>(!!meta.logo);
-  const videoRef = useRef<HTMLVideoElement>(null);
   const sectionRef = useRef<HTMLElement>(null);
   const [visibleRatio, setVisibleRatio] = useState(1);
   const [lingered, setLingered] = useState(false);
@@ -97,11 +99,21 @@ export const Hero = memo(function Hero({
   const onScreen = pageVisible && !overlayed && visibleRatio > 0.12;
   const wantsPlayback =
     !!playTrailer && !!trailerInfo && !overControls && onScreen && lingered && !ended;
+  const { slot, video: videoRef, ready: videoReady } = useTrailerVideo({
+    src: trailerInfo ? trailerSrc(trailerInfo) : null,
+    active: !!playTrailer && !!trailerInfo && onScreen,
+    className: HERO_VIDEO_CLASS,
+    loop: !audioHero,
+    onEnded: () => {
+      if (!audioHero) return;
+      setEnded(true);
+      setHeroEnded(meta.id, true);
+    },
+  });
 
   useEffect(() => {
     setTrailerCandidates([]);
     setTrailerInfo(null);
-    setVideoReady(false);
     setEnded(getHeroEnded(meta.id));
   }, [meta.id]);
 
@@ -267,21 +279,6 @@ export const Hero = memo(function Hero({
     };
   }, [wantsPlayback, muted, audioHero]);
 
-  useEffect(() => {
-    if (!trailerInfo) return;
-    const v = videoRef.current;
-    return () => {
-      if (!v) return;
-      try {
-        v.pause();
-        v.removeAttribute("src");
-        v.load();
-      } catch {
-        void 0;
-      }
-    };
-  }, [trailerInfo]);
-
   const actionRadius = playSquare ? "rounded-md" : "rounded-full";
 
   return (
@@ -306,21 +303,7 @@ export const Hero = memo(function Hero({
           className={`pointer-events-none absolute overflow-hidden transition-opacity duration-500 ${full ? "inset-0 rounded-none" : "inset-[2px] rounded-[26px]"}`}
           style={{ opacity: wantsPlayback && videoReady ? 1 : 0 }}
         >
-          <video
-            ref={videoRef}
-            src={trailerSrc(trailerInfo)}
-            loop={!audioHero}
-            playsInline
-            preload="none"
-            onCanPlay={() => setVideoReady(true)}
-            onEnded={() => {
-              if (audioHero) {
-                setEnded(true);
-                setHeroEnded(meta.id, true);
-              }
-            }}
-            className="absolute left-1/2 top-1/2 h-[110%] w-[110%] -translate-x-1/2 -translate-y-1/2 object-cover"
-          />
+          <div ref={slot} className="absolute inset-0" />
         </div>
       )}
       {audioHero && trailerInfo && videoReady && (wantsPlayback || ended) && (

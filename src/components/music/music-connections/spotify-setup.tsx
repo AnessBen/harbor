@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, Copy, ExternalLink } from "lucide-react";
+import { Check, Copy, ExternalLink } from "@/components/icons/music-icons";
 import { copyText } from "@/components/player/copy-link-button";
 import { useT } from "@/lib/i18n";
 import { SPOTIFY_DASHBOARD_URL, SPOTIFY_REDIRECT_URI } from "@/lib/music/spotify-setup";
