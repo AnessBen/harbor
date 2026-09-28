@@ -1,3 +1,4 @@
+import musicGif from "./music-gif";
 import musicListeningLab from "./music-listening-lab";
 import musicBillboard from "./music-billboard";
 import musicArtistExtras from "./music-artist-extras";
@@ -15,6 +16,7 @@ import musicPossible from "./music-possible";
 import musicLegal from "./music-legal";
 const music: Record<string, string> = {
   ...musicMiku,
+  ...musicGif,
   ...musicListeningLab,
   ...musicBillboard,
   ...musicArtistExtras,
@@ -209,6 +211,9 @@ const music: Record<string, string> = {
   "music.playlist.likeThis": "इस जैसी बनाएँ",
   "music.playlist.likeThisWorking": "बन रही है…",
   "music.playlist.likeThisName": "{name} जैसी",
+  "music.playlist.likeThisAsk": "यह कहाँ से ले?",
+  "music.playlist.likeThisFresh": "केवल मेरे लिए नया संगीत",
+  "music.playlist.likeThisHeard": "सुने हुए गाने भी शामिल करें",
   "music.row.newPlaylist": "नई प्लेलिस्ट",
   "music.search.resultCount": "{count} नतीजे",
   "music.transport.shuffle": "शफ़ल",
@@ -231,6 +236,7 @@ const music: Record<string, string> = {
   "music.card.moreActions": "{title} के लिए और विकल्प",
   "music.card.goToArtist": "कलाकार पर जाएँ",
   "music.card.copyTitle": "शीर्षक और कलाकार कॉपी करें",
+  "music.card.goToPlaying": "जो चल रहा है उस पर जाएँ",
   "music.playlist.none": "अभी कोई प्लेलिस्ट नहीं है।",
   ...musicQueue,
   ...musicTaste,
@@ -431,6 +437,8 @@ const music: Record<string, string> = {
     "अपने Spotify ऐप की सेटिंग में Client ID और रीडायरेक्ट URI जाँचें, फिर दोबारा कोशिश करें।",
   "music.recovery.title": "प्लेबैक सहायता",
   "music.recovery.failed": "{source} यह गाना नहीं चला सका",
+  "music.recovery.skipping": "{seconds} सेकंड में अगले गाने पर",
+  "music.recovery.stay": "यहीं रहें",
   "music.recovery.source":
     "ऑडियो लोड नहीं हो सका। नीचे कोई दूसरा संस्करण आज़माएँ, इस स्रोत से फिर कोशिश करें या इसे {source} पर खोलें।",
   "music.recovery.setup":
@@ -505,6 +513,8 @@ const music: Record<string, string> = {
   "music.row.playlistsSubtitle": "{count} प्लेलिस्ट",
   "music.row.playlists": "आपकी प्लेलिस्ट",
   "music.genre.eyebrow": "शैली",
+  "music.label.eyebrow": "रिकॉर्ड लेबल",
+  "music.label.roster": "{query} के कलाकार",
   "music.genre.tagged": "{query} के शीर्ष कलाकार, ट्रैक और एल्बम",
   "music.genre.back": "वापस",
   "music.search.resume": "अपने संगीत पर लौटें",

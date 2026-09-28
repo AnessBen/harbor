@@ -1,3 +1,4 @@
+import musicGif from "./music-gif";
 import musicListeningLab from "./music-listening-lab";
 import musicBillboard from "./music-billboard";
 import musicArtistExtras from "./music-artist-extras";
@@ -15,6 +16,7 @@ import musicPossible from "./music-possible";
 import musicLegal from "./music-legal";
 const music: Record<string, string> = {
   ...musicMiku,
+  ...musicGif,
   ...musicListeningLab,
   ...musicBillboard,
   ...musicArtistExtras,
@@ -209,6 +211,9 @@ const music: Record<string, string> = {
   "music.playlist.likeThis": "创建类似歌单",
   "music.playlist.likeThisWorking": "创建中…",
   "music.playlist.likeThisName": "类似 {name}",
+  "music.playlist.likeThisAsk": "从哪里选取？",
+  "music.playlist.likeThisFresh": "只要我没听过的音乐",
+  "music.playlist.likeThisHeard": "包含我听过的歌曲",
   "music.row.newPlaylist": "新建歌单",
   "music.search.resultCount": "{count} 个结果",
   "music.transport.shuffle": "随机播放",
@@ -231,6 +236,7 @@ const music: Record<string, string> = {
   "music.card.moreActions": "{title}的更多操作",
   "music.card.goToArtist": "前往艺人页",
   "music.card.copyTitle": "复制歌名和艺人",
+  "music.card.goToPlaying": "前往正在播放的列表",
   "music.playlist.none": "还没有歌单。",
   ...musicQueue,
   ...musicTaste,
@@ -429,6 +435,8 @@ const music: Record<string, string> = {
   "music.spotifySetup.rejected": "请检查 Spotify 应用设置中的 Client ID 和重定向 URI，然后重试。",
   "music.recovery.title": "播放帮助",
   "music.recovery.failed": "{source} 无法播放这首歌",
+  "music.recovery.skipping": "{seconds} 秒后播放下一首",
+  "music.recovery.stay": "留在这里",
   "music.recovery.source": "无法加载音频。请在下方尝试其他版本、重试此来源，或在 {source} 上打开。",
   "music.recovery.setup": "需要先设置 Spotify 才能在这里播放。请打开设置，添加你的应用信息并登录。",
   "music.recovery.premium": "在这里播放 Spotify 需要 Premium。请检查订阅或选择其他来源。",
@@ -499,6 +507,8 @@ const music: Record<string, string> = {
   "music.row.playlistsSubtitle": "{count} 个播放列表",
   "music.row.playlists": "你的播放列表",
   "music.genre.eyebrow": "流派",
+  "music.label.eyebrow": "唱片公司",
+  "music.label.roster": "{query} 的艺人",
   "music.genre.tagged": "{query} 中的热门歌手、曲目和专辑",
   "music.genre.back": "返回",
   "music.search.resume": "回到你的音乐",

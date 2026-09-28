@@ -30,6 +30,7 @@ import {
 } from "./music-listening-lab";
 import { MusicDockParts } from "./music-dock-parts";
 import { MusicMikuSettings } from "./music-miku-settings";
+import { MusicGifSettings } from "./music-gif-settings";
 import { useMusicPlayer } from "@/lib/music/player";
 import { useMusicAudioMeter } from "@/lib/music/audio-meter";
 import { MusicSignalDetails } from "./music-signal-details";
@@ -410,6 +411,7 @@ export function MusicAudioSettings({
         </footer>
       </fieldset>
       <MusicMikuSettings />
+      <MusicGifSettings />
     </section>
   );
 }

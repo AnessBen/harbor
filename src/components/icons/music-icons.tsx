@@ -84,3 +84,11 @@ export const VideoOff = icon("video-off");
 export const Volume2 = icon("volume-high");
 export const Wallpaper = icon("immersive");
 export const X = icon("close");
+
+export const PlaylistVariation = icon("playlist-variation");
+export const PlaylistRename = icon("playlist-rename");
+export const ArtistSimilar = icon("artist-similar");
+export const ArtistPlaybackOff = icon("artist-playback-off");
+export const ArtistPlaybackOn = icon("artist-playback-on");
+export const ArtistSongsHidden = icon("artist-songs-hidden");
+export const ArtistSongsVisible = icon("artist-songs-visible");

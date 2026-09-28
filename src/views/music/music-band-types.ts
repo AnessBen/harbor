@@ -17,12 +17,16 @@ export type MusicBand = {
   render: (title: string) => ReactNode;
 };
 
-export type MusicLibraryTarget = { view?: string; playlistId?: string };
+export type MusicLibraryTarget = {
+  view?: string;
+  playlistId?: string;
+  spotifyKind?: "playlists" | "liked";
+};
 
 export type MusicBandContext = {
   t: (key: string, vars?: Record<string, string | number>) => string;
   data: MusicData;
-  player: MusicPlayerState;
+  player: Omit<MusicPlayerState, "currentTime">;
   connections: MusicConnection[];
   connectionsStatus: MusicConnectionsStatus;
   connectionsError: string;

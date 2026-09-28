@@ -1,3 +1,4 @@
+import { evictLocalPrefix, idbCacheGet, idbCacheSet } from "@/lib/idb-cache";
 import type { KnownForEntry } from "./rankings";
 import { safeFetch } from "./safe-fetch";
 import { HARBOR_API_BASE } from "./config/endpoints";
@@ -120,6 +121,8 @@ const FEED_BASE = `${HARBOR_API_BASE}/rank`;
 const STALE_MS = 6 * 60 * 60 * 1000;
 const MANIFEST_KEY = "harbor.rank.manifest.v1";
 
+evictLocalPrefix("harbor.rank.", (key) => key === MANIFEST_KEY);
+
 function listKey(source: RankSource, dept: PeopleDept, country: string | null): string {
   return `${source}:${dept}:${country ?? "all"}`;
 }
@@ -229,15 +232,22 @@ export function peekRankSnapshot(
   const key = listKey(source, dept, country);
   const mem = listMem.get(key);
   if (mem) return mem.result;
-  try {
-    const raw = localStorage.getItem(snapshotKey(source, dept, country));
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as { at: number; result: RankListResult };
-    if (!parsed?.result?.list) return null;
-    return parsed.result;
-  } catch {
-    return null;
-  }
+  void warmRankSnapshot(source, dept, country);
+  return null;
+}
+
+const warming = new Set<string>();
+
+function warmRankSnapshot(source: RankSource, dept: PeopleDept, country: string | null): void {
+  const key = listKey(source, dept, country);
+  if (listMem.has(key) || warming.has(key)) return;
+  warming.add(key);
+  void idbCacheGet(snapshotKey(source, dept, country))
+    .then((entry) => {
+      const result = (entry?.data as RankListResult | undefined) ?? null;
+      if (result?.list && !listMem.has(key)) listMem.set(key, { at: entry!.at, result });
+    })
+    .finally(() => warming.delete(key));
 }
 
 export async function fetchRankList(
@@ -258,14 +268,7 @@ export async function fetchRankList(
       const result = buildResult(source, await res.json());
       if (!result) return null;
       listMem.set(key, { at: Date.now(), result });
-      try {
-        localStorage.setItem(
-          snapshotKey(source, dept, country),
-          JSON.stringify({ at: Date.now(), result }),
-        );
-      } catch {
-        // ignore
-      }
+      void idbCacheSet(snapshotKey(source, dept, country), { at: Date.now(), data: result });
       return result;
     } catch {
       return null;

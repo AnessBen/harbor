@@ -3,6 +3,7 @@ import { ListMusic } from "@/components/icons/music-icons";
 import { MoreLikeThisIcon } from "@/components/icons/more-like-this-icon";
 import { useT } from "@/lib/i18n";
 import { requestMusicPlaylist } from "@/lib/music/navigation";
+import "./music-linked-bio.css";
 import { useArtistPlaylists, useTrackPlaylists } from "@/lib/music/playlist-membership";
 import { reopenMusicMix, useMusicTrackContext } from "@/lib/music/recent-context";
 import type { MusicTrack } from "@/lib/music/types";
@@ -93,7 +94,8 @@ export function MusicArtistPlaylistNote({ artist }: { artist: string | null | un
   const t = useT();
   const { trackCount, playlists } = useArtistPlaylists(artist);
   if (!trackCount) return null;
-  const names = playlists.map((playlist) => playlist.name);
+  const shown = playlists.slice(0, NAME_LIMIT);
+  const rest = playlists.length - shown.length;
   const summary =
     trackCount === 1
       ? t("music.playlists.artistSong")
@@ -105,9 +107,19 @@ export function MusicArtistPlaylistNote({ artist }: { artist: string | null | un
     >
       <ListMusic size={13} aria-hidden="true" className="shrink-0" />
       <span>{summary}</span>
-      {names.length > 0 && (
-        <span className="min-w-0 truncate text-ink-muted">{joinNames(names, t)}</span>
-      )}
+      {shown.map((playlist, index) => (
+        <span key={playlist.id} className="min-w-0 text-ink-muted">
+          <button
+            type="button"
+            className="music-linked-bio-link"
+            onClick={() => requestMusicPlaylist(playlist.id)}
+          >
+            {playlist.name}
+          </button>
+          {index < shown.length - 1 ? "," : ""}
+        </span>
+      ))}
+      {rest > 0 && <span className="text-ink-muted">{t("music.playlists.more", { count: rest })}</span>}
     </p>
   );
 }

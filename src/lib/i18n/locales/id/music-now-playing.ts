@@ -1,4 +1,13 @@
 const musicNowPlaying: Record<string, string> = {
+  "music.now.sameContext": "Sumber yang sama",
+  "music.now.discoverNew": "Temukan",
+  "music.now.moreMode": "Pilih musik lainnya",
+  "music.now.continueFrom": "Lanjutkan dari {name}",
+  "music.now.discoverHint": "Lagu serupa, kecuali antrean dan riwayat dengar terbaru.",
+  "music.now.moreAdded": "{count} lagu ditambahkan",
+  "music.now.contextEnd": "Tidak ada lagi dari sumber ini. Coba Temukan.",
+  "music.now.noNewSongs": "Tidak ada lagu baru. Coba lagi nanti.",
+  "music.now.moreError": "Gagal memuat lagi. Coba lagi.",
   "music.artist.filmography": "Film & TV",
   "music.action.error": "Tindakan tidak dapat diselesaikan. Coba lagi.",
   "music.radio.error": "Radio tidak dapat dimulai. Coba lagi atau pilih sumber lain.",
@@ -76,6 +85,11 @@ const musicNowPlaying: Record<string, string> = {
 
   "music.artist.about": "Tentang artis",
   "music.artist.save": "Simpan artis",
+  "music.artist.dontPlay": "Jangan putar artis ini",
+  "music.artist.doPlay": "Putar lagi artis ini",
+  "music.artist.hideSongs": "Sembunyikan lagu artis ini",
+  "music.artist.showSongs": "Tampilkan lagu artis ini",
+  "music.artist.moreLike": "Artis lain seperti ini",
   "music.artist.unsave": "Hapus dari artis tersimpan",
 
   "music.artist.origin": "Asal",
@@ -95,6 +109,9 @@ const musicNowPlaying: Record<string, string> = {
   "music.artist.merch": "Merchandise",
 
   "music.artist.official": "Situs resmi",
+  "music.artist.social": "Media sosial",
+  "music.artist.gallery": "Foto {name}",
+  "music.artist.zoom": "Zoom",
 
   "music.artist.kicker": "Artis",
   "music.artist.listenOn": "Dengarkan di",

@@ -1,4 +1,13 @@
 const musicNowPlaying: Record<string, string> = {
+  "music.now.sameContext": "Cùng nguồn",
+  "music.now.discoverNew": "Khám phá",
+  "music.now.moreMode": "Chọn thêm nhạc",
+  "music.now.continueFrom": "Tiếp tục từ {name}",
+  "music.now.discoverHint": "Bài hát tương tự, trừ hàng đợi và lịch sử nghe gần đây.",
+  "music.now.moreAdded": "Đã thêm {count} bài hát",
+  "music.now.contextEnd": "Nguồn này không còn bài hát. Hãy thử Khám phá.",
+  "music.now.noNewSongs": "Không tìm thấy bài hát mới. Hãy thử lại sau.",
+  "music.now.moreError": "Không thể tải thêm. Hãy thử lại.",
   "music.artist.filmography": "Phim và truyền hình",
   "music.action.error": "Không thể hoàn tất thao tác. Vui lòng thử lại.",
   "music.radio.error": "Không thể phát radio. Thử lại hoặc chọn nguồn khác.",
@@ -74,6 +83,11 @@ const musicNowPlaying: Record<string, string> = {
 
   "music.artist.about": "Về nghệ sĩ",
   "music.artist.save": "Lưu nghệ sĩ",
+  "music.artist.dontPlay": "Không phát nghệ sĩ này",
+  "music.artist.doPlay": "Phát lại nghệ sĩ này",
+  "music.artist.hideSongs": "Ẩn bài hát của nghệ sĩ này",
+  "music.artist.showSongs": "Hiện bài hát của nghệ sĩ này",
+  "music.artist.moreLike": "Thêm nghệ sĩ tương tự",
   "music.artist.unsave": "Xóa khỏi nghệ sĩ đã lưu",
 
   "music.artist.origin": "Xuất xứ",
@@ -93,6 +107,9 @@ const musicNowPlaying: Record<string, string> = {
   "music.artist.merch": "Sản phẩm lưu niệm",
 
   "music.artist.official": "Trang web chính thức",
+  "music.artist.social": "Mạng xã hội",
+  "music.artist.gallery": "Ảnh của {name}",
+  "music.artist.zoom": "Thu phóng",
 
   "music.artist.kicker": "Nghệ sĩ",
   "music.artist.listenOn": "Nghe trên",

@@ -18,7 +18,6 @@ import {
 import { MusicHomeHero } from "./music/music-home-hero";
 import {
   MusicTastes,
-  MusicTopPlaylists,
   readMusicTastes,
   useMusicTasteRows,
 } from "./music/music-tastes";
@@ -77,8 +76,8 @@ import {
   playMusicOnSpeaker,
   returnMusicToComputer,
   stopMusicCasting,
-  useMusicPlayer,
 } from "@/lib/music/player";
+import { useMusicPlayback } from "@/lib/music/use-music-playback";
 import type { MusicCatalogItem, MusicSearchResults, MusicTrack } from "@/lib/music/types";
 import { hasPageRowChanges, resetPageRows, usePageRows } from "@/lib/page-rows";
 import { useScrollMemory } from "@/lib/view";
@@ -89,11 +88,15 @@ import { gateBand, scrobbleShelf } from "./music/music-band-gates";
 import { tracksOf, type MusicBand, type MusicBandContext } from "./music/music-band-types";
 import { catalogBands } from "./music/music-catalog-bands";
 import { splitHomeRows } from "./music/music-home-rows";
+import { madeForYouBand } from "./music/music-made-for-you-band";
 import { personalBands } from "./music/music-personal-bands";
+import { spotifyBands } from "./music/music-spotify-band";
+import { MusicTopPlaylists } from "./music/music-top-playlists";
 import { MusicSearchPanel } from "./music/music-search-panel";
 import { useMusicData } from "./music/use-music-data";
 
 import { MusicDetail, type MusicDetailState } from "./music/music-detail";
+import { registerMusicCatalogOrigin } from "@/lib/music/playback-origin";
 import { loadDetailRows, loadDetailTracks } from "./music/music-detail-data";
 
 type SearchState = {
@@ -101,7 +104,7 @@ type SearchState = {
   connector: string | null;
   results: MusicSearchResults | null;
   error: string;
-  mode?: "search" | "genre";
+  mode?: "search" | "genre" | "label";
   /** Retries the work that produced this state, so a climbed search does not retry as a flat one. */
   retry?: () => void;
 };
@@ -122,7 +125,7 @@ export function MusicView({ active }: { active: boolean; shellBackAvailable?: bo
 
 function MusicViewContent({ active }: { active: boolean }) {
   const t = useT();
-  const player = useMusicPlayer();
+  const player = useMusicPlayback();
   const { openSourcePicker } = useMusicSourcePicker();
   const {
     openConnections,
@@ -219,6 +222,7 @@ function MusicViewContent({ active }: { active: boolean }) {
     seed: MusicTrack;
     tracks: MusicTrack[];
     state: "loading" | "ready" | "error";
+    label?: string;
   } | null>(null);
   const similarRun = useRef(0);
   const watchFromVideos = useRef(false);
@@ -631,14 +635,21 @@ function MusicViewContent({ active }: { active: boolean }) {
     }
   }, []);
 
-  const [libraryTarget, setLibraryTarget] = useState<{ view?: string; playlistId?: string } | null>(
+  const [libraryTarget, setLibraryTarget] = useState<{ view?: string; playlistId?: string; spotifyKind?: "playlists" | "liked" } | null>(
     null,
   );
   // Clicking a playlist has to land on that playlist, not on whatever tab the library
   // happened to open on last time.
-  const openLibrary = useCallback((target?: { view?: string; playlistId?: string }) => {
+  const openLibrary = useCallback((target?: { view?: string; playlistId?: string; spotifyKind?: "playlists" | "liked" }) => {
     setLibraryTarget(target ?? null);
     setTab("library");
+    setDetail(null);
+    setSearch(null);
+    setSimilar(null);
+    setWatch(null);
+    setYtm(false);
+    setDiscoveryPage(null);
+    searchOrigin.current = null;
     scrollRef.current?.scrollTo({ top: 0 });
   }, []);
 
@@ -822,7 +833,12 @@ function MusicViewContent({ active }: { active: boolean }) {
         setDiscoveryPage(null);
         const run = ++similarRun.current;
         if (request.queue?.length) {
-          setSimilar({ seed: request.track, tracks: request.queue, state: "ready" });
+          setSimilar({
+            seed: request.track,
+            tracks: request.queue,
+            state: "ready",
+            label: request.label,
+          });
           return;
         }
         setSimilar({ seed: request.track, tracks: [], state: "loading" });
@@ -940,6 +956,7 @@ function MusicViewContent({ active }: { active: boolean }) {
   };
 
   const personal = personalBands(context);
+  const spotifyRows = spotifyBands(context);
   const catalog = catalogBands(context);
   const bands: MusicBand[] = [];
   if (tasteRows.loading && !tasteRows.rows.length)
@@ -973,6 +990,9 @@ function MusicViewContent({ active }: { active: boolean }) {
       catalog: true,
       render: () => <MusicSectionError onRetry={tasteRows.retry} />,
     });
+  bands.push(...spotifyRows);
+  const madeForYou = madeForYouBand(context);
+  if (madeForYou) bands.push(madeForYou);
   if (personal.recents) bands.push(personal.recents);
   if (personal.recentContexts) bands.push(personal.recentContexts);
   if (slots.server.length) bands.push(...catalog.server);
@@ -1013,7 +1033,6 @@ function MusicViewContent({ active }: { active: boolean }) {
       <MusicRollingStoneRow
         title={title}
         onOpen={(item, siblings) => openItem(item, siblings)}
-        onPlay={(item, siblings) => openItem(item, siblings)}
         onViewAll={() => openDiscovery("rollingStone")}
       />
     ),
@@ -1065,7 +1084,6 @@ function MusicViewContent({ active }: { active: boolean }) {
               ) : connectionsPage.focusId === "__speakers" ? (
                 <MusicSpeakers
                   track={player.current}
-                  positionSec={player.currentTime}
                   onLoad={playMusicOnSpeaker}
                   onStop={stopMusicCasting}
                   onReturn={returnMusicToComputer}
@@ -1116,6 +1134,7 @@ function MusicViewContent({ active }: { active: boolean }) {
                 seed={similar.seed}
                 tracks={similar.tracks}
                 state={similar.state}
+                label={similar.label}
                 onBack={closeSimilar}
               />
             ) : detail ? (
@@ -1133,13 +1152,16 @@ function MusicViewContent({ active }: { active: boolean }) {
                 onLoadMoreReleases={loadMoreArtistReleases}
                 detail={detail}
                 onBack={closeDetail}
-                onPlay={playTrack}
+                onPlay={(track, queue) => {
+                  registerMusicCatalogOrigin(detail.item, queue);
+                  playTrack(track, queue);
+                }}
                 onOpen={openItem}
                 onRetry={() => openItem(detail.item, [], false)}
               />
             ) : search ? (
               <MusicSearchPanel
-                variant={search.mode === "genre" ? "genre" : "search"}
+                variant={search.mode ?? "search"}
                 query={search.query}
                 results={search.results}
                 error={search.error}
@@ -1225,8 +1247,10 @@ function MusicViewContent({ active }: { active: boolean }) {
                         onGenre={setGenre}
                         onOpen={openItem}
                         onBillboard={openBillboard}
+                        onTastes={() => openDiscovery("tastes")}
+                        onWatch={openVideo}
+                        active={active}
                       />
-                      <MusicVideoDiscovery active={active} onWatch={openVideo} />
                     </>
                   )}
                   {tab === "library" ? (
@@ -1246,6 +1270,7 @@ function MusicViewContent({ active }: { active: boolean }) {
                       onOpen={openItem}
                       initialView={libraryTarget?.view}
                       initialPlaylistId={libraryTarget?.playlistId}
+                      initialSpotifyKind={libraryTarget?.spotifyKind}
                     />
                   ) : tab === "explore" ? null : stalled ? (
                     <MusicStalled message={data.homeError} onRetry={retry} />

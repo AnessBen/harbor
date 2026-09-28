@@ -8,3 +8,7 @@
 .music-miku-license summary:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 4px; border-radius: 4px; }
 .music-miku-links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 @media (max-width: 550px) { .music-miku-settings { gap: 16px; } .music-miku-preview { flex-basis: 84px; height: 56px; } }
+
+.music-miku-model { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-top: 16px; }
+.music-miku-model > span { color: var(--color-ink-muted); font-size: 13px; }
+.music-miku-model > div { width: 220px; max-width: 100%; }

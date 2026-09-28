@@ -1,3 +1,4 @@
+import musicGif from "./music-gif";
 import musicListeningLab from "./music-listening-lab";
 import musicBillboard from "./music-billboard";
 import musicArtistExtras from "./music-artist-extras";
@@ -15,6 +16,7 @@ import musicPossible from "./music-possible";
 import musicLegal from "./music-legal";
 const music: Record<string, string> = {
   ...musicMiku,
+  ...musicGif,
   ...musicListeningLab,
   ...musicBillboard,
   ...musicArtistExtras,
@@ -209,6 +211,9 @@ const music: Record<string, string> = {
   "music.playlist.likeThis": "أنشئ قائمة مشابهة",
   "music.playlist.likeThisWorking": "جارٍ الإنشاء…",
   "music.playlist.likeThisName": "مثل {name}",
+  "music.playlist.likeThisAsk": "مِمَّ يستمد؟",
+  "music.playlist.likeThisFresh": "موسيقى جديدة عليّ فقط",
+  "music.playlist.likeThisHeard": "تضمين أغانٍ سمعتها",
   "music.row.newPlaylist": "قائمة تشغيل جديدة",
   "music.search.resultCount": "{count} نتيجة",
   "music.transport.shuffle": "تشغيل عشوائي",
@@ -231,6 +236,7 @@ const music: Record<string, string> = {
   "music.card.moreActions": "إجراءات أخرى لـ {title}",
   "music.card.goToArtist": "الانتقال إلى الفنان",
   "music.card.copyTitle": "نسخ العنوان والفنان",
+  "music.card.goToPlaying": "الانتقال إلى ما يُشغَّل",
   "music.playlist.none": "لا توجد قوائم تشغيل بعد.",
   ...musicQueue,
   ...musicTaste,
@@ -432,6 +438,8 @@ const music: Record<string, string> = {
     "تحقّق من معرّف العميل وعنوان إعادة التوجيه في إعدادات تطبيق Spotify، ثم أعد المحاولة.",
   "music.recovery.title": "مساعدة في التشغيل",
   "music.recovery.failed": "تعذّر على {source} تشغيل هذه الأغنية",
+  "music.recovery.skipping": "الانتقال إلى الأغنية التالية خلال {seconds} ثانية",
+  "music.recovery.stay": "البقاء هنا",
   "music.recovery.source":
     "تعذّر تحميل الصوت. جرّب نسخة أخرى أدناه، أو أعد المحاولة بهذا المصدر، أو افتح الأغنية على {source}.",
   "music.recovery.setup":
@@ -505,6 +513,8 @@ const music: Record<string, string> = {
   "music.row.playlistsSubtitle": "{count} قائمة تشغيل",
   "music.row.playlists": "قوائم التشغيل",
   "music.genre.eyebrow": "النوع",
+  "music.label.eyebrow": "شركة التسجيل",
+  "music.label.roster": "فنانو {query}",
   "music.genre.tagged": "أبرز الفنانين والمقاطع والألبومات في {query}",
   "music.genre.back": "رجوع",
   "music.search.resume": "العودة إلى موسيقاك",

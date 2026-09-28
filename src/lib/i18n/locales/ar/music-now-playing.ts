@@ -1,4 +1,13 @@
 const musicNowPlaying: Record<string, string> = {
+  "music.now.sameContext": "المصدر نفسه",
+  "music.now.discoverNew": "اكتشاف",
+  "music.now.moreMode": "اختيار المزيد من الموسيقى",
+  "music.now.continueFrom": "متابعة من {name}",
+  "music.now.discoverHint": "أغانٍ مشابهة، باستثناء قائمة الانتظار وسجل الاستماع الأخير.",
+  "music.now.moreAdded": "تمت إضافة {count} أغنية",
+  "music.now.contextEnd": "لا مزيد من هذا المصدر. جرّب الاكتشاف.",
+  "music.now.noNewSongs": "لم يتم العثور على أغانٍ جديدة. حاول لاحقًا.",
+  "music.now.moreError": "تعذر تحميل المزيد. حاول مجددًا.",
   "music.artist.filmography": "الأفلام والتلفزيون",
   "music.action.error": "تعذّر إكمال الإجراء. أعد المحاولة.",
   "music.radio.error": "تعذّر تشغيل الراديو. أعد المحاولة أو اختر مصدرًا آخر.",
@@ -74,6 +83,11 @@ const musicNowPlaying: Record<string, string> = {
 
   "music.artist.about": "عن الفنان",
   "music.artist.save": "حفظ الفنان",
+  "music.artist.dontPlay": "عدم تشغيل هذا الفنان",
+  "music.artist.doPlay": "تشغيل هذا الفنان مجددًا",
+  "music.artist.hideSongs": "إخفاء أغاني هذا الفنان",
+  "music.artist.showSongs": "إظهار أغاني هذا الفنان",
+  "music.artist.moreLike": "فنانون آخرون مشابهون",
   "music.artist.unsave": "إزالة من الفنانين المحفوظين",
 
   "music.artist.origin": "المنشأ",
@@ -93,6 +107,9 @@ const musicNowPlaying: Record<string, string> = {
   "music.artist.merch": "منتجات الفنان",
 
   "music.artist.official": "الموقع الرسمي",
+  "music.artist.social": "التواصل الاجتماعي",
+  "music.artist.gallery": "صور {name}",
+  "music.artist.zoom": "تكبير",
 
   "music.artist.kicker": "الفنان",
   "music.artist.listenOn": "استمع على",

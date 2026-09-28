@@ -436,13 +436,14 @@ const PLAYLIST_SEEDS = 5;
 export async function loadPlaylistLikeThis(
   tracks: readonly MusicTrack[],
   size = STATION_SIZE,
+  skip: readonly MusicTrack[] = [],
 ): Promise<MusicTrack[]> {
   const picks = spreadSeeds(tracks, PLAYLIST_SEEDS);
   if (picks.length === 0) throw new Error("music.radio.error");
   const resolved = await Promise.all(picks.map((track) => resolveSeed(track).catch(() => null)));
   const seeds = resolved.filter((seed): seed is Seed => seed != null);
   if (seeds.length === 0) throw new Error("music.radio.error");
-  const exclude = new Set(tracks.map(trackKey));
+  const exclude = new Set([...tracks, ...skip].map(trackKey));
   const mix = await build(seeds, exclude, size);
   if (mix.length < 5) throw new Error("music.radio.error");
   return mix;
@@ -454,6 +455,12 @@ export async function loadSimilarTracks(track: MusicTrack): Promise<MusicTrack[]
   const filled = await withSeedArtist(seed, track, following);
   if (filled.length === 0) throw new Error("music.radio.error");
   return filled;
+}
+
+/** Exclude history before ranking so familiar songs cannot crowd out new recommendations. */
+export async function loadUnheardMusic(track: MusicTrack, excluded: readonly MusicTrack[]): Promise<MusicTrack[]> {
+  const seed = await resolveSeed(track);
+  return build([seed], new Set([track, ...excluded].map(trackKey)), EXTEND_SIZE);
 }
 
 export async function loadTrackRadio(track: MusicTrack): Promise<MusicTrack[]> {

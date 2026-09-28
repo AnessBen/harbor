@@ -1,4 +1,13 @@
 const musicNowPlaying: Record<string, string> = {
+  "music.now.sameContext": "Aynı kaynak",
+  "music.now.discoverNew": "Keşfet",
+  "music.now.moreMode": "Daha fazla müzik seç",
+  "music.now.continueFrom": "{name} kaynağından devam et",
+  "music.now.discoverHint": "Kuyruk ve yakın dinleme geçmişi hariç benzer şarkılar.",
+  "music.now.moreAdded": "{count} şarkı eklendi",
+  "music.now.contextEnd": "Bu kaynakta başka şarkı yok. Keşfet’i deneyin.",
+  "music.now.noNewSongs": "Yeni şarkı bulunamadı. Daha sonra tekrar deneyin.",
+  "music.now.moreError": "Daha fazlası yüklenemedi. Tekrar deneyin.",
   "music.artist.filmography": "Film ve TV",
   "music.action.error": "İşlem tamamlanamadı. Yeniden deneyin.",
   "music.radio.error": "Radyo başlatılamadı. Yeniden deneyin veya başka kaynak seçin.",
@@ -76,6 +85,11 @@ const musicNowPlaying: Record<string, string> = {
 
   "music.artist.about": "Sanatçı hakkında",
   "music.artist.save": "Sanatçıyı kaydet",
+  "music.artist.dontPlay": "Bu sanatçıyı çalma",
+  "music.artist.doPlay": "Bu sanatçıyı yeniden çal",
+  "music.artist.hideSongs": "Bu sanatçının şarkılarını gizle",
+  "music.artist.showSongs": "Bu sanatçının şarkılarını göster",
+  "music.artist.moreLike": "Buna benzer daha fazla sanatçı",
   "music.artist.unsave": "Kayıtlı sanatçılardan kaldır",
 
   "music.artist.origin": "Köken",
@@ -95,6 +109,9 @@ const musicNowPlaying: Record<string, string> = {
   "music.artist.merch": "Ürünler",
 
   "music.artist.official": "Resmî web sitesi",
+  "music.artist.social": "Sosyal medya",
+  "music.artist.gallery": "{name} fotoğrafları",
+  "music.artist.zoom": "Yakınlaştır",
 
   "music.artist.kicker": "Sanatçı",
   "music.artist.listenOn": "Şurada dinleyin",

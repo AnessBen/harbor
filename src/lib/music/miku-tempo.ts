@@ -1,16 +1,41 @@
-type Sample = { time: number; flux: number };
+export type MikuOnset = { time: number; flux: number };
+
+export function mikuPulseOrigin(history: readonly MikuOnset[], period: number) {
+  let x = 0, y = 0;
+  for (const sample of history) {
+    const angle = sample.time / period * Math.PI * 2;
+    const weight = sample.flux ** 2;
+    x += Math.cos(angle) * weight; y += Math.sin(angle) * weight;
+  }
+  return Math.atan2(y, x) / (Math.PI * 2) * period;
+}
 
 /** Short-window autocorrelation of measured onsets. No song database or preset BPM. */
-export function mikuTempo(history: readonly Sample[], previous: number | null) {
+export function mikuTempo(history: readonly MikuOnset[], previous: number | null,
+  range = { min: 250, max: 900, subdivisions: true }) {
   if (history.length < 32) return null;
-  const step = (history.at(-1)!.time - history[0].time) / (history.length - 1);
-  if (step < 15 || step > 160) return null;
+  const span = history.at(-1)!.time - history[0].time;
+  const deliveryStep = span / (history.length - 1);
+  if (deliveryStep < 15 || deliveryStep > 160) return null;
+  // Native IPC completes at uneven intervals. Correlating array indexes as
+  // though they were equally spaced can lock 140 BPM kicks to 70 BPM.
+  // Resample the measured envelope on a real time axis before finding lags.
+  const step = 25;
+  const uniform: number[] = [];
+  let head = 0;
+  for (let time = history[0].time; time <= history.at(-1)!.time; time += step) {
+    while (head + 1 < history.length - 1 && history[head + 1].time < time) head++;
+    const a = history[head], b = history[head + 1];
+    if (!b || b.time <= a.time) return null;
+    const t = Math.max(0, Math.min(1, (time - a.time) / (b.time - a.time)));
+    uniform.push(b.time - a.time > 250 ? 0 : Math.max(0, a.flux + (b.flux - a.flux) * t));
+  }
   // Compress onset strength so alternating kick/snare accents still describe
   // one pulse instead of the louder kick winning at half the drum tempo.
-  const onsets = history.map(sample => Math.sqrt(Math.max(0, sample.flux)));
+  const onsets = uniform.map(flux => Math.sqrt(flux));
   const mean = onsets.reduce((sum, onset) => sum + onset, 0) / onsets.length;
   const values = onsets.map(onset => onset - mean);
-  const min = Math.max(2, Math.ceil(250 / step)), max = Math.min(Math.floor(900 / step), Math.floor(values.length / 2.5));
+  const min = Math.max(2, Math.ceil(range.min / step)), max = Math.min(Math.floor(range.max / step), Math.floor(values.length / 2.5));
   const scores = new Map<number, number>();
   let best = 0, bestScore = 0;
   for (let lag = min - 1; lag <= max + 1; lag++) {
@@ -35,18 +60,12 @@ export function mikuTempo(history: readonly Sample[], previous: number | null) {
     if ((scores.get(lag) ?? 0) > (scores.get(subdivision) ?? 0)) subdivision = lag;
   }
   const subScore = scores.get(subdivision) ?? 0;
-  if (subdivision >= min && subdivision < best && subScore >= 0.55 && subScore >= (scores.get(best) ?? 0) * 0.8) best = subdivision;
+  if (range.subdivisions && subdivision >= min && subdivision < best && subScore >= 0.35 && subScore >= (scores.get(best) ?? 0) * 0.65) best = subdivision;
   const a = scores.get(best - 1) ?? 0, b = scores.get(best) ?? 0, c = scores.get(best + 1) ?? 0;
   const divisor = a - 2 * b + c;
   const fraction = Math.abs(divisor) > 1e-8 ? Math.max(-0.5, Math.min(0.5, 0.5 * (a - c) / divisor)) : 0;
-  const period = Math.max(250, Math.min(900, (best + fraction) * step));
+  const period = Math.max(range.min, Math.min(range.max, (best + fraction) * step));
   // Circular phase estimates the recurring pulse, rather than chasing every hi-hat.
-  let x = 0, y = 0;
-  for (const sample of history) {
-    const angle = sample.time / period * Math.PI * 2;
-    const weight = sample.flux ** 2;
-    x += Math.cos(angle) * weight; y += Math.sin(angle) * weight;
-  }
-  const origin = Math.atan2(y, x) / (Math.PI * 2) * period;
-  return { period, origin };
+  const origin = mikuPulseOrigin(history, period);
+  return { period, origin, confidence: scores.get(best) ?? 0 };
 }

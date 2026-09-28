@@ -12,16 +12,18 @@ const TEACH_MS = 2600;
 
 let taught = false;
 
-async function previewUrlFor(track: MusicTrack): Promise<string | null> {
+type Preview = { key: string; url: string; audioUrl: string | null };
+
+async function previewFor(track: MusicTrack): Promise<{ url: string; audioUrl: string | null } | null> {
   const direct = await musicVideoStream(track).catch(() => null);
-  if (direct?.url) return direct.url;
+  if (direct?.url) return { url: direct.url, audioUrl: direct.audioUrl };
   const query = [track.artist, track.title].filter(Boolean).join(" ").trim();
   if (!query) return null;
   const found = await searchMusicVideos(query).catch(() => []);
   const top = found[0];
   if (!top) return null;
   const stream = await musicVideoStream(top).catch(() => null);
-  return stream?.url ?? null;
+  return stream?.url ? { url: stream.url, audioUrl: stream.audioUrl } : null;
 }
 
 export function MusicHeroMedia({
@@ -34,7 +36,7 @@ export function MusicHeroMedia({
   onMenu?: (event: MouseEvent<HTMLElement>) => void;
 }) {
   const t = useT();
-  const [preview, setPreview] = useState<{ key: string; url: string } | null>(null);
+  const [preview, setPreview] = useState<Preview | null>(null);
   const [readyUrl, setReadyUrl] = useState<string | null>(null);
   const [settled, setSettled] = useState(false);
   const [seeking, setSeeking] = useState(false);
@@ -43,6 +45,7 @@ export function MusicHeroMedia({
   const [teaching, setTeaching] = useState(false);
   const [onScreen, setOnScreen] = useState(true);
   const video = useRef<HTMLVideoElement>(null);
+  const audio = useRef<HTMLAudioElement>(null);
   const art = useRef<HTMLDivElement>(null);
   const ducked = useRef(false);
   const key = item?.id ?? "";
@@ -65,9 +68,9 @@ export function MusicHeroMedia({
     let cancelled = false;
     const timer = setTimeout(() => {
       setSeeking(true);
-      previewUrlFor(item)
-        .then((url) => {
-          if (!cancelled && url) setPreview({ key, url });
+      previewFor(item)
+        .then((found) => {
+          if (!cancelled && found) setPreview({ key, ...found });
         })
         .catch(() => {})
         .finally(() => {
@@ -106,12 +109,28 @@ export function MusicHeroMedia({
   }, []);
   useEffect(() => {
     const el = video.current;
-    if (!el || !playing) return;
-    if (hovering && onScreen) void el.play().catch(() => {});
-    else el.pause();
-  }, [hovering, playing, onScreen]);
+    if (!el || !live) return;
+    const track = audio.current;
+    if (hovering && onScreen) {
+      void el.play().catch(() => {});
+      if (track) {
+        track.currentTime = el.currentTime;
+        void track.play().catch(() => {});
+      }
+      return;
+    }
+    el.pause();
+    track?.pause();
+  }, [hovering, live, onScreen, playing]);
   useEffect(() => {
     const el = video.current;
+    const track = audio.current;
+    if (track) {
+      if (el) el.muted = true;
+      track.volume = PREVIEW_VOLUME;
+      track.muted = muted;
+      return;
+    }
     if (!el) return;
     el.volume = PREVIEW_VOLUME;
     el.muted = muted;
@@ -184,6 +203,16 @@ export function MusicHeroMedia({
               setPreview(null);
               setReadyUrl(null);
             }}
+          />
+        )}
+        {live?.audioUrl && (
+          <audio
+            ref={audio}
+            key={live.audioUrl}
+            src={live.audioUrl}
+            muted
+            loop
+            preload="auto"
           />
         )}
       </div>

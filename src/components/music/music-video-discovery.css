@@ -317,3 +317,12 @@
   outline: 2px solid var(--color-accent);
   outline-offset: 2px;
 }
+.music-video-rail-controls .music-video-more {
+  display: inline-flex;
+  align-items: center;
+  width: auto;
+  padding-inline: 12px;
+  gap: 8px;
+  font-size: 12px;
+}
+.music-video-more-error { margin-inline-end: auto; color: var(--color-ink-muted); font-size: 12px; }

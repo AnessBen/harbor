@@ -47,7 +47,7 @@ export function MusicSearchPanel({
   onClear: () => void;
   onOpenItem: (item: MusicCatalogItem, siblings: MusicCatalogItem[]) => void;
   onPlayTrack: (track: MusicTrack, queue: MusicTrack[]) => void;
-  variant?: "search" | "genre";
+  variant?: "search" | "genre" | "label";
 }) {
   const t = useT();
   const language = useUiLanguage();
@@ -140,13 +140,17 @@ export function MusicSearchPanel({
   return (
     <section
       data-scroll-anchor="search"
-      aria-label={variant === "genre" ? query : t("music.searchResults")}
+      aria-label={variant === "search" ? t("music.searchResults") : query}
       className="music-search-page flex flex-col gap-6"
     >
       <div className="flex items-end justify-between gap-4 border-b border-edge-soft pb-4">
         <div className="min-w-0">
           <p className="text-[10px] font-bold uppercase tracking-[0.42em] text-ink-subtle">
-            {variant === "genre" ? t("music.genre.eyebrow") : t("music.searchResults")}
+            {variant === "genre"
+              ? t("music.genre.eyebrow")
+              : variant === "label"
+                ? t("music.label.eyebrow")
+                : t("music.searchResults")}
           </p>
           <h2
             className="mt-2 truncate font-semibold text-[32px] font-medium leading-tight tracking-tight text-ink"
@@ -154,12 +158,14 @@ export function MusicSearchPanel({
           >
             {query}
           </h2>
-          {variant === "genre" && (
-            <p className="mt-1 text-[13px] text-ink-subtle">{t("music.genre.tagged", { query })}</p>
+          {variant !== "search" && (
+            <p className="mt-1 text-[13px] text-ink-subtle">
+              {t(variant === "label" ? "music.label.roster" : "music.genre.tagged", { query })}
+            </p>
           )}
         </div>
         <div className="flex shrink-0 items-center gap-3">
-          {results && variant !== "genre" && (
+          {results && variant === "search" && (
             <span className="hidden text-[13px] text-ink-subtle sm:inline">
               {t("music.search.resultCount", { count: total })}
             </span>
@@ -170,12 +176,12 @@ export function MusicSearchPanel({
             onClick={onClear}
             className="inline-flex h-11 items-center gap-2 rounded-full border border-edge px-4 text-[12px] font-medium text-ink transition-colors duration-200 ease-out hover:bg-elevated"
           >
-            {variant === "genre" ? (
+            {variant !== "search" ? (
               <ChevronLeft size={14} aria-hidden="true" />
             ) : (
               <X size={14} aria-hidden="true" />
             )}
-            {variant === "genre" ? t("music.genre.back") : t("music.search.resume")}
+            {variant !== "search" ? t("music.genre.back") : t("music.search.resume")}
           </button>
         </div>
       </div>
@@ -218,9 +224,7 @@ export function MusicSearchPanel({
           {top && category === "all" && (
             <MusicCatalogRow
               row={localRow("search:top", t("music.search.top"), "", "wide", [top])}
-              onPlay={(item) =>
-                item.kind === "track" ? onPlayTrack(item, results.tracks) : onOpenItem(item, [item])
-              }
+              onOpen={(item) => onOpenItem(item, [item])}
             />
           )}
           {artists.length > 0 &&
@@ -228,7 +232,7 @@ export function MusicSearchPanel({
             (identitySettled ? (
               <MusicCatalogRow
                 row={localRow("search:artists", t("music.search.artists"), "", "circles", artists)}
-                onPlay={(item) => onOpenItem(item, artists)}
+                onOpen={(item) => onOpenItem(item, artists)}
               />
             ) : (
               <MusicTrackGridSkeleton count={6} />
@@ -241,12 +245,14 @@ export function MusicSearchPanel({
               onPlay={(item) =>
                 item.kind === "track" ? onPlayTrack(item, results.tracks) : onOpenItem(item, tracks)
               }
+              onOpen={(item) => onOpenItem(item, tracks)}
             />
           )}
           {albums.length > 0 && (category === "all" || category === "albums") && (
             <MusicCatalogRow
               row={localRow("search:albums", t("music.search.albums"), "", "covers", albums)}
-              onPlay={(item) => onOpenItem(item, albums)}
+              onOpen={(item) => onOpenItem(item, albums)}
+              playable
             />
           )}
           {playlists.length > 0 && (category === "all" || category === "playlists") && (
@@ -258,7 +264,8 @@ export function MusicSearchPanel({
                 "covers",
                 playlists,
               )}
-              onPlay={(item) => onOpenItem(item, playlists)}
+              onOpen={(item) => onOpenItem(item, playlists)}
+              playable
             />
           )}
         </>

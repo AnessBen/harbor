@@ -1,3 +1,4 @@
+import musicGif from "./music-gif";
 import musicListeningLab from "./music-listening-lab";
 import musicBillboard from "./music-billboard";
 import musicArtistExtras from "./music-artist-extras";
@@ -15,6 +16,7 @@ import musicPossible from "./music-possible";
 import musicLegal from "./music-legal";
 const music: Record<string, string> = {
   ...musicMiku,
+  ...musicGif,
   ...musicListeningLab,
   ...musicBillboard,
   ...musicArtistExtras,
@@ -210,6 +212,9 @@ const music: Record<string, string> = {
   "music.playlist.likeThis": "Criar uma parecida",
   "music.playlist.likeThisWorking": "A criar…",
   "music.playlist.likeThisName": "Como {name}",
+  "music.playlist.likeThisAsk": "De onde deve tirar?",
+  "music.playlist.likeThisFresh": "Apenas músicas novas para mim",
+  "music.playlist.likeThisHeard": "Incluir músicas que já ouvi",
   "music.row.newPlaylist": "Nova playlist",
   "music.search.resultCount": "{count} resultados",
   "music.transport.shuffle": "Aleatório",
@@ -232,6 +237,7 @@ const music: Record<string, string> = {
   "music.card.moreActions": "Mais ações para {title}",
   "music.card.goToArtist": "Ir para o artista",
   "music.card.copyTitle": "Copiar título e artista",
+  "music.card.goToPlaying": "Ir para o que está tocando",
   "music.playlist.none": "Nenhuma playlist ainda.",
   ...musicQueue,
   ...musicTaste,
@@ -436,6 +442,8 @@ const music: Record<string, string> = {
     "Confira o Client ID e a URI de redirecionamento nas configurações do seu aplicativo do Spotify e tente novamente.",
   "music.recovery.title": "Ajuda com a reprodução",
   "music.recovery.failed": "{source} não conseguiu reproduzir esta música",
+  "music.recovery.skipping": "Pulando para a próxima em {seconds}s",
+  "music.recovery.stay": "Ficar aqui",
   "music.recovery.source":
     "Não foi possível carregar o áudio. Tente outra versão abaixo, tente esta fonte novamente ou abra em {source}.",
   "music.recovery.setup":
@@ -511,6 +519,8 @@ const music: Record<string, string> = {
   "music.row.playlistsSubtitle": "{count} playlists",
   "music.row.playlists": "Suas playlists",
   "music.genre.eyebrow": "Gênero",
+  "music.label.eyebrow": "Gravadora",
+  "music.label.roster": "Artistas da {query}",
   "music.genre.tagged": "Melhores artistas, faixas e álbuns em {query}",
   "music.genre.back": "Voltar",
   "music.search.resume": "Voltar para sua música",

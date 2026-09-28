@@ -1,4 +1,4 @@
-import { useRef, useState, type MouseEvent, type ReactNode } from "react";
+import { useRef, useState, type CSSProperties, type MouseEvent, type ReactNode } from "react";
 import { GripVertical, Heart, LoaderCircle, MoreHorizontal, Pause, Play } from "@/components/icons/music-icons";
 import { MusicTrackMenu, useMusicTrackMenuItems } from "./music-track-menu";
 import { MusicCardBadgeChip, type MusicCardBadge } from "@/components/music/music-cover-card";
@@ -12,6 +12,9 @@ import { MusicMediaBadge } from "./music-media-badge";
 import { MusicArtistLink } from "./music-artist-link";
 import { MusicTrackLabels } from "./music-track-labels";
 import { MusicTrackPlaylistChip } from "./music-playlist-chip";
+import "./music-like-burst.css";
+
+const ROW_LIKE_SPOKES = [0, 45, 90, 135, 180, 225, 270, 315];
 
 export function MusicTrackRowHandle({ label }: { label: string }) {
   return (
@@ -30,6 +33,7 @@ export function MusicTrackRow({
   index,
   leading,
   onPlay,
+  onOpen,
   onAddToQueue,
   onAddToPlaylist,
   onGoToArtist,
@@ -49,6 +53,7 @@ export function MusicTrackRow({
   index?: number;
   leading?: ReactNode;
   onPlay: () => void;
+  onOpen?: () => void;
   onAddToQueue?: () => void;
   onAddToPlaylist?: () => void;
   onGoToArtist?: () => void;
@@ -69,6 +74,7 @@ export function MusicTrackRow({
   const save = onToggleFavorite ?? (() => toggleMusicLiked(track));
   const anchorRef = useRef<HTMLButtonElement | null>(null);
   const [open, setOpen] = useState(false);
+  const [burst, setBurst] = useState(0);
   const seed = `track:${track.connectorId ?? ""}:${track.sourceId ?? track.id}`;
 
   const items = useMusicTrackMenuItems(track, {
@@ -108,7 +114,7 @@ export function MusicTrackRow({
               ? t(paused ? "music.play" : "music.pause")
               : t("music.playTrack", { title: track.title, artist: track.artist })
           }
-          className="relative block size-14 shrink-0 overflow-hidden rounded-[4px] bg-elevated"
+          className="music-track-cover relative block size-14 shrink-0 overflow-hidden rounded-[4px] bg-elevated"
         >
           <Poster
             src={track.artwork}
@@ -120,11 +126,9 @@ export function MusicTrackRow({
               aria-hidden="true"
               className="absolute inset-0 grid place-items-center bg-canvas/55 text-ink opacity-0 transition-opacity duration-200 ease-out group-hover:opacity-100 group-focus-within:opacity-100 group-data-[menu-open]:opacity-100"
             >
-              {nowPlaying && !paused ? (
-                <Pause size={16} fill="currentColor" />
-              ) : (
-                <Play size={16} fill="currentColor" />
-              )}
+              <span className="music-track-cover-symbol grid size-8 place-items-center text-ink/85">
+                {nowPlaying && !paused ? <Pause size={18} /> : <Play size={18} />}
+              </span>
             </span>
           </Poster>
           {loading && (
@@ -153,7 +157,7 @@ export function MusicTrackRow({
           <span className="flex min-w-0 items-center gap-[5px]">
             <button
               type="button"
-              onClick={onPlay}
+              onClick={onOpen ?? onPlay}
               className="truncate text-start text-[13px] font-semibold text-ink"
               title={track.title}
             >
@@ -182,8 +186,11 @@ export function MusicTrackRow({
       {saveable && (
         <button
           type="button"
+          data-like-burst
+          data-burst={burst || undefined}
           onClick={(event) => {
             event.stopPropagation();
+            if (!saved) setBurst((count) => count + 1);
             save();
           }}
           aria-pressed={saved}
@@ -192,6 +199,23 @@ export function MusicTrackRow({
           className={`grid h-11 w-11 shrink-0 place-items-center rounded-full transition-[color,background-color,opacity] duration-200 ease-out hover:bg-elevated ${saved ? "text-accent opacity-100" : "text-ink-subtle opacity-0 hover:text-ink focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100 group-data-[menu-open]:opacity-100"}`}
         >
           <Heart size={16} fill={saved ? "currentColor" : "none"} aria-hidden="true" />
+          {burst > 0 && saved && (
+            <span key={burst} className="dock-like-burst" aria-hidden="true">
+              <span className="dock-like-ring" />
+              {ROW_LIKE_SPOKES.map((rotate, index) => (
+                <span
+                  key={index}
+                  className="dock-like-dot"
+                  style={
+                    {
+                      "--rotate": `${rotate}deg`,
+                      "--translate-y": index % 2 ? "-16px" : "-21px",
+                    } as CSSProperties
+                  }
+                />
+              ))}
+            </span>
+          )}
         </button>
       )}
       <button

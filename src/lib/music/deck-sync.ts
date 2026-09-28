@@ -76,17 +76,26 @@ export function subscribeDeckState(apply: (snapshot: DeckSnapshot) => void): () 
   if (!IS_TAURI) return () => {};
   let stop: (() => void) | null = null;
   let live = true;
-  void listen<DeckSnapshot>(EVENT, (event) => apply(event.payload))
+  let retry = 0;
+  const settled = () => {
+    if (!retry) return;
+    window.clearInterval(retry);
+    retry = 0;
+  };
+  void listen<DeckSnapshot>(EVENT, (event) => {
+    settled();
+    apply(event.payload);
+  })
     .then((off) => {
       if (live) stop = off;
       else off();
     })
     .catch(() => {});
   void emit(ASK, {}).catch(() => {});
-  const retry = window.setInterval(() => void emit(ASK, {}).catch(() => {}), 4000);
+  retry = window.setInterval(() => void emit(ASK, {}).catch(() => {}), 4000);
   return () => {
     live = false;
-    window.clearInterval(retry);
+    settled();
     stop?.();
   };
 }

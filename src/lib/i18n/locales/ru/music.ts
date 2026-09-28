@@ -1,3 +1,4 @@
+import musicGif from "./music-gif";
 import musicListeningLab from "./music-listening-lab";
 import musicBillboard from "./music-billboard";
 import musicArtistExtras from "./music-artist-extras";
@@ -15,6 +16,7 @@ import musicPossible from "./music-possible";
 import musicLegal from "./music-legal";
 const music: Record<string, string> = {
   ...musicMiku,
+  ...musicGif,
   ...musicListeningLab,
   ...musicBillboard,
   ...musicArtistExtras,
@@ -209,6 +211,9 @@ const music: Record<string, string> = {
   "music.playlist.likeThis": "Создать похожий",
   "music.playlist.likeThisWorking": "Создание…",
   "music.playlist.likeThisName": "Как {name}",
+  "music.playlist.likeThisAsk": "Откуда брать треки?",
+  "music.playlist.likeThisFresh": "Только новая для меня музыка",
+  "music.playlist.likeThisHeard": "Включить уже прослушанное",
   "music.row.newPlaylist": "Новый плейлист",
   "music.search.resultCount": "Результатов: {count}",
   "music.transport.shuffle": "Перемешать",
@@ -231,6 +236,7 @@ const music: Record<string, string> = {
   "music.card.moreActions": "Другие действия для {title}",
   "music.card.goToArtist": "Перейти к исполнителю",
   "music.card.copyTitle": "Скопировать название и исполнителя",
+  "music.card.goToPlaying": "Перейти к тому, что играет",
   "music.playlist.none": "Плейлистов пока нет.",
   ...musicQueue,
   ...musicTaste,
@@ -435,6 +441,8 @@ const music: Record<string, string> = {
     "Проверьте Client ID и URI перенаправления в настройках приложения Spotify и попробуйте снова.",
   "music.recovery.title": "Помощь с воспроизведением",
   "music.recovery.failed": "{source} не удалось воспроизвести эту песню",
+  "music.recovery.skipping": "Следующий трек через {seconds} с",
+  "music.recovery.stay": "Остаться здесь",
   "music.recovery.source":
     "Не удалось загрузить аудио. Выберите другую версию ниже, повторите попытку с этим источником или откройте песню в {source}.",
   "music.recovery.setup":
@@ -510,6 +518,8 @@ const music: Record<string, string> = {
   "music.row.playlistsSubtitle": "Плейлистов: {count}",
   "music.row.playlists": "Ваши плейлисты",
   "music.genre.eyebrow": "Жанр",
+  "music.label.eyebrow": "Лейбл",
+  "music.label.roster": "Исполнители лейбла {query}",
   "music.genre.tagged": "Лучшие исполнители, треки и альбомы в жанре {query}",
   "music.genre.back": "Назад",
   "music.search.resume": "Вернуться к музыке",

@@ -1,3 +1,6 @@
+import { activeProfileId } from "@/lib/active-profile-id";
+import { observeMusicListening } from "./listening-affinity";
+import { filterBlockedTracks } from "./artist-blocks";
 import { isMusicLiked, likedIdsFor, withoutLiked } from "./liked";
 import { dedupeMusicTracks, sameMusicTrack } from "./track-identity";
 import {
@@ -27,7 +30,7 @@ import {
   writeCheckpointToDb,
   type MusicCheckpoint,
 } from "./session-checkpoint";
-import { getMusicPlaybackOrigin, restoreMusicPlaybackOrigin } from "./playback-origin";
+import { beginMusicQueue, getMusicPlaybackOrigin, restoreMusicPlaybackOrigin } from "./playback-origin";
 import type {
   MusicAudioQuality,
   MusicPlayerState,
@@ -60,6 +63,7 @@ let endHandledAt = 0;
 let enginePrimed = false;
 const autoSkipped = new Set<string>();
 let recoverPlayback: ((message?: string) => void) | null = null;
+let activeProfile = "";
 let audioReady: {
   request: number;
   id: string;
@@ -120,7 +124,12 @@ function warmNeighbours(): void {
   if (warmTimer) return;
   warmTimer = setTimeout(() => {
     warmTimer = null;
-    const around = [state.queue[state.queueIndex + 1], state.queue[state.queueIndex - 1]];
+    const around = [
+      state.queue[state.queueIndex + 1],
+      state.queue[state.queueIndex + 2],
+      state.queue[state.queueIndex + 3],
+      state.queue[state.queueIndex - 1],
+    ];
     const now = Date.now();
     for (const track of around) {
       if (!track) continue;
@@ -262,6 +271,9 @@ if (typeof window !== "undefined") {
 
 function publish(patch: Partial<MusicPlayerState>): void {
   state = { ...state, ...patch };
+  if (patch.currentTime !== undefined || patch.current !== undefined || patch.phase !== undefined) {
+    observeMusicListening(state, `${activeProfile}:${playRequest}`, activeProfile);
+  }
   if (
     patch.current !== undefined ||
     patch.phase === "paused" ||
@@ -307,12 +319,35 @@ function clearLegacyMigration(migration: LegacyMusicMigration | null): void {
   }
 }
 
+export function resetMusicForProfile(): void {
+  if (!initialization && activeProfile === activeProfileId()) return;
+  activeProfile = activeProfileId();
+  initialization = null;
+  enginePrimed = false;
+  audioReady = null;
+  recoverPlayback = null;
+  publish({
+    current: null,
+    queue: [],
+    queueIndex: -1,
+    currentTime: 0,
+    duration: 0,
+    phase: "idle",
+    error: null,
+    likedIds: [],
+    likedTracks: [],
+    recents: [],
+  });
+  void initializeMusic();
+}
+
 export function initializeMusic(): Promise<void> {
   void initializeMusicAudioSettings();
   if (initialization) return initialization;
+  activeProfile = activeProfileId();
   const migration = readLegacyMigration();
   initialization = Promise.all([
-    invoke<NativeMusicBootstrap>("music_db_init", { migration }),
+    invoke<NativeMusicBootstrap>("music_db_init", { migration, profile: activeProfile }),
     readCheckpointFromDb().catch(() => null),
   ])
     .then(([bootstrap, stored]) => {
@@ -650,6 +685,25 @@ function skipUnavailableTrack(track: MusicTrack, queue: MusicTrack[]): boolean {
   return false;
 }
 
+const SOURCE_ATTEMPT_CEILING = 6;
+
+async function nextPlayableSource(
+  attemptTrack: MusicTrack,
+  failedAttempts: Set<string>,
+): Promise<MusicTrack | null> {
+  if (attemptTrack.mediaKind === "video") return null;
+  if (failedAttempts.size >= SOURCE_ATTEMPT_CEILING) return null;
+  const candidates = await sourcesFor(attemptTrack).catch(() => []);
+  const usable = candidates.filter(
+    (candidate) =>
+      candidate.health !== "offline" &&
+      candidate.track.connectorId !== "catalog" &&
+      !failedAttempts.has(`${candidate.track.connectorId}:${candidate.track.id}`),
+  );
+  const want = readMusicPreference("harbor.music.preferred-source.v1");
+  return (usable.find((candidate) => candidate.connectorId === want) ?? usable[0])?.track ?? null;
+}
+
 export async function playMusic(
   track: MusicTrack,
   queue = [track],
@@ -661,6 +715,7 @@ export async function playMusic(
   const request = ++playRequest;
   observedPause = null;
   if (!continuing && !failedAttempts.size) {
+    beginMusicQueue(queue, state.queue);
     resetOrder();
     resumeAt = null;
     autoSkipped.clear();
@@ -704,8 +759,8 @@ export async function playMusic(
       );
       const preferred = readMusicPreference("harbor.music.preferred-source.v1");
       const match =
-        playable.find((candidate) => candidate.connectorId === workingSource) ??
         playable.find((candidate) => candidate.connectorId === preferred) ??
+        playable.find((candidate) => candidate.connectorId === workingSource) ??
         playable[0];
       if (!match) throw new Error("music.source.none");
       const original = track;
@@ -750,8 +805,9 @@ export async function playMusic(
       0,
       50,
     );
+    // Playback refreshes metadata; only saving a song changes the Saved list's order.
     const likedTracks = state.likedIds.includes(track.id)
-      ? [track, ...state.likedTracks.filter((item) => item.id !== track.id)]
+      ? state.likedTracks.map((item) => item.id === track.id ? track : item)
       : state.likedTracks;
     void import("./hidden-recents").then(({ unhideMusicRecent }) => unhideMusicRecent(track.id));
     void invoke("music_add_recent", { track }).catch(() => {});
@@ -779,14 +835,16 @@ export async function playMusic(
               ? []
               : await sourcesFor(attemptTrack).catch(() => []);
           if (request !== playRequest) return;
+          const usable = candidates.filter(
+            (candidate) =>
+              candidate.health !== "offline" &&
+              candidate.track.connectorId !== "catalog" &&
+              !failedAttempts.has(`${candidate.track.connectorId}:${candidate.track.id}`),
+          );
+          const want = readMusicPreference("harbor.music.preferred-source.v1");
           const replacement =
-            failedAttempts.size < 3
-              ? candidates.find(
-                  (candidate) =>
-                    candidate.health !== "offline" &&
-                    candidate.track.connectorId !== "catalog" &&
-                    !failedAttempts.has(`${candidate.track.connectorId}:${candidate.track.id}`),
-                )?.track
+            failedAttempts.size < SOURCE_ATTEMPT_CEILING
+              ? (usable.find((candidate) => candidate.connectorId === want) ?? usable[0])?.track
               : undefined;
           if (!replacement) {
             enginePrimed = false;
@@ -912,6 +970,41 @@ export async function playMusic(
       skipUnavailableTrack(track, queue)
     )
       return;
+    const attemptKey = `${track.connectorId}:${track.id}`;
+    if (!skipUnavailable && !failedAttempts.has(attemptKey)) {
+      failedAttempts.add(attemptKey);
+      publish({ phase: "resolving", error: null });
+      try {
+        await playMusic(track, queue, failedAttempts, true, skipUnavailable);
+        return;
+      } catch {
+        /* the retry failed too; fall through to another source */
+      }
+    }
+    if (!skipUnavailable) {
+      const next = await nextPlayableSource(track, failedAttempts);
+      if (next && request === playRequest) {
+        publish({ phase: "resolving", error: null });
+        try {
+          await playMusic(
+            {
+              ...next,
+              collectionOrigin: track.collectionOrigin ?? {
+                id: track.id,
+                connectorId: track.connectorId,
+              },
+            },
+            queue,
+            failedAttempts,
+            true,
+            skipUnavailable,
+          );
+          return;
+        } catch {
+          /* exhausted; the picker below is the last resort */
+        }
+      }
+    }
     publish({ phase: "error", error: message });
     if (!skipUnavailable && searchedAlternatives && typeof window !== "undefined")
       window.dispatchEvent(new Event("harbor:music-playback-source-required"));
@@ -955,8 +1048,10 @@ export function toggleMusicPlayback(): void {
   void invoke("music_engine_pause", { paused: state.phase === "playing" }).catch(() => {});
 }
 
-export function setMusicQueue(tracks: MusicTrack[]): void {
+export function setMusicQueue(input: MusicTrack[]): void {
   const current = state.current;
+  const kept = filterBlockedTracks(input, "play");
+  const tracks = kept.length > 0 ? kept : input;
   const queueIndex = current
     ? tracks.findIndex((item) => queueTrackKey(item) === queueTrackKey(current))
     : -1;

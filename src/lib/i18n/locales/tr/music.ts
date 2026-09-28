@@ -1,3 +1,4 @@
+import musicGif from "./music-gif";
 import musicListeningLab from "./music-listening-lab";
 import musicBillboard from "./music-billboard";
 import musicArtistExtras from "./music-artist-extras";
@@ -15,6 +16,7 @@ import musicPossible from "./music-possible";
 import musicLegal from "./music-legal";
 const music: Record<string, string> = {
   ...musicMiku,
+  ...musicGif,
   ...musicListeningLab,
   ...musicBillboard,
   ...musicArtistExtras,
@@ -209,6 +211,9 @@ const music: Record<string, string> = {
   "music.playlist.likeThis": "Buna benzerini oluştur",
   "music.playlist.likeThisWorking": "Oluşturuluyor…",
   "music.playlist.likeThisName": "{name} gibi",
+  "music.playlist.likeThisAsk": "Neyden derlensin?",
+  "music.playlist.likeThisFresh": "Yalnızca benim için yeni müzik",
+  "music.playlist.likeThisHeard": "Dinlediğim şarkıları da ekle",
   "music.row.newPlaylist": "Yeni çalma listesi",
   "music.search.resultCount": "{count} sonuç",
   "music.transport.shuffle": "Karışık çal",
@@ -231,6 +236,7 @@ const music: Record<string, string> = {
   "music.card.moreActions": "{title} için diğer işlemler",
   "music.card.goToArtist": "Sanatçıya git",
   "music.card.copyTitle": "Başlığı ve sanatçıyı kopyala",
+  "music.card.goToPlaying": "Çalınana git",
   "music.playlist.none": "Henüz çalma listesi yok.",
   ...musicQueue,
   ...musicTaste,
@@ -436,6 +442,8 @@ const music: Record<string, string> = {
     "Spotify uygulama ayarlarınızdaki Client ID ve yönlendirme URI’sini kontrol edip tekrar deneyin.",
   "music.recovery.title": "Oynatma yardımı",
   "music.recovery.failed": "{source} bu şarkıyı çalamadı",
+  "music.recovery.skipping": "{seconds} sn içinde sonraki şarkıya",
+  "music.recovery.stay": "Burada kal",
   "music.recovery.source":
     "Ses yüklenemedi. Aşağıdan başka bir sürüm deneyin, bu kaynağı yeniden deneyin veya {source} üzerinde açın.",
   "music.recovery.setup":
@@ -511,6 +519,8 @@ const music: Record<string, string> = {
   "music.row.playlistsSubtitle": "{count} çalma listesi",
   "music.row.playlists": "Çalma listelerin",
   "music.genre.eyebrow": "Tür",
+  "music.label.eyebrow": "Plak şirketi",
+  "music.label.roster": "{query} sanatçıları",
   "music.genre.tagged": "{query} türünde en iyi sanatçılar, parçalar ve albümler",
   "music.genre.back": "Geri",
   "music.search.resume": "Müziğine dön",

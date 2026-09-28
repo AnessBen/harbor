@@ -1,3 +1,4 @@
+import musicGif from "./music-gif";
 import musicListeningLab from "./music-listening-lab";
 import musicBillboard from "./music-billboard";
 import musicArtistExtras from "./music-artist-extras";
@@ -15,6 +16,7 @@ import musicPossible from "./music-possible";
 import musicLegal from "./music-legal";
 const music: Record<string, string> = {
   ...musicMiku,
+  ...musicGif,
   ...musicListeningLab,
   ...musicBillboard,
   ...musicArtistExtras,
@@ -209,6 +211,9 @@ const music: Record<string, string> = {
   "music.playlist.likeThis": "Utwórz podobną",
   "music.playlist.likeThisWorking": "Tworzenie…",
   "music.playlist.likeThisName": "Jak {name}",
+  "music.playlist.likeThisAsk": "Z czego ma czerpać?",
+  "music.playlist.likeThisFresh": "Tylko muzyka nowa dla mnie",
+  "music.playlist.likeThisHeard": "Uwzględnij utwory, które znam",
   "music.row.newPlaylist": "Nowa playlista",
   "music.search.resultCount": "Wyniki: {count}",
   "music.transport.shuffle": "Losowo",
@@ -231,6 +236,7 @@ const music: Record<string, string> = {
   "music.card.moreActions": "Więcej działań dla {title}",
   "music.card.goToArtist": "Przejdź do wykonawcy",
   "music.card.copyTitle": "Kopiuj tytuł i wykonawcę",
+  "music.card.goToPlaying": "Przejdź do odtwarzanego",
   "music.playlist.none": "Nie ma jeszcze żadnych playlist.",
   ...musicQueue,
   ...musicTaste,
@@ -435,6 +441,8 @@ const music: Record<string, string> = {
     "Sprawdź Client ID i URI przekierowania w ustawieniach aplikacji Spotify, a następnie spróbuj ponownie.",
   "music.recovery.title": "Pomoc z odtwarzaniem",
   "music.recovery.failed": "{source} nie może odtworzyć tego utworu",
+  "music.recovery.skipping": "Następny utwór za {seconds}s",
+  "music.recovery.stay": "Zostań tutaj",
   "music.recovery.source":
     "Nie udało się wczytać dźwięku. Wypróbuj inną wersję poniżej, ponów próbę z tym źródłem lub otwórz utwór w {source}.",
   "music.recovery.setup":
@@ -510,6 +518,8 @@ const music: Record<string, string> = {
   "music.row.playlistsSubtitle": "Playlisty: {count}",
   "music.row.playlists": "Twoje playlisty",
   "music.genre.eyebrow": "Gatunek",
+  "music.label.eyebrow": "Wytwórnia",
+  "music.label.roster": "Artyści wytwórni {query}",
   "music.genre.tagged": "Najlepsi artyści, utwory i albumy w {query}",
   "music.genre.back": "Wstecz",
   "music.search.resume": "Wróć do swojej muzyki",

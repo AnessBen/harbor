@@ -1,4 +1,13 @@
 const musicNowPlaying: Record<string, string> = {
+  "music.now.sameContext": "वही स्रोत",
+  "music.now.discoverNew": "खोजें",
+  "music.now.moreMode": "और संगीत चुनें",
+  "music.now.continueFrom": "{name} से जारी रखें",
+  "music.now.discoverHint": "मिलते-जुलते गाने, आपकी कतार और हाल के सुनने के इतिहास को छोड़कर।",
+  "music.now.moreAdded": "{count} गाने जोड़े गए",
+  "music.now.contextEnd": "इस स्रोत में और गाने नहीं हैं। खोजें आज़माएँ।",
+  "music.now.noNewSongs": "नए गाने नहीं मिले। बाद में फिर कोशिश करें।",
+  "music.now.moreError": "और गाने लोड नहीं हो सके। फिर कोशिश करें।",
   "music.artist.filmography": "फ़िल्म और टीवी",
   "music.action.error": "कार्रवाई पूरी नहीं हुई। फिर कोशिश करें।",
   "music.radio.error": "रेडियो शुरू नहीं हुआ। फिर कोशिश करें या दूसरा स्रोत चुनें।",
@@ -74,6 +83,11 @@ const musicNowPlaying: Record<string, string> = {
 
   "music.artist.about": "कलाकार के बारे में",
   "music.artist.save": "कलाकार सहेजें",
+  "music.artist.dontPlay": "यह कलाकार न चलाएँ",
+  "music.artist.doPlay": "यह कलाकार फिर से चलाएँ",
+  "music.artist.hideSongs": "इस कलाकार के गाने छिपाएँ",
+  "music.artist.showSongs": "इस कलाकार के गाने दिखाएँ",
+  "music.artist.moreLike": "इस जैसे और कलाकार",
   "music.artist.unsave": "सहेजे गए कलाकारों से हटाएँ",
 
   "music.artist.origin": "मूल स्थान",
@@ -93,6 +107,9 @@ const musicNowPlaying: Record<string, string> = {
   "music.artist.merch": "मर्चेंडाइज़",
 
   "music.artist.official": "आधिकारिक वेबसाइट",
+  "music.artist.social": "सोशल",
+  "music.artist.gallery": "{name} की तस्वीरें",
+  "music.artist.zoom": "ज़ूम",
 
   "music.artist.kicker": "कलाकार",
   "music.artist.listenOn": "यहाँ सुनें",

@@ -6,6 +6,7 @@ export type MusicExploreRequest = {
   queue?: MusicTrack[];
   album?: MusicAlbumRef;
   artist?: MusicArtistRef;
+  label?: string;
 };
 export const MUSIC_EXPLORE_EVENT = "harbor:music-explore";
 let pending: MusicExploreRequest | null = null;

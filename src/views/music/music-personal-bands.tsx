@@ -191,7 +191,7 @@ function freshBand(ctx: MusicBandContext): MusicBand | null {
           row={{ ...charts, title, titleLiteral: true, layout: "trackGrid" }}
           count={9}
           numbered
-          onPlay={(item) => ctx.openItem(item, items)}
+          onOpen={(item) => ctx.openItem(item, items)}
         />
       ),
     };
@@ -209,7 +209,7 @@ function freshBand(ctx: MusicBandContext): MusicBand | null {
         error={ctx.data.freshError}
         onRetry={ctx.data.reload}
         count={9}
-        onPlay={(item) => ctx.openItem(item, items)}
+        onOpen={(item) => ctx.openItem(item, items)}
       />
     ),
   };
@@ -318,6 +318,10 @@ function playlistsBand(ctx: MusicBandContext): MusicBand {
           status={ctx.data.libraryStatus === "loading" ? "loading" : "ready"}
           leadingCard={tile}
           onOpen={(item) => ctx.openLibrary({ view: "playlists", playlistId: item.id })}
+          onPlay={(_item, index) => {
+            const tracks = playlists[index]?.tracks ?? [];
+            if (tracks[0]) ctx.playTrack(tracks[0], tracks);
+          }}
           onViewAll={() => ctx.openLibrary({ view: "playlists" })}
         />
       ),

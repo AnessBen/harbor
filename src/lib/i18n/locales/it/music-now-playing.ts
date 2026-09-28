@@ -1,4 +1,13 @@
 const musicNowPlaying: Record<string, string> = {
+  "music.now.sameContext": "Stessa fonte",
+  "music.now.discoverNew": "Scopri",
+  "music.now.moreMode": "Scegli altra musica",
+  "music.now.continueFrom": "Continua da {name}",
+  "music.now.discoverHint": "Brani simili, esclusi quelli in coda e ascoltati di recente.",
+  "music.now.moreAdded": "Aggiunti {count} brani",
+  "music.now.contextEnd": "Nessun altro brano da questa fonte. Prova Scopri.",
+  "music.now.noNewSongs": "Nessun nuovo brano trovato. Riprova più tardi.",
+  "music.now.moreError": "Impossibile caricare altri brani. Riprova.",
   "music.artist.filmography": "Cinema e TV",
   "music.action.error": "Impossibile completare l’azione. Riprova.",
   "music.radio.error": "Impossibile avviare la radio. Riprova o cambia fonte.",
@@ -75,6 +84,11 @@ const musicNowPlaying: Record<string, string> = {
 
   "music.artist.about": "Informazioni sull’artista",
   "music.artist.save": "Salva artista",
+  "music.artist.dontPlay": "Non riprodurre questo artista",
+  "music.artist.doPlay": "Riproduci di nuovo questo artista",
+  "music.artist.hideSongs": "Nascondi i brani di questo artista",
+  "music.artist.showSongs": "Mostra i brani di questo artista",
+  "music.artist.moreLike": "Altri artisti come questo",
   "music.artist.unsave": "Rimuovi dagli artisti salvati",
 
   "music.artist.origin": "Origine",
@@ -94,6 +108,9 @@ const musicNowPlaying: Record<string, string> = {
   "music.artist.merch": "Merchandising",
 
   "music.artist.official": "Sito ufficiale",
+  "music.artist.social": "Social",
+  "music.artist.gallery": "Foto di {name}",
+  "music.artist.zoom": "Zoom",
 
   "music.artist.kicker": "Artista",
   "music.artist.listenOn": "Ascolta su",

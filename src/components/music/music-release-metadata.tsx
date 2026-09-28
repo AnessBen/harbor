@@ -5,6 +5,8 @@ import { useT, useUiLanguage } from "@/lib/i18n";
 import { loadMusicReleaseMetadata, type MusicReleaseDetails } from "@/lib/music/release-metadata";
 import type { MusicCatalogItem } from "@/lib/music/types";
 import { MusicArtistLink } from "./music-artist-link";
+import { labelByName } from "@/lib/music/label-metadata";
+import { requestMusicGenre, requestMusicLabel } from "@/lib/music/navigation";
 
 export function MusicReleaseMetadata({ item }: { item: MusicCatalogItem }) {
   const t = useT();
@@ -35,8 +37,8 @@ export function MusicReleaseMetadata({ item }: { item: MusicCatalogItem }) {
         new Date(`${details.releaseDate}T00:00:00.000Z`),
       ),
     });
-  if (details.recordLabel)
-    fields.push({ label: t("music.metadata.recordLabel"), value: details.recordLabel });
+  const recordLabel = details.recordLabel;
+  if (recordLabel) fields.push({ label: t("music.metadata.recordLabel"), value: recordLabel });
   if (details.genres.length)
     fields.push({
       label: t(details.kind === "track" ? "music.metadata.albumGenres" : "music.metadata.genres"),
@@ -88,6 +90,34 @@ export function MusicReleaseMetadata({ item }: { item: MusicCatalogItem }) {
                     />
                   ))}
                 </span>
+              ) : field.label === t("music.metadata.recordLabel") && recordLabel ? (
+                <button
+                  type="button"
+                  className="music-meta-link"
+                  onClick={() => {
+                    void labelByName(recordLabel)
+                      .then((found) => {
+                        if (found) requestMusicLabel(found.id, found.name);
+                      })
+                      .catch(() => {});
+                  }}
+                >
+                  {recordLabel}
+                </button>
+              ) : field.label.startsWith(t("music.metadata.genres")) ||
+                field.label === t("music.metadata.albumGenres") ? (
+                <span className="flex flex-wrap gap-x-3 gap-y-1">
+                  {details.genres.map((genre) => (
+                    <button
+                      key={genre}
+                      type="button"
+                      className="music-meta-link"
+                      onClick={() => requestMusicGenre(genre)}
+                    >
+                      {genre}
+                    </button>
+                  ))}
+                </span>
               ) : (
                 field.value
               )}
@@ -95,11 +125,6 @@ export function MusicReleaseMetadata({ item }: { item: MusicCatalogItem }) {
           </div>
         ))}
       </dl>
-      {details.explicit === true && (
-        <span className="rounded-[3px] bg-raised px-2 py-1 text-[10px] font-medium text-ink-muted">
-          {t("music.metadata.explicit")}
-        </span>
-      )}
     </div>
   );
 }

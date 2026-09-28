@@ -64,7 +64,7 @@ export function useDeckFx({
     let alive = true;
     const tick = () => {
       void fxRig.prime(live.current()).then((ok) => {
-        if (alive) setReady(ok);
+        if (alive && ok) setReady(true);
       });
     };
     tick();

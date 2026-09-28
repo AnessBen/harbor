@@ -1,0 +1,16 @@
+[data-like-burst] {
+  position: relative;
+  isolation: isolate;
+}
+[data-like-burst] > svg {
+  position: relative;
+  z-index: 1;
+}
+[data-like-burst][data-burst] > svg {
+  animation: dock-like-pop 0.7s ease-in-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-like-burst][data-burst] > svg {
+    animation: none;
+  }
+}

@@ -367,8 +367,9 @@ fn icon_sizes() -> (u32, u32) {
 }
 
 pub fn set_artwork(url: Option<String>, app_icon: bool) {
+    let own_big = app_icon.then(HICON::default);
     let Some(url) = url.filter(|value| value.starts_with("https://")) else {
-        post_art(Some(HICON::default()), Some(HICON::default()));
+        post_art(Some(HICON::default()), own_big);
         return;
     };
     let (small_px, big_px) = icon_sizes();
@@ -388,7 +389,7 @@ pub fn set_artwork(url: Option<String>, app_icon: bool) {
             let large = decoded.resize_exact(big_px, big_px, image::imageops::FilterType::Lanczos3);
             hicon_from_rgba(large.to_rgba8().as_raw(), big_px)
         } else {
-            Some(HICON::default())
+            None
         };
         if small.is_some() || big.is_some() {
             post_art(small, big);

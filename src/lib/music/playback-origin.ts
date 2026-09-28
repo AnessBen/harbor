@@ -1,10 +1,13 @@
 import { useSyncExternalStore } from "react";
 import { musicContextArtwork, recordMusicRecentContext } from "./recent-context";
-import type { MusicTrack } from "./types";
+import { queueTrackKey } from "./queue-order";
+import type { MusicCatalogItem, MusicTrack } from "./types";
 
 export type MusicPlaybackOrigin =
   | { kind: "playlist"; id: string; name: string }
-  | { kind: "similar"; id: string; name: string }
+  | { kind: "similar"; id: string; name: string; seed?: MusicTrack }
+  | { kind: "catalog"; id: string; name: string; item: Exclude<MusicCatalogItem, { kind: "track" }> }
+  | { kind: "spotify"; id: string; name: string; collection: "playlist" | "liked"; nextOffset: number | null }
   | null;
 
 /**
@@ -15,9 +18,39 @@ export type MusicPlaybackOrigin =
  */
 let origin: MusicPlaybackOrigin = null;
 const listeners = new Set<() => void>();
+const queues = new Map<string, MusicPlaybackOrigin>();
+let queueRevision = 0;
+const queueKey = (tracks: readonly MusicTrack[]) => JSON.stringify(tracks.map(queueTrackKey));
+
+/** Register before source selection; collectionOrigin survives resolution to another provider. */
+export function registerMusicQueueOrigin(tracks: readonly MusicTrack[], from: MusicPlaybackOrigin): void {
+  queues.set(queueKey(tracks), from);
+  while (queues.size > 40) queues.delete(queues.keys().next().value!);
+}
+
+export function beginMusicQueue(tracks: readonly MusicTrack[], previous: readonly MusicTrack[]): void {
+  const key = queueKey(tracks);
+  if (queues.has(key)) {
+    queueRevision += 1;
+    setMusicPlaybackOrigin(queues.get(key) ?? null);
+    queues.delete(key);
+  } else if (key !== queueKey(previous)) {
+    queueRevision += 1;
+    setMusicPlaybackOrigin(null);
+  }
+}
+
+export const getMusicQueueRevision = () => queueRevision;
+
+export function registerMusicCatalogOrigin(item: MusicCatalogItem, tracks: readonly MusicTrack[]): void {
+  registerMusicQueueOrigin(tracks, item.kind === "track" ? null : {
+    kind: "catalog", id: `${item.connectorId}:${item.kind}:${item.id}`,
+    name: item.kind === "album" ? item.title : item.name, item,
+  });
+}
 
 export function setMusicPlaybackOrigin(next: MusicPlaybackOrigin): void {
-  if (origin?.kind === next?.kind && origin?.id === next?.id) return;
+  if (origin === next) return;
   origin = next;
   for (const listener of listeners) listener();
 }
@@ -33,7 +66,9 @@ export function getMusicPlaybackOrigin(): MusicPlaybackOrigin {
 
 export function recordMusicPlaylistPlayback(
   playlist: { id: string; name: string; tracks?: readonly MusicTrack[] } | null | undefined,
+  queue = playlist?.tracks ?? [],
 ): void {
+  registerMusicQueueOrigin(queue, playlist?.id ? { kind: "playlist", id: playlist.id, name: playlist.name } : null);
   setMusicPlaybackOrigin(
     playlist && playlist.id ? { kind: "playlist", id: playlist.id, name: playlist.name } : null,
   );
@@ -66,7 +101,9 @@ export function recordMusicSimilarPlayback(
   seed: MusicTrack,
   mix: readonly MusicTrack[] = [],
 ): void {
-  setMusicPlaybackOrigin({ kind: "similar", id: seed.id, name: seed.title });
+  const from: MusicPlaybackOrigin = { kind: "similar", id: seed.id, name: seed.title, seed };
+  registerMusicQueueOrigin(mix, from);
+  setMusicPlaybackOrigin(from);
   recordMusicRecentContext(
     {
       kind: "similar",

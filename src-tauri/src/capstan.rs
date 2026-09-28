@@ -53,9 +53,14 @@ async fn spawn(app: &AppHandle) -> Result<Arc<Bridge>, String> {
     let mut cmd = tokio::process::Command::new(&jvm.exe);
     cmd.arg("-cp").arg(classpath.join(separator));
     if let Some(tools) = &layout.dex_tools {
-        cmd.arg(format!("-Dharbor.capstan.dexTools={}", tools.display()));
+        cmd.arg(format!(
+            "-Dharbor.capstan.dexTools={}",
+            dunce::simplified(tools).display()
+        ));
     }
-    cmd.arg(ENTRY_CLASS).arg("--data-dir").arg(&data_dir);
+    cmd.arg(ENTRY_CLASS)
+        .arg("--data-dir")
+        .arg(dunce::simplified(&data_dir));
     cmd.stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -137,8 +142,11 @@ async fn spawn(app: &AppHandle) -> Result<Arc<Bridge>, String> {
     Ok(Arc::new(Bridge { tx, pending, alive }))
 }
 
+// Tauri canonicalizes the executable at startup, so every path built from resource_dir()
+// carries Windows \\?\ verbatim prefix, and the java launcher skips such a classpath entry
+// without reporting it, leaving only ClassNotFoundException on the entry class.
 fn jar_string(path: &Path) -> String {
-    path.to_string_lossy().into_owned()
+    dunce::simplified(path).to_string_lossy().into_owned()
 }
 
 async fn ensure(app: &AppHandle) -> Result<Arc<Bridge>, String> {

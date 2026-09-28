@@ -1,7 +1,9 @@
+import { MusicNowPlayingMark } from "./music-now-playing-mark";
 import { Fragment, type MouseEvent, type ReactNode } from "react";
 import { Play } from "@/components/icons/music-icons";
 import { MusicArtistCard } from "@/components/music/music-artist-card";
 import { useMusicItemMenu } from "@/components/music/music-item-menu";
+import { useMusicCatalogPlayback } from "./use-music-catalog-playback";
 import {
   coverCardSeed,
   coverCardSubtitle,
@@ -105,22 +107,20 @@ function WideFeature({
   const heading = coverCardTitle(item);
   const caption = subtitle ?? coverCardSubtitle(item);
   const seed = coverCardSeed(item);
-  const activate = onPlay ?? onOpen;
-  const label = onPlay
+  const activate = onOpen ?? onPlay;
+  const label = !onOpen && onPlay
     ? item.kind === "track"
       ? t("music.playTrack", { title: heading, artist: caption })
       : t("music.card.playItem", { title: heading })
     : t("music.card.openItem", { title: heading });
 
   return (
-    <button
-      type="button"
-      onClick={activate}
+    <div
       onContextMenu={onMenu}
-      aria-label={label}
-      className="music-top-result group flex w-full min-w-0 items-center gap-6 rounded-xl border border-edge-soft bg-surface p-5 text-start"
+      className="music-top-result group relative flex w-full min-w-0 items-center gap-6 rounded-xl border border-edge-soft bg-surface p-5 text-start"
     >
-      <span className="relative block w-[168px] shrink-0 overflow-hidden rounded-md">
+      <button type="button" onClick={activate} aria-label={label} className="absolute inset-0 rounded-xl" />
+      <span className="pointer-events-none relative block w-[168px] shrink-0 overflow-hidden rounded-md">
         {item.kind === "playlist" ? (
           <MusicPlaylistCover artwork={item.artwork} seed={seed} className="rounded-md" />
         ) : (
@@ -132,7 +132,7 @@ function WideFeature({
           />
         )}
       </span>
-      <span className="flex min-w-0 flex-1 flex-col">
+      <span className="pointer-events-none relative flex min-w-0 flex-1 flex-col">
         <span className="flex min-w-0 items-center gap-[5px]">
           <span
             className="truncate font-semibold text-[22px] leading-tight tracking-tight text-ink"
@@ -147,17 +147,19 @@ function WideFeature({
             {caption}
           </span>
         )}
-        {activate && (
-          <span
-            aria-hidden="true"
-            className="mt-5 inline-flex h-11 w-fit items-center gap-2 rounded-full bg-ink px-5 text-[12px] font-semibold text-canvas transition-transform duration-200 ease-out group-hover:scale-[1.02]"
+        {onPlay && (
+          <button
+            type="button"
+            onClick={onPlay}
+            aria-label={t("music.card.playItem", { title: heading })}
+            className="pointer-events-auto mt-5 inline-flex h-11 w-fit items-center gap-2 rounded-full bg-ink px-5 text-[12px] font-semibold text-canvas transition-transform duration-200 ease-out hover:scale-[1.02] motion-reduce:transform-none"
           >
             <Play size={14} fill="currentColor" />
             {t("music.play")}
-          </span>
+          </button>
         )}
       </span>
-    </button>
+    </div>
   );
 }
 
@@ -182,6 +184,9 @@ export function MusicCatalogRow({
   onOpen,
   onMenu,
   onViewAll,
+  playable = true,
+  playingItemId,
+  liveItemId,
   viewAllLabel,
   titleLogo,
   grid = false,
@@ -207,6 +212,9 @@ export function MusicCatalogRow({
   onOpen?: (item: MusicCatalogItem, index: number) => void;
   onMenu?: (item: MusicCatalogItem, event: MouseEvent<HTMLElement>) => void;
   onViewAll?: () => void;
+  playable?: boolean;
+  playingItemId?: string | null;
+  liveItemId?: string | null;
   viewAllLabel?: string;
   titleLogo?: ReactNode;
   grid?: boolean;
@@ -214,7 +222,12 @@ export function MusicCatalogRow({
   className?: string;
 }) {
   const t = useT();
-  const itemMenu = useMusicItemMenu({ onPlay, onOpen });
+  const playback = useMusicCatalogPlayback();
+  const play = onPlay ?? ((item: MusicCatalogItem) => { void playback.play(item, row.items, row.id); });
+  const itemMenu = useMusicItemMenu({
+    onPlay: onPlay || playable || row.layout === "trackGrid" || row.layout === "wide" ? play : undefined,
+    onOpen,
+  });
   const openMenu = (item: MusicCatalogItem, index: number, event: MouseEvent<HTMLElement>) => {
     if (onMenu) {
       onMenu(item, event);
@@ -254,7 +267,8 @@ export function MusicCatalogRow({
         count={count ?? 9}
         emptyLabel={emptyLabel}
         badgeFor={(_track, index) => badgeAt(tracks[index], index)}
-        onPlay={(_track, index) => onPlay?.(tracks[index], index)}
+        onPlay={(_track, index) => play(tracks[index], index)}
+        onOpen={onOpen && ((_track, index) => onOpen(tracks[index], index))}
         onViewAll={onViewAll}
         viewAllLabel={viewAllLabel}
         className={className}
@@ -307,11 +321,13 @@ export function MusicCatalogRow({
           <WideFeature
             item={feature}
             badge={badgeAt(feature, 0)}
-            onPlay={onPlay && (() => onPlay(feature, 0))}
+            onPlay={() => play(feature, 0)}
             onOpen={onOpen && (() => onOpen(feature, 0))}
             onMenu={(event) => openMenu(feature, 0, event)}
           />
         )}
+        {playback.error && <p role="alert" className="text-[13px] text-ink-muted">{playback.error}</p>}
+        {itemMenu.menu}
       </section>
     );
   }
@@ -355,7 +371,7 @@ export function MusicCatalogRow({
         artist={item}
         albumArtwork={artistArtwork?.(item)}
         subtitle={artistSubtitle?.(item)}
-        onPlay={onPlay && (() => onPlay(item, index))}
+        onPlay={onPlay && (() => play(item, index))}
         onOpen={onOpen && (() => onOpen(item, index))}
         onMenu={(event) => openMenu(item, index, event)}
       />
@@ -365,9 +381,11 @@ export function MusicCatalogRow({
         item={item}
         badge={badgeAt(item, index)}
         explicitMark={explicitMarks.get(item.id) ?? null}
-        onPlay={onPlay && (() => onPlay(item, index))}
+        onPlay={onPlay || playable ? () => play(item, index) : undefined}
+        playing={playingItemId === item.id || (playback.pending?.id === item.id && playback.pending?.connectorId === item.connectorId)}
         onOpen={onOpen && (() => onOpen(item, index))}
         onMenu={(event) => openMenu(item, index, event)}
+        overlay={liveItemId === item.id ? <MusicNowPlayingMark /> : undefined}
       />
     ),
   );
@@ -400,6 +418,7 @@ export function MusicCatalogRow({
   return (
     <>
       {body}
+      {playback.error && <p role="alert" className="px-[9px] text-[13px] text-ink-muted">{playback.error}</p>}
       {itemMenu.menu}
     </>
   );

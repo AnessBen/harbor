@@ -1707,18 +1707,6 @@
     transparent
   );
 }
-.dj-bay-head > span:first-child::before {
-  content: "";
-  display: inline-block;
-  width: 3px;
-  height: 3px;
-  margin-inline-end: 7px;
-  margin-bottom: 2px;
-  border-radius: 50%;
-  background: var(--dj-accent);
-  vertical-align: middle;
-}
-
 .dj-fx-foot {
   padding-top: 10px;
 }

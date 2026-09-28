@@ -14,7 +14,11 @@ import { ModalShell, useModalExit } from "@/components/modal-shell";
 import { MusicSourceRow } from "@/components/music/music-source-row";
 import { useT } from "@/lib/i18n";
 import { clearMusicError, getMusicState, playMusic } from "@/lib/music/player";
-import { getMusicSourceCandidates, getSpotifyStatus } from "@/lib/music/sources";
+import {
+  getMusicSourceCandidates,
+  getSpotifyStatus,
+  musicSourcePriority,
+} from "@/lib/music/sources";
 import { useMusicConnections } from "./music-connections";
 import { musicProviderSearch, musicRecoveryKey, musicSourceName } from "@/lib/music/recovery";
 import { openUrl } from "@/lib/window";
@@ -108,15 +112,19 @@ export function MusicSourcePickerProvider({ children }: { children: ReactNode })
           .catch(() => {});
         return;
       }
-      if (preferred && !forceChoice) {
+      if (!forceChoice) {
         setRequest(null);
         setResolving(track);
         void getMusicSourceCandidates(track)
           .then(async (candidates) => {
             if (generation.current !== current) return;
-            const match = candidates.find(
-              (candidate) => candidate.connectorId === preferred && candidate.health !== "offline",
-            );
+            const usable = candidates.filter((candidate) => candidate.health !== "offline");
+            const match =
+              usable.find((candidate) => candidate.connectorId === preferred) ??
+              [...usable].sort(
+                (left, right) =>
+                  musicSourcePriority(left.connectorId) - musicSourcePriority(right.connectorId),
+              )[0];
             if (!match) {
               setRequest({ track, queue, onReady: ready });
               return;

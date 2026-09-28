@@ -1,3 +1,5 @@
+import playlistVariation from "@/assets/music-icons/playlist-variation.svg?raw";
+import playlistRename from "@/assets/music-icons/playlist-rename.svg?raw";
 import type { SVGProps } from "react";
 import addToPlaylist from "@/assets/music-icons/add-to-playlist.svg?raw";
 import album from "@/assets/music-icons/album.svg?raw";
@@ -6,6 +8,11 @@ import arrowLeft from "@/assets/music-icons/arrow-left.svg?raw";
 import arrowRight from "@/assets/music-icons/arrow-right.svg?raw";
 import arrowUpRight from "@/assets/music-icons/arrow-up-right.svg?raw";
 import artist from "@/assets/music-icons/artist.svg?raw";
+import artistSimilar from "@/assets/music-icons/artist-similar.svg?raw";
+import artistPlaybackOff from "@/assets/music-icons/artist-playback-off.svg?raw";
+import artistPlaybackOn from "@/assets/music-icons/artist-playback-on.svg?raw";
+import artistSongsHidden from "@/assets/music-icons/artist-songs-hidden.svg?raw";
+import artistSongsVisible from "@/assets/music-icons/artist-songs-visible.svg?raw";
 import audioSettings from "@/assets/music-icons/audio-settings.svg?raw";
 import captions from "@/assets/music-icons/captions.svg?raw";
 import captionsOff from "@/assets/music-icons/captions-off.svg?raw";
@@ -90,6 +97,11 @@ const GLYPHS = {
   "arrow-right": prepare(arrowRight),
   "arrow-up-right": prepare(arrowUpRight),
   "artist": prepare(artist),
+  "artist-similar": prepare(artistSimilar),
+  "artist-playback-off": prepare(artistPlaybackOff),
+  "artist-playback-on": prepare(artistPlaybackOn),
+  "artist-songs-hidden": prepare(artistSongsHidden),
+  "artist-songs-visible": prepare(artistSongsVisible),
   "audio-settings": prepare(audioSettings),
   "captions": prepare(captions),
   "captions-off": prepare(captionsOff),
@@ -133,6 +145,8 @@ const GLYPHS = {
   "play": prepare(play),
   "plus": prepare(plus),
   "previous": prepare(previous),
+  "playlist-variation": prepare(playlistVariation),
+  "playlist-rename": prepare(playlistRename),
   "queue": prepare(queue),
   "queue-next": prepare(queueNext),
   "radio": prepare(radio),

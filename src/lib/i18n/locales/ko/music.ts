@@ -1,3 +1,4 @@
+import musicGif from "./music-gif";
 import musicListeningLab from "./music-listening-lab";
 import musicBillboard from "./music-billboard";
 import musicArtistExtras from "./music-artist-extras";
@@ -15,6 +16,7 @@ import musicPossible from "./music-possible";
 import musicLegal from "./music-legal";
 const music: Record<string, string> = {
   ...musicMiku,
+  ...musicGif,
   ...musicListeningLab,
   ...musicBillboard,
   ...musicArtistExtras,
@@ -209,6 +211,9 @@ const music: Record<string, string> = {
   "music.playlist.likeThis": "비슷한 플레이리스트 만들기",
   "music.playlist.likeThisWorking": "만드는 중…",
   "music.playlist.likeThisName": "{name} 같은",
+  "music.playlist.likeThisAsk": "무엇에서 가져올까요?",
+  "music.playlist.likeThisFresh": "나에게 새로운 음악만",
+  "music.playlist.likeThisHeard": "들어본 곡도 포함",
   "music.row.newPlaylist": "새 재생목록",
   "music.search.resultCount": "결과 {count}개",
   "music.transport.shuffle": "셔플",
@@ -231,6 +236,7 @@ const music: Record<string, string> = {
   "music.card.moreActions": "{title}의 추가 작업",
   "music.card.goToArtist": "아티스트로 이동",
   "music.card.copyTitle": "제목과 아티스트 복사",
+  "music.card.goToPlaying": "재생 중인 목록으로 이동",
   "music.playlist.none": "아직 플레이리스트가 없습니다.",
   ...musicQueue,
   ...musicTaste,
@@ -431,6 +437,8 @@ const music: Record<string, string> = {
     "Spotify 앱 설정에서 Client ID와 리디렉션 URI를 확인한 후 다시 시도하세요.",
   "music.recovery.title": "재생 도움말",
   "music.recovery.failed": "{source}에서 이 곡을 재생하지 못했습니다",
+  "music.recovery.skipping": "{seconds}초 후 다음 곡으로",
+  "music.recovery.stay": "여기 유지",
   "music.recovery.source":
     "오디오를 불러오지 못했습니다. 아래에서 다른 버전을 선택하거나, 이 소스로 다시 시도하거나, {source}에서 여세요.",
   "music.recovery.setup":
@@ -505,6 +513,8 @@ const music: Record<string, string> = {
   "music.row.playlistsSubtitle": "재생목록 {count}개",
   "music.row.playlists": "내 재생목록",
   "music.genre.eyebrow": "장르",
+  "music.label.eyebrow": "음반 레이블",
+  "music.label.roster": "{query} 소속 아티스트",
   "music.genre.tagged": "{query}의 인기 아티스트, 트랙, 앨범",
   "music.genre.back": "뒤로",
   "music.search.resume": "내 음악으로 돌아가기",

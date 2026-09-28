@@ -8,7 +8,8 @@ import { useMusicNavigate } from "@/components/music/music-navigate";
 import { useMusicPlaylistPicker } from "@/components/music/music-playlist-picker";
 import { MusicTrackRow } from "@/components/music/music-track-row";
 import { useT } from "@/lib/i18n";
-import { enqueueMusic, useMusicPlayer } from "@/lib/music/player";
+import { enqueueMusic } from "@/lib/music/player";
+import { useMusicPlayback } from "@/lib/music/use-music-playback";
 import type { MusicTrack } from "@/lib/music/types";
 
 export type MusicSectionStatus = "loading" | "ready" | "error";
@@ -160,6 +161,7 @@ export function MusicTrackGrid({
   badgeFor,
   leadingFor,
   onPlay,
+  onOpen,
   onAddToQueue,
   onAddToPlaylist,
   onGoToArtist,
@@ -183,6 +185,7 @@ export function MusicTrackGrid({
   badgeFor?: (track: MusicTrack, index: number) => MusicCardBadge | null | undefined;
   leadingFor?: (track: MusicTrack, index: number) => ReactNode;
   onPlay: (track: MusicTrack, index: number) => void;
+  onOpen?: (track: MusicTrack, index: number) => void;
   onAddToQueue?: (track: MusicTrack, index: number) => void;
   onAddToPlaylist?: (track: MusicTrack, index: number) => void;
   onGoToArtist?: (track: MusicTrack, index: number) => void;
@@ -207,7 +210,7 @@ export function MusicTrackGrid({
   );
   const { openPlaylistPicker } = useMusicPlaylistPicker();
   const { goToArtist, goToAlbum } = useMusicNavigate();
-  const player = useMusicPlayer();
+  const player = useMusicPlayback();
   const isCurrent = (track: MusicTrack) =>
     [player.current, player.current?.collectionOrigin].some(
       (identity) => identity?.id === track.id && identity.connectorId === track.connectorId,
@@ -246,7 +249,7 @@ export function MusicTrackGrid({
   } else if (status === "error") {
     body = <MusicSectionError message={error} onRetry={onRetry} />;
   } else if (status === "loading") {
-    body = <MusicTrackGridSkeleton count={count} />;
+    body = <MusicTrackGridSkeleton count={count || 9} />;
   } else if (visible.length === 0) {
     body = <MusicSectionEmpty label={emptyLabel} />;
   } else {
@@ -266,6 +269,7 @@ export function MusicTrackGrid({
               setRadioStatus(null);
               onPlay(track, index);
             }}
+            onOpen={onOpen && (() => onOpen(track, index))}
             onAddToQueue={() => addToQueue(track, index)}
             onAddToPlaylist={() => addToPlaylist(track, index)}
             onGoToArtist={() => toArtist(track, index)}

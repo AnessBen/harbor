@@ -1,3 +1,4 @@
+import musicGif from "./music-gif";
 import musicListeningLab from "./music-listening-lab";
 import musicBillboard from "./music-billboard";
 import musicArtistExtras from "./music-artist-extras";
@@ -15,6 +16,7 @@ import musicPossible from "./music-possible";
 import musicLegal from "./music-legal";
 const music: Record<string, string> = {
   ...musicMiku,
+  ...musicGif,
   ...musicListeningLab,
   ...musicBillboard,
   ...musicArtistExtras,
@@ -210,6 +212,9 @@ const music: Record<string, string> = {
   "music.playlist.likeThis": "Tạo danh sách tương tự",
   "music.playlist.likeThisWorking": "Đang tạo…",
   "music.playlist.likeThisName": "Giống {name}",
+  "music.playlist.likeThisAsk": "Lấy nhạc từ đâu?",
+  "music.playlist.likeThisFresh": "Chỉ nhạc mới với tôi",
+  "music.playlist.likeThisHeard": "Bao gồm bài đã nghe",
   "music.row.newPlaylist": "Danh sách phát mới",
   "music.search.resultCount": "{count} kết quả",
   "music.transport.shuffle": "Phát ngẫu nhiên",
@@ -232,6 +237,7 @@ const music: Record<string, string> = {
   "music.card.moreActions": "Thao tác khác cho {title}",
   "music.card.goToArtist": "Đến trang nghệ sĩ",
   "music.card.copyTitle": "Sao chép tên bài hát và nghệ sĩ",
+  "music.card.goToPlaying": "Đến mục đang phát",
   "music.playlist.none": "Chưa có danh sách phát.",
   ...musicQueue,
   ...musicTaste,
@@ -435,6 +441,8 @@ const music: Record<string, string> = {
     "Kiểm tra Client ID và URI chuyển hướng trong phần cài đặt ứng dụng Spotify rồi thử lại.",
   "music.recovery.title": "Trợ giúp phát nhạc",
   "music.recovery.failed": "{source} không thể phát bài hát này",
+  "music.recovery.skipping": "Chuyển bài sau {seconds} giây",
+  "music.recovery.stay": "Ở lại đây",
   "music.recovery.source":
     "Không thể tải âm thanh. Hãy thử phiên bản khác bên dưới, thử lại nguồn này hoặc mở trên {source}.",
   "music.recovery.setup":
@@ -509,6 +517,8 @@ const music: Record<string, string> = {
   "music.row.playlistsSubtitle": "{count} danh sách phát",
   "music.row.playlists": "Danh sách phát của bạn",
   "music.genre.eyebrow": "Thể loại",
+  "music.label.eyebrow": "Hãng đĩa",
+  "music.label.roster": "Nghệ sĩ của {query}",
   "music.genre.tagged": "Nghệ sĩ, bài hát và album hàng đầu trong {query}",
   "music.genre.back": "Quay lại",
   "music.search.resume": "Về lại nhạc của bạn",

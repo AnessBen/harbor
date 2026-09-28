@@ -1,10 +1,7 @@
-import { useEffect, useRef } from "react";
-import portrait from "@/assets/music/miku-idle.webp";
-import idleAtlas from "@/assets/music/miku-idle-motion.webp";
-import closedEyes from "@/assets/music/miku-eyes-closed.webp";
-import atlas from "@/assets/music/miku-motion.webp";
-import swayDance from "@/assets/music/miku-dance-sway.webp";
-import hipDance from "@/assets/music/miku-dance-hips.webp";
+import { useEffect, useRef, useState } from "react";
+import { useMusicAppearance } from "@/lib/music/appearance";
+import { MIKU_ARTWORK, type MikuArtworkSet } from "@/lib/music/miku-artwork";
+import type { MikuModel } from "@/lib/music/miku-models";
 import { acquireMusicMeter } from "@/lib/music/audio-meter";
 import { createMikuDance, createMikuDanceMemory, MIKU_DANCE } from "@/lib/music/miku-dance";
 import { createMikuExpression } from "@/lib/music/miku-expression";
@@ -13,18 +10,23 @@ import type { MusicTrack } from "@/lib/music/types";
 import type { MusicMeterStream } from "./music-dock-visualizer";
 import "./music-miku-visualizer.css";
 
+// Expanding Now playing or temporarily hiding the dock must not restart the
+// repertoire at the first dance on every song.
+const sessionDanceMemory = createMikuDanceMemory();
+
 /* ANIMATION STORYBOARD
  *   idle      hands rest with quiet breathing/blinks; no paused audio analysis
- *   0–620ms   measured audio arrives → palms rise to the headphone cups
+ *   0–780ms   measured audio arrives → shoulders lead palms to the headphone cups
  *   listening bass/level envelope drives nods; hair follows with a softer response
- *   42s+      a strong musical phrase earns a short dance, then headphones
- *   75–85s    listening between dances; repertoire/cooldown survive song changes
- *   850ms     silence or lost signal → hands lower, movement settles
+ *   drop      a sustained percussion lift earns a dance on the musical phrase
+ *   breakdown finish the beat-aligned loop, then hands down and headphones
+ *   16–20s    minimum listening break; a new strong section earns another dance
+ *   silence   finish the visible gesture → rest the head → lower the hands
  *   reduced   static portrait; no animation loop or native meter acquired
  */
-const DANCE_SHEETS = [swayDance, hipDance];
 export function MikuArtwork({ className = "" }: { className?: string }) {
-  return <img className={`music-miku-art ${className}`} src={portrait} alt="" aria-hidden="true" draggable={false} />;
+  const { mikuModel } = useMusicAppearance();
+  return <img className={`music-miku-art ${className}`} src={MIKU_ARTWORK[mikuModel].portrait} alt="" aria-hidden="true" draggable={false} />;
 }
 
 export function MusicMikuVisualizer({ track, playing, stream = acquireMusicMeter }: {
@@ -32,24 +34,57 @@ export function MusicMikuVisualizer({ track, playing, stream = acquireMusicMeter
   playing: boolean;
   stream?: MusicMeterStream;
 }) {
+  const { mikuModel } = useMusicAppearance();
+  const [active, setActive] = useState<{ model: MikuModel; art: MikuArtworkSet } | null>(null);
+  useEffect(() => {
+    let disposed = false;
+    const art = MIKU_ARTWORK[mikuModel];
+    // Switch the complete pose set together; never put one model's eyes over
+    // another model's face while its larger sprite sheet is loading.
+    const images = [art.motion, art.eyes, art.idle].map(src => {
+      const image = new Image(); image.src = src;
+      return image.decode();
+    });
+    void Promise.all(images).then(() => {
+      if (!disposed) setActive({ model: mikuModel, art });
+    }).catch(() => { /* Keep the prior model, or the static portrait, on load failure. */ });
+    return () => { disposed = true; };
+  }, [mikuModel]);
   const root = useRef<HTMLDivElement>(null);
-  const danceMemory = useRef(createMikuDanceMemory());
+  const danceMemory = useRef(sessionDanceMemory);
   const playingRef = useRef(playing);
   const refresh = useRef<(() => void) | undefined>(undefined);
   useEffect(() => { playingRef.current = playing; refresh.current?.(); }, [playing]);
   const trackId = track.id, connectorId = track.connectorId ?? null;
   const supported = connectorId !== "spotify" && track.mediaKind !== "video";
+  const identity = useRef({ trackId, connectorId });
+  identity.current = { trackId, connectorId };
+  useEffect(() => { refresh.current?.(); }, [trackId, connectorId]);
   useEffect(() => {
     const host = root.current;
-    if (!host) return;
+    if (!host || !active) return;
+    const danceSheets = active.art.dances;
     const sprite = host.querySelector<HTMLElement>(".music-miku-sprite");
     const dancer = host.querySelector<HTMLElement>(".music-miku-dancer");
     const eyelids = host.querySelector<HTMLElement>(".music-miku-eyes");
     let release: (() => void) | undefined, frame = 0, disposed = false;
     let target = 0, energy = 0, lift = 0, bob = 0, sway = 0;
+    let releaseBob = 0, releaseSway = 0;
+    let settling = 0, settleBob = 0, settleSway = 0;
     let sampledAt = 0, audibleAt = 0, previous = 0, painted = -1;
     const groove = createMikuGroove();
+    let measuredTrack = identity.current;
+    const reconcileTrack = () => {
+      const next = identity.current;
+      if (next.trackId === measuredTrack.trackId && next.connectorId === measuredTrack.connectorId) return;
+      measuredTrack = next;
+      // Keep the visible performance alive across track changes. Reset only
+      // the audio clock; the existing gesture can finish and lower its hands.
+      groove.reset(true); target = energy = 0; sampledAt = audibleAt = 0;
+      dance.selectTrack(JSON.stringify([next.connectorId, next.trackId]));
+    };
     const dance = createMikuDance(danceMemory.current);
+    dance.selectTrack(JSON.stringify([measuredTrack.connectorId, measuredTrack.trackId]));
     const expression = createMikuExpression();
     let eyesClosed = false;
     let danceState = dance.advance(0, { beat: 0, locked: false, excitement: 0 }, false, false);
@@ -60,12 +95,15 @@ export function MusicMikuVisualizer({ track, playing, stream = acquireMusicMeter
       if (sheets.has(kind)) return;
       const sheet = new Image();
       sheets.set(kind, sheet);
-      sheet.onload = () => { if (!disposed) loaded.add(kind); };
-      sheet.src = DANCE_SHEETS[kind];
+      sheet.src = danceSheets[kind];
+      void sheet.decode().then(() => { if (!disposed) loaded.add(kind); }).catch(() => {});
     };
     const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
     const paint = () => {
-      const index = mikuFrame(lift, bob * danceState.listening, sway * danceState.listening);
+      const preparing = danceState.stage === "preparing";
+      const index = mikuFrame(lift,
+        (preparing ? releaseBob : bob) * danceState.listening,
+        (preparing ? releaseSway : sway) * danceState.listening);
       if (sprite && painted !== index) {
         painted = index;
         const x = index % MIKU_ATLAS.columns, y = Math.floor(index / MIKU_ATLAS.columns);
@@ -81,7 +119,12 @@ export function MusicMikuVisualizer({ track, playing, stream = acquireMusicMeter
         if (danceState.opacity > 0) {
           const x = danceState.frame % MIKU_DANCE.columns, y = Math.floor(danceState.frame / MIKU_DANCE.columns);
           const rows = MIKU_DANCE.rows[danceState.kind];
-          dancer.style.backgroundImage = `url(${DANCE_SHEETS[danceState.kind]})`;
+          // Wider choreography keeps the same height and centered headset
+          // endpoint; extra transparent gutters leave room for hands and hair.
+          const width = MIKU_DANCE.frameWidths[danceState.kind] / 288;
+          dancer.style.width = `${width * 100}%`;
+          dancer.style.left = `${(1 - width) * 50}%`;
+          dancer.style.backgroundImage = `url(${danceSheets[danceState.kind]})`;
           dancer.style.backgroundSize = `${MIKU_DANCE.columns * 100}% ${rows * 100}%`;
           dancer.style.backgroundPosition = `${x * 100 / (MIKU_DANCE.columns - 1)}% ${y * 100 / (rows - 1)}%`;
         } else dancer.style.backgroundImage = "none";
@@ -94,17 +137,44 @@ export function MusicMikuVisualizer({ track, playing, stream = acquireMusicMeter
     const tick = (now: number) => {
       frame = 0;
       if (disposed) return;
-      const dt = Math.min(64, previous ? now - previous : 16);
+      const elapsed = previous ? now - previous : 16;
+      const dt = Math.min(64, elapsed);
       previous = now;
-      if (now - sampledAt > MIKU_TIMING.stale) target = 0;
+      if (now - sampledAt > MIKU_TIMING.meterGrace) target = 0;
       energy += (target - energy) * Math.min(1, dt / (target > energy ? 75 : 210));
       const driving = !!release && target > 0.04;
-      const pulse = groove.advance(dt, driving);
+      const pulse = groove.advance(elapsed, driving, now);
       ({ bob, sway } = pulse);
-      const holding = !!release && audibleAt > 0 && now - audibleAt < MIKU_TIMING.silence;
-      danceState = dance.advance(dt, pulse, holding, loaded.has(dance.next));
+      // Missing analysis is different from a measured silence. Keep the
+      // hands in place briefly during an IPC stall, while the nod eases off.
+      // Explicit pause, buffering and silent samples still release normally.
+      const waitingForMeter = now - sampledAt > MIKU_TIMING.stale;
+      const holding = !!release && audibleAt > 0 && now - audibleAt <
+        (waitingForMeter ? MIKU_TIMING.meterGrace : MIKU_TIMING.silence);
+      const wasPreparing = danceState.stage === "preparing";
+      danceState = dance.advance(elapsed, pulse, holding, loaded.has(dance.next));
+      if (danceState.stage === "preparing" && !wasPreparing) {
+        // Finish the outgoing nod instead of chasing each new kick while
+        // the hands are preparing to release their headphone contact.
+        releaseBob = bob; releaseSway = sway;
+      }
       if (driving) loadDance();
-      lift = Math.max(0, Math.min(1, lift + (holding ? dt / MIKU_TIMING.lift : -dt / MIKU_TIMING.settle)));
+      if (danceState.resting) {
+        // The authored return has already reached arms-down. Hand over the
+        // matching rest pose, never a hidden, fully raised headphone sprite.
+        lift = 0; settling = 0; bob = sway = 0;
+      } else if (danceState.opacity > 0 || danceState.stage === "preparing") {
+        lift = 1; settling = 0;
+      } else if (!holding && lift >= 0.99 && settling < MIKU_TIMING.headSettle) {
+        if (settling === 0) { settleBob = bob; settleSway = sway; }
+        settling = Math.min(MIKU_TIMING.headSettle, settling + dt);
+        const t = settling / MIKU_TIMING.headSettle;
+        const weight = 1 - t * t * t * (t * (t * 6 - 15) + 10);
+        bob = settleBob * weight; sway = settleSway * weight;
+      } else {
+        if (holding) settling = 0;
+        lift = Math.max(0, Math.min(1, lift + (holding ? dt / MIKU_TIMING.lift : -dt / MIKU_TIMING.settle)));
+      }
       eyesClosed = expression.advance(dt, holding && lift > 0.98 && danceState.stage === "listening", pulse.locked || bob > 0.025);
       paint();
       if (target > 0.002 || lift > 0 || energy > 0.002 || danceState.opacity > 0) frame = requestAnimationFrame(tick);
@@ -112,6 +182,7 @@ export function MusicMikuVisualizer({ track, playing, stream = acquireMusicMeter
     };
     const start = () => { if (!frame) { previous = 0; frame = requestAnimationFrame(tick); } };
     const visible = () => {
+      reconcileTrack();
       host.dataset.ambient = String(!document.hidden && !motion.matches && !!host.offsetWidth);
       if (!playingRef.current || !supported || document.hidden || motion.matches || !host.offsetWidth) {
         release?.(); release = undefined; target = 0; audibleAt = 0;
@@ -122,6 +193,10 @@ export function MusicMikuVisualizer({ track, playing, stream = acquireMusicMeter
         } else start();
       } else if (!release) {
         release = stream(state => {
+          reconcileTrack();
+          const { trackId, connectorId } = identity.current;
+          if (state.status !== "ready" || state.data?.trackId !== trackId ||
+              (state.data.connectorId ?? null) !== connectorId) return;
           const now = performance.now();
           target = mikuEnergy(state, trackId, connectorId); sampledAt = now;
           if (target > 0.04) audibleAt = now;
@@ -143,11 +218,13 @@ export function MusicMikuVisualizer({ track, playing, stream = acquireMusicMeter
       expression.reset(); eyesClosed = false;
       danceState = dance.advance(0, { beat: 0, locked: false, excitement: 0 }, false, false); paint();
     };
-  }, [trackId, connectorId, supported, stream]);
-  return <div ref={root} className="music-miku-perch" data-stage="idle" aria-hidden="true">
-    <div className="music-miku-art music-miku-sprite" style={{ backgroundImage: `url(${atlas})`, backgroundSize: `${MIKU_ATLAS.columns * 100}% ${MIKU_ATLAS.rows * 100}%` }} />
-    <div className="music-miku-eyes" style={{ backgroundImage: `url(${closedEyes})`, backgroundSize: `${MIKU_ATLAS.columns * 100}% ${MIKU_ATLAS.rows * 100}%` }} />
+  }, [supported, stream, active]);
+  if (!active) return <div className="music-miku-perch" aria-hidden="true"><MikuArtwork /></div>;
+  const { art } = active;
+  return <div ref={root} data-model={active.model} className="music-miku-perch" data-stage="idle" aria-hidden="true">
+    <div className="music-miku-art music-miku-sprite" style={{ backgroundImage: `url(${art.motion})`, backgroundSize: `${MIKU_ATLAS.columns * 100}% ${MIKU_ATLAS.rows * 100}%` }} />
+    <div className="music-miku-eyes" style={{ backgroundImage: `url(${art.eyes})`, backgroundSize: `${MIKU_ATLAS.columns * 100}% ${MIKU_ATLAS.rows * 100}%` }} />
     <div className="music-miku-dancer" />
-    <div className="music-miku-idle" style={{ backgroundImage: `url(${idleAtlas})` }} />
+    <div className="music-miku-idle" style={{ backgroundImage: `url(${art.idle})` }} />
   </div>;
 }

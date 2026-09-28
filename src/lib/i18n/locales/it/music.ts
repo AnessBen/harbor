@@ -1,3 +1,4 @@
+import musicGif from "./music-gif";
 import musicListeningLab from "./music-listening-lab";
 import musicBillboard from "./music-billboard";
 import musicArtistExtras from "./music-artist-extras";
@@ -15,6 +16,7 @@ import musicPossible from "./music-possible";
 import musicLegal from "./music-legal";
 const music: Record<string, string> = {
   ...musicMiku,
+  ...musicGif,
   ...musicListeningLab,
   ...musicBillboard,
   ...musicArtistExtras,
@@ -210,6 +212,9 @@ const music: Record<string, string> = {
   "music.playlist.likeThis": "Creane una simile",
   "music.playlist.likeThisWorking": "Creazione…",
   "music.playlist.likeThisName": "Come {name}",
+  "music.playlist.likeThisAsk": "Da dove deve attingere?",
+  "music.playlist.likeThisFresh": "Solo musica nuova per me",
+  "music.playlist.likeThisHeard": "Includi brani che ho già ascoltato",
   "music.row.newPlaylist": "Nuova playlist",
   "music.search.resultCount": "{count} risultati",
   "music.transport.shuffle": "Riproduzione casuale",
@@ -232,6 +237,7 @@ const music: Record<string, string> = {
   "music.card.moreActions": "Altre azioni per {title}",
   "music.card.goToArtist": "Vai all’artista",
   "music.card.copyTitle": "Copia titolo e artista",
+  "music.card.goToPlaying": "Vai a ciò che è in riproduzione",
   "music.playlist.none": "Nessuna playlist per ora.",
   ...musicQueue,
   ...musicTaste,
@@ -436,6 +442,8 @@ const music: Record<string, string> = {
     "Controlla il Client ID e l’URI di reindirizzamento nelle impostazioni della tua app Spotify, poi riprova.",
   "music.recovery.title": "Aiuto per la riproduzione",
   "music.recovery.failed": "{source} non è riuscito a riprodurre questo brano",
+  "music.recovery.skipping": "Passo al brano successivo tra {seconds}s",
+  "music.recovery.stay": "Resta qui",
   "music.recovery.source":
     "Impossibile caricare l’audio. Prova un’altra versione qui sotto, riprova questa fonte o apri il brano su {source}.",
   "music.recovery.setup":
@@ -510,6 +518,8 @@ const music: Record<string, string> = {
   "music.row.playlistsSubtitle": "{count} playlist",
   "music.row.playlists": "Le tue playlist",
   "music.genre.eyebrow": "Genere",
+  "music.label.eyebrow": "Etichetta discografica",
+  "music.label.roster": "Artisti di {query}",
   "music.genre.tagged": "Migliori artisti, brani e album in {query}",
   "music.genre.back": "Indietro",
   "music.search.resume": "Torna alla tua musica",

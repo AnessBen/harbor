@@ -154,6 +154,18 @@ export function musicSourcePriority(connectorId: string | null | undefined): num
   return index < 0 ? MUSIC_SOURCE_ORDER.length : index;
 }
 
+const DEFAULT_PLAYBACK_SOURCE = "youtube";
+
+export function preferredMusicSource(): string {
+  const stored = readMusicPreference(PREFERRED_SOURCE_KEY)?.trim();
+  return stored || DEFAULT_PLAYBACK_SOURCE;
+}
+
+/** Catalog rows carry listing provenance, never a bound player, so they answer with the preference. */
+export function musicPlaybackSource(connectorId: string | null | undefined): string {
+  return !connectorId || connectorId === "catalog" ? preferredMusicSource() : connectorId;
+}
+
 let healthCache: { at: number; value: Promise<MusicConnectorHealth[]> } | null = null;
 
 export function invalidateMusicHealth(): void {

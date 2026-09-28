@@ -1,6 +1,13 @@
 use super::MusicTrack;
 use serde::{Deserialize, Serialize};
 
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MusicVideoPage {
+    pub tracks: Vec<MusicTrack>,
+    pub next: Option<String>,
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MusicAlbumRef {

@@ -166,6 +166,7 @@ import {
   startMusicTaskbarButtons,
   syncMusicTaskbarArtwork,
 } from "@/lib/music/taskbar-buttons";
+import { resetMusicForProfile } from "@/lib/music/player";
 
 const importAnime = () => import("@/views/anime");
 const importCalendar = () => import("@/views/calendar");
@@ -791,6 +792,7 @@ function Shell({ onReady }: { onReady?: () => void }) {
   const bigPictureBooted = useRef(false);
   const uiScaleRef = useRef(settings.uiScale);
   const { activeProfile } = useProfiles();
+  const activeProfileForMusic = activeProfile?.id ?? null;
   const kid = activeProfile?.kid ?? null;
   const preview = useThemePreview();
   useEffect(() => {
@@ -1418,6 +1420,7 @@ function Shell({ onReady }: { onReady?: () => void }) {
 
   useEffect(() => startMusicTaskbarButtons(), []);
   useEffect(() => syncMusicTaskbarArtwork(), [settings.musicArtworkAppIcon]);
+  useEffect(() => resetMusicForProfile(), [activeProfileForMusic]);
 
   const overlayPinned = useOverlayPinned();
   const settingsAlive = useIdleEvict(settingsTop, overlayPinned);

@@ -1,3 +1,4 @@
+import musicGif from "./music-gif";
 import musicListeningLab from "./music-listening-lab";
 import musicBillboard from "./music-billboard";
 import musicArtistExtras from "./music-artist-extras";
@@ -14,6 +15,7 @@ import musicPossible from "./music-possible";
 import musicLegal from "./music-legal";
 const music: Record<string, string> = {
   ...musicMiku,
+  ...musicGif,
   ...musicListeningLab,
   ...musicBillboard,
   ...musicArtistExtras,
@@ -68,6 +70,8 @@ const music: Record<string, string> = {
   "music.offline.retry": "Try sources again",
   "music.searchResults": "Search results",
   "music.genre.eyebrow": "Genre",
+  "music.label.eyebrow": "Record label",
+  "music.label.roster": "Artists on {query}",
   "music.genre.back": "Back",
   "music.genre.tagged": "Top artists, tracks and albums in {query}",
   "music.trackCount": "{count} tracks",
@@ -275,6 +279,9 @@ const music: Record<string, string> = {
   "music.playlist.likeThis": "Make one like this",
   "music.playlist.likeThisWorking": "Building…",
   "music.playlist.likeThisName": "Like {name}",
+  "music.playlist.likeThisAsk": "What should it draw from?",
+  "music.playlist.likeThisFresh": "Only music new to me",
+  "music.playlist.likeThisHeard": "Include songs I've heard",
   "music.playlist.delete": "Delete playlist",
   "music.playlist.deleteConfirm": "Delete this playlist? The songs stay in your library.",
   "music.watch.back": "Back to music",
@@ -458,6 +465,7 @@ const music: Record<string, string> = {
   "music.card.goToAlbum": "Go to album",
   "music.card.startRadio": "Start radio",
   "music.card.copyTitle": "Copy title and artist",
+  "music.card.goToPlaying": "Go to what's playing",
   "music.transport.queue": "Queue",
   "music.transport.shuffle": "Shuffle",
   "music.transport.repeat": "Repeat",
@@ -559,6 +567,8 @@ const music: Record<string, string> = {
     "Check the Client ID and redirect URI in your Spotify app settings, then try again.",
   "music.recovery.title": "Playback help",
   "music.recovery.failed": "{source} couldn’t play this song",
+  "music.recovery.skipping": "Skipping to the next song in {seconds}s",
+  "music.recovery.stay": "Stay here",
   "music.recovery.source":
     "The audio could not be loaded. Try another version below, retry this source, or open it on {source}.",
   "music.recovery.setup":

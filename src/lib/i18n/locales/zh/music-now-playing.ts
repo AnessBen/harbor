@@ -1,4 +1,13 @@
 const musicNowPlaying: Record<string, string> = {
+  "music.now.sameContext": "同一来源",
+  "music.now.discoverNew": "发现新歌",
+  "music.now.moreMode": "选择更多音乐",
+  "music.now.continueFrom": "继续播放 {name}",
+  "music.now.discoverHint": "相似歌曲，不包括队列和最近播放记录中的歌曲。",
+  "music.now.moreAdded": "已添加 {count} 首歌曲",
+  "music.now.contextEnd": "此来源没有更多歌曲。试试发现新歌。",
+  "music.now.noNewSongs": "未找到新歌，请稍后重试。",
+  "music.now.moreError": "无法加载更多，请重试。",
   "music.artist.filmography": "电影与电视",
   "music.action.error": "无法完成操作。请重试。",
   "music.radio.error": "无法启动电台。请重试或更换来源。",
@@ -74,6 +83,11 @@ const musicNowPlaying: Record<string, string> = {
 
   "music.artist.about": "关于艺人",
   "music.artist.save": "收藏艺人",
+  "music.artist.dontPlay": "不播放该艺人",
+  "music.artist.doPlay": "恢复播放该艺人",
+  "music.artist.hideSongs": "隐藏该艺人的歌曲",
+  "music.artist.showSongs": "显示该艺人的歌曲",
+  "music.artist.moreLike": "更多类似艺人",
   "music.artist.unsave": "从已收藏艺人中移除",
 
   "music.artist.origin": "来自",
@@ -93,6 +107,9 @@ const musicNowPlaying: Record<string, string> = {
   "music.artist.merch": "周边商品",
 
   "music.artist.official": "官方网站",
+  "music.artist.social": "社交媒体",
+  "music.artist.gallery": "{name} 的照片",
+  "music.artist.zoom": "缩放",
 
   "music.artist.kicker": "艺人",
   "music.artist.listenOn": "收听平台",

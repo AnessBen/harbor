@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFileSync } from "node:fs";
 import type { MusicAudioMeterState } from "../src/lib/music/audio-meter";
 import { createMikuGroove, mikuEnergy, mikuFrame, MIKU_ATLAS } from "../src/lib/music/miku-motion";
 import { mikuTempo } from "../src/lib/music/miku-tempo";
+import { createMikuRhythm } from "../src/lib/music/miku-rhythm";
 
 function signal(rmsDb = -18, bassDb = rmsDb): MusicAudioMeterState {
   return { status: "ready", data: {
@@ -64,8 +66,44 @@ test("a transient changes head velocity without snapping its position", () => {
   assert.ok(after > 0 && after < 0.3);
 });
 
+test("changing a song clears its beat estimate without snapping the visible head pose", () => {
+  const groove = createMikuGroove();
+  for (let now = 0; now < 12000; now += 16) {
+    if (now % 4 === 0) groove.sample(signal(-18, now % 496 < 64 ? -8 : -48), "current", "local", now);
+    groove.advance(16);
+  }
+  const before = groove.advance(0);
+  groove.reset(true);
+  const reset = groove.advance(0);
+  assert.equal(reset.bob, before.bob);
+  assert.equal(reset.sway, before.sway);
+  assert.equal(reset.period, null);
+  for (let n = 0; n < 180; n++) groove.advance(16, false);
+  assert.equal(groove.advance(0).bob, 0);
+  groove.reset();
+  assert.equal(groove.advance(0).sway, 0);
+});
+
+test("audible drum accents produce visible nods before tempo locks, with lighter quiet percussion", () => {
+  const accent = (quiet: boolean) => {
+    const groove = createMikuGroove();
+    groove.sample(signal(-18, quiet ? -54 : -24), "current", "local", 0);
+    assert.equal(groove.sample(signal(-18, quiet ? -42 : -12), "current", "local", 50), true);
+    let peak = 0;
+    for (let i = 0; i < 30; i++) {
+      const pose = groove.advance(10);
+      assert.equal(pose.locked, false);
+      peak = Math.max(peak, pose.bob);
+    }
+    return peak;
+  };
+  const hard = accent(false), gentle = accent(true);
+  assert.ok(hard > .3, `a hard isolated drum should visibly dip the head: ${hard}`);
+  assert.ok(gentle > .1 && hard > gentle * 1.3, `quiet percussion should stay lighter: ${gentle}/${hard}`);
+});
+
 test("reach and nod poses stay within the authored atlas", () => {
-  const frames = Array.from({ length: 17 }, (_, i) => mikuFrame(i / 17, 1, 0));
+  const frames = Array.from({ length: MIKU_ATLAS.reachFrames }, (_, i) => mikuFrame(i / MIKU_ATLAS.reachFrames, 1, 0));
   assert.deepEqual([...frames].sort((a, b) => a - b), frames);
   assert.equal(mikuFrame(0, 1, 0), 0);
   for (const lift of [-1, 0, 0.5, 0.99, 1, 8, NaN]) {
@@ -204,4 +242,131 @@ test("hard bass keeps its full pulse and bounce beneath a softer sustained vocal
     assert.ok(average(soft) > .5, "hard drums should stay energetic beneath the soft vocal");
     assert.ok(Math.abs(average(soft) - average(loud)) < .03, "vocal loudness must not control drum intensity");
   }
+});
+
+test("irregular native meter deliveries retain EDM tempo and a visible full-depth nod", () => {
+  for (const period of [60000 / 180, 60000 / 170, 60000 / 140, 60000 / 95]) {
+    const groove = createMikuGroove();
+    const frames: { time: number; bob: number; period: number | null; locked: boolean }[] = [];
+    const gaps = [53, 67, 48, 81, 59, 72, 51];
+    let next = 0, delivery = 0;
+    for (let now = 0; now < 24000; now += 10) {
+      if (now >= next) {
+        // Native frequency snapshots have 50 ms windows; IPC delivery is not
+        // an exact metronome, and the kick decays into a loud sustained bass.
+        const captured = Math.floor((now + 25) / 50) * 50;
+        const since = ((captured - 137) % period + period) % period;
+        const drum = Math.exp(-since / 65);
+        const state = signal(-16);
+        state.data!.spectrumDb = [-15 + 13 * drum, -20 + 15 * drum, -27 + 13 * drum,
+          -13 + 2 * Math.sin(now / 850), -20, -29, -16, -24];
+        groove.sample(state, "current", "local", now);
+        next = now + gaps[delivery++ % gaps.length];
+      }
+      const pose = groove.advance(10);
+      if (now > 14000) frames.push({ time: now + 10, ...pose });
+    }
+    const accurate = frames.filter(frame => frame.locked && frame.period && Math.abs(frame.period - period) < period * .06);
+    assert.ok(accurate.length > frames.length * .85, `${Math.round(60000 / period)} BPM: held tempo ${accurate.length}/${frames.length}; last ${frames.at(-1)?.period}`);
+    const peaks = frames.filter((frame, index) => index > 0 && index < frames.length - 1 && frame.bob > frames[index - 1].bob && frame.bob >= frames[index + 1].bob);
+    assert.ok(Math.abs(peaks.length - 10000 / period) <= 2, `${Math.round(60000 / period)} BPM: one nod per drum: ${peaks.length}`);
+    if (period < 450) assert.ok(Math.max(...peaks.map(frame => frame.bob)) > .65, `hard fast drums should use the deeper nod poses: ${Math.max(...peaks.map(frame => frame.bob))}`);
+  }
+});
+
+test("a missed render frame preserves the musical clock instead of slowing the beat", () => {
+  const a = createMikuGroove(), b = createMikuGroove();
+  for (let now = 0; now < 10000; now += 50) {
+    for (const groove of [a, b]) {
+      groove.sample(signal(-20, now % 500 === 0 ? -8 : -48), "current", "local", now);
+      groove.advance(50, true, now + 50);
+    }
+  }
+  const delayed = a.advance(200, true, 10200);
+  let regular = b.advance(0);
+  for (let now = 10010; now <= 10200; now += 10) regular = b.advance(10, true, now);
+  assert.ok(delayed.locked && regular.locked);
+  assert.ok(Math.abs(delayed.beat - regular.beat) < .001, "elapsed audio time must not be truncated to64ms");
+  assert.ok(Math.abs(delayed.bob - regular.bob) < .02, "spring remains stable during bounded catch-up");
+});
+
+test("a brief meter outage keeps the learned rhythm available for recovery", () => {
+  const groove = createMikuGroove();
+  for (let now = 0; now < 10000; now += 50) {
+    groove.sample(signal(-20, now % 500 === 0 ? -8 : -48), "current", "local", now);
+    groove.advance(50);
+  }
+  const before = groove.advance(0);
+  for (let n = 0; n < 20; n++) groove.advance(50);
+  groove.sample(signal(-20, -8), "current", "local", 11000);
+  const resumed = groove.advance(16);
+  assert.ok(before.period && resumed.period && Math.abs(before.period - resumed.period) < 30,
+    "a one-second IPC stall must not discard all learned percussion history");
+});
+
+test("an isolated bass hit has a rounded visible recovery instead of a tiny twitch", () => {
+  const groove = createMikuGroove();
+  groove.sample(signal(-18, -24), "current", "local", 0);
+  groove.sample(signal(-18, -12), "current", "local", 50);
+  const frames = Array.from({ length: 50 }, () => groove.advance(10).bob);
+  assert.ok(Math.max(...frames) > .45);
+  assert.ok(frames.filter(bob => bob > .2).length >= 20, "the nod should remain readable for at least200ms");
+});
+
+test("recorded syncopated bass and snare measurements retain their shared pulse", () => {
+  // Anonymous numeric measurements from the native meter: elapsed ms, RMS,
+  // then eight frequency bands. No audio, title or source URL is retained.
+  const samples: number[][] = JSON.parse(readFileSync(new URL("./fixtures/music-syncopated-meter.json", import.meta.url), "utf8"));
+  const groove = createMikuGroove();
+  const poses: ReturnType<typeof groove.advance>[] = [];
+  let next = 0;
+  for (let now = 0; now < samples.at(-1)![0]; now += 10) {
+    while (next < samples.length && samples[next][0] <= now) {
+      const [time, rms, ...spectrumDb] = samples[next++];
+      const state = signal(rms);
+      state.data!.spectrumDb = spectrumDb;
+      groove.sample(state, "current", "local", time);
+    }
+    const pose = groove.advance(10);
+    if (now > 6000) poses.push(pose);
+  }
+  assert.ok(poses.filter(pose => pose.locked).length > poses.length * .95,
+    "the multi-beat snare pattern must bridge ambiguous sustained bass");
+  const settled = poses.slice(200);
+  assert.ok(settled.filter(pose => pose.period && pose.period > 520 && pose.period < 575).length > settled.length * .95,
+    "joint drum evidence must converge instead of choosing unrelated isolated lags");
+  assert.ok(Math.max(...settled.map(pose => pose.bob)) - Math.min(...settled.map(pose => pose.bob)) > .65);
+});
+
+test("perfectly periodic hi-hat leakage cannot establish a drum clock by itself", () => {
+  for (const period of [125, 150, 250]) {
+    const rhythm = createMikuRhythm();
+    for (let time = 0; time < 16000; time += 50) {
+      const hat = Math.exp(-(time % period) / 30);
+      rhythm.push(time, 0, 0, hat, .001 * hat, .2 * hat);
+      if (time % 350 === 0) assert.equal(rhythm.estimate(null), null);
+    }
+  }
+});
+
+test("one weak alternate lag cannot slow an established syncopated pulse", () => {
+  const samples: number[][] = JSON.parse(readFileSync(new URL("./fixtures/music-syncopated-alternate-lag.json", import.meta.url), "utf8"));
+  const groove = createMikuGroove();
+  const periods: number[] = [];
+  let next = 0;
+  for (let now = 0; now < samples.at(-1)![0]; now += 10) {
+    while (next < samples.length && samples[next][0] <= now) {
+      const [time, rms, ...spectrumDb] = samples[next++];
+      const state = signal(rms);
+      state.data!.spectrumDb = spectrumDb;
+      groove.sample(state, "current", "local", time);
+    }
+    const pose = groove.advance(10);
+    if (now > 11000) {
+      assert.ok(pose.locked && pose.period, "keep the recurring joint drum evidence");
+      periods.push(pose.period);
+    }
+  }
+  assert.ok(periods.every(period => period > 525 && period < 555),
+    "an isolated weak777ms lag must not pull the measured539ms pulse toward587ms");
 });

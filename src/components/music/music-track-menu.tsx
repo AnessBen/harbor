@@ -6,13 +6,25 @@ import {
   type ReactNode,
   type RefObject,
 } from "react";
-import { Copy, Disc3, ImageDown, ListPlus, Play, Plus, Save, UserRound } from "@/components/icons/music-icons";
+import {
+  Copy,
+  Disc3,
+  ImageDown,
+  ListMusic,
+  ListPlus,
+  Play,
+  Plus,
+  Save,
+  UserRound,
+} from "@/components/icons/music-icons";
 import { MoreLikeThisIcon } from "@/components/icons/more-like-this-icon";
 import { AnchoredMenu } from "@/components/anchored-menu";
 import { useT } from "@/lib/i18n";
 import { downloadMusic } from "@/lib/music/downloads";
 import { saveArtwork } from "@/lib/music/artwork-save";
-import { requestMusicExplore } from "@/lib/music/navigation";
+import { requestMusicExplore, requestMusicPlaylist } from "@/lib/music/navigation";
+import { getMusicPlaybackOrigin, musicTitleTarget } from "@/lib/music/playback-origin";
+import { getMusicState } from "@/lib/music/player";
 import { useArtistCredits } from "./use-artist-credits";
 import { useMusicNavigate } from "./music-navigate";
 import type { MusicTrack } from "@/lib/music/types";
@@ -126,6 +138,22 @@ export function useMusicTrackMenuItems(
       }
     },
   });
+  const playingFrom = musicTitleTarget(getMusicPlaybackOrigin());
+  if (playingFrom.kind !== "album") {
+    items.push({
+      id: "playing-from",
+      label: t("music.card.goToPlaying"),
+      icon: <ListMusic size={14} />,
+      run: () => {
+        if (playingFrom.kind === "playlist") {
+          requestMusicPlaylist(playingFrom.playlistId);
+          return;
+        }
+        const seed = getMusicState().current;
+        if (seed) requestMusicExplore({ kind: "similar", track: seed });
+      },
+    });
+  }
   return items;
 }
 

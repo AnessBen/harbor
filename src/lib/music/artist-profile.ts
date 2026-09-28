@@ -7,7 +7,7 @@ import type { MusicArtistRef } from "./types";
 type Obj = Record<string, any>;
 export type ArtistLink = {
   url: string;
-  kind: "store" | "merch" | "official" | "source" | "tour";
+  kind: "store" | "merch" | "official" | "source" | "tour" | "social";
   name: string;
 };
 export type MusicArtistProfile = {
@@ -23,9 +23,11 @@ export type MusicArtistProfile = {
   biography?: string;
   biographyUrl?: string;
   artwork?: string;
+  wikidataId?: string;
   sources: MusicArtistRef[];
 };
 const uuid = /^[a-f\d]{8}(?:-[a-f\d]{4}){3}-[a-f\d]{12}$/i;
+const SOCIAL_HOSTS = /^(facebook\.com|instagram\.com|twitter\.com|x\.com|tiktok\.com|threads\.net)$/;
 export const artistNameKey = (name: string) => artistIdentityKey(name);
 const object = (value: unknown): Obj =>
   value && typeof value === "object" && !Array.isArray(value) ? (value as Obj) : {};
@@ -158,9 +160,11 @@ export function parseArtistProfile(value: unknown, id: string): MusicArtistProfi
             ? "store"
             : relation.type === "official homepage"
               ? "official"
-              : source
-                ? "source"
-                : null;
+              : SOCIAL_HOSTS.test(host)
+                ? "social"
+                : source
+                  ? "source"
+                  : null;
     if (kind)
       profile.links.push({
         url,
@@ -280,6 +284,7 @@ export async function loadArtistProfile(
     const photo = array(claims.P18)
       .map((claim) => text(object(object(claim.mainsnak).datavalue).value))
       .find(Boolean);
+    profile.wikidataId = qid;
     if (photo)
       profile.artwork = `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(photo)}?width=1000`;
     const lang = /^[a-z]{2,3}$/.test(language.split("-")[0]) ? language.split("-")[0] : "en";

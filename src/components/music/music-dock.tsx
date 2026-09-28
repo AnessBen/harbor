@@ -46,6 +46,7 @@ import { useMusicTrackContextMenu } from "./music-track-menu";
 import { useMusicDockLayout } from "@/lib/music/dock-layout";
 import { MusicDockVisualizer } from "./music-dock-visualizer";
 import { MusicMikuVisualizer } from "./music-miku-visualizer";
+import { MusicGifVisualizer } from "./music-gif-visualizer";
 import { MusicDockOverflow, type MusicDockAction } from "./music-dock-overflow";
 import { getMusicPlaybackOrigin, musicTitleTarget } from "@/lib/music/playback-origin";
 import { requestMusicPlaylist } from "@/lib/music/navigation";
@@ -59,6 +60,7 @@ import "./music-dock.css";
 
 const DOCK_HEIGHT = 76;
 const TAB_HEIGHT = 48;
+const SKIP_AFTER_SECONDS = 20;
 const SETTLE_MS = 1200;
 
 const MUSIC_TIME_FONT = {
@@ -67,6 +69,7 @@ const MUSIC_TIME_FONT = {
 
 const ICON_BUTTON =
   "music-dock-icon grid h-11 w-11 shrink-0 place-items-center text-ink-muted transition-colors duration-200 ease-out";
+const DOCK_LIKE_SPOKES = [0, 45, 90, 135, 180, 225, 270, 315];
 const ICON_BUTTON_ON = `${ICON_BUTTON} music-dock-icon-on`;
 
 function timeLabel(seconds: number): string {
@@ -138,6 +141,9 @@ export function MusicDock() {
   const { topKind, setView } = useView();
   const dockRef = useRef<HTMLElement | null>(null);
   const sourceButton = useRef<HTMLButtonElement | null>(null);
+  const [burst, setBurst] = useState(0);
+  const [skipIn, setSkipIn] = useState<number | null>(null);
+  const [stayed, setStayed] = useState("");
   const [queueOpen, setQueueOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
@@ -154,8 +160,11 @@ export function MusicDock() {
   }, []);
   const closeExpanded = useCallback(() => setExpanded(false), []);
   const nowExit = useModalExit(closeExpanded, expanded);
-  const collapseExit = useModalExit(() => setCollapsed(true), !collapsed);
-  const expandExit = useModalExit(() => setCollapsed(false), collapsed);
+  // Playback ticks must not restart the exit timer and strand the dock off-screen.
+  const collapseDock = useCallback(() => setCollapsed(true), []);
+  const expandDock = useCallback(() => setCollapsed(false), []);
+  const collapseExit = useModalExit(collapseDock, !collapsed);
+  const expandExit = useModalExit(expandDock, collapsed);
   useEffect(() => trackViewportBottom(), []);
   const reopenAfterBack = useRef(false);
   const backRestore = useRef<(() => void) | null>(null);
@@ -255,6 +264,26 @@ export function MusicDock() {
   }, [current?.id]);
   const visible = Boolean(current) && topKind !== "player" && topKind !== "picker";
   const inset = useDockInset(dockRef, visible, collapsed);
+  const stuckError = player.error && !player.error.startsWith("music.cast.") ? player.error : null;
+  const stuckKey = `${player.current?.connectorId ?? ""}:${player.current?.id ?? ""}`;
+  const hasNext = player.queueIndex >= 0 && player.queueIndex < player.queue.length - 1;
+  useEffect(() => {
+    if (!stuckError || !hasNext || stayed === stuckKey) {
+      setSkipIn(null);
+      return;
+    }
+    setSkipIn(SKIP_AFTER_SECONDS);
+    const timer = window.setInterval(() => {
+      setSkipIn((left) => {
+        if (left === null) return null;
+        if (left > 1) return left - 1;
+        window.clearInterval(timer);
+        nextMusic();
+        return null;
+      });
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [stuckError, hasNext, stuckKey, stayed]);
   const attachVolumeWheel = useCallback((node: HTMLSpanElement | null) => {
     if (!node) return;
     const adjust = (event: WheelEvent) => {
@@ -486,7 +515,9 @@ export function MusicDock() {
       }
       className="@container fixed bottom-0 z-[120] border-t border-edge bg-canvas text-ink"
     >
-      {appearance.mikuVisualizer && !expanded && (
+      {appearance.gifVisualizer && appearance.gifId && !expanded ? (
+        <MusicGifVisualizer track={current} playing={player.phase === "playing"} />
+      ) : appearance.mikuVisualizer && !expanded && (
         <MusicMikuVisualizer track={current} playing={player.phase === "playing"} />
       )}
       {expanded && (
@@ -649,13 +680,34 @@ export function MusicDock() {
             </div>
             <button
               data-music-dock-like
+              data-burst={burst || undefined}
               type="button"
-              onClick={() => toggleMusicLiked()}
+              onClick={() => {
+                if (!liked) setBurst((n) => n + 1);
+                toggleMusicLiked();
+              }}
               aria-pressed={liked}
               aria-label={liked ? t("music.unsaveTrack") : t("music.saveTrack")}
               className={`${dockParts.like ? "" : "hidden"} ${ICON_BUTTON}`}
             >
               <MusicGlyph name={liked ? "heart-filled" : "heart"} size={18} aria-hidden="true" />
+              {burst > 0 && liked && (
+                <span key={burst} className="dock-like-burst" aria-hidden="true">
+                  <span className="dock-like-ring" />
+                  {DOCK_LIKE_SPOKES.map((rotate, i) => (
+                    <span
+                      key={i}
+                      className="dock-like-dot"
+                      style={
+                        {
+                          "--rotate": `${rotate}deg`,
+                          "--translate-y": i % 2 ? "-16px" : "-21px",
+                        } as CSSProperties
+                      }
+                    />
+                  ))}
+                </span>
+              )}
             </button>
             <MusicDockVisualizer
               track={current}
@@ -923,9 +975,26 @@ export function MusicDock() {
               {t("music.cast.title")}
             </button>
           )}
+          {skipIn !== null && (
+            <>
+              <span className="py-2 text-ink-muted">
+                {t("music.recovery.skipping", { seconds: skipIn })}
+              </span>
+              <button
+                type="button"
+                onClick={() => setStayed(stuckKey)}
+                className="rounded-md bg-raised px-3 py-2 font-semibold text-ink"
+              >
+                {t("music.recovery.stay")}
+              </button>
+            </>
+          )}
           <button
             type="button"
-            onClick={() => void playMusic(current, player.queue).catch(() => {})}
+            onClick={() => {
+              setStayed(stuckKey);
+              void playMusic(current, player.queue).catch(() => {});
+            }}
             className="rounded-md bg-raised px-3 py-2 font-semibold text-ink"
           >
             {t("common.retry")}

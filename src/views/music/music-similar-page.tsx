@@ -12,11 +12,13 @@ export function MusicSimilarPage({
   seed,
   tracks,
   state = "ready",
+  label,
   onBack,
 }: {
   seed: MusicTrack;
   tracks: MusicTrack[];
   state?: "loading" | "ready" | "error";
+  label?: string;
   onBack: () => void;
 }) {
   const t = useT();
@@ -43,7 +45,7 @@ export function MusicSimilarPage({
   const save = () => {
     if (saved === "saving") return;
     setSaved("saving");
-    void createMusicPlaylist(t("music.similar.playlistName", { title: seed.title }))
+    void createMusicPlaylist(label ?? t("music.similar.playlistName", { title: seed.title }))
       .then((playlist) => addTracksToMusicPlaylist(playlist.id, tracks))
       .then(() => setSaved("done"))
       .catch(() => setSaved("error"));
@@ -63,7 +65,7 @@ export function MusicSimilarPage({
 
       <header className="flex min-w-0 flex-col gap-2">
         <h1 tabIndex={-1} className="text-3xl font-bold tracking-tight text-ink sm:text-4xl">
-          {t("music.similar.title", { title: seed.title })}
+          {label ?? t("music.similar.title", { title: seed.title })}
         </h1>
         <p className="text-sm text-ink-muted">
           {busy

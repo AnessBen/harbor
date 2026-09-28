@@ -1,5 +1,5 @@
 import type { MouseEvent, ReactNode } from "react";
-import { Play, Radio } from "@/components/icons/music-icons";
+import { LoaderCircle, Play, Radio } from "@/components/icons/music-icons";
 import { MusicPlaylistCover } from "@/components/music/music-playlist-cover";
 import { Poster } from "@/components/poster";
 import { useT } from "@/lib/i18n";
@@ -7,6 +7,7 @@ import { MusicMediaBadge } from "./music-media-badge";
 import { MusicArtistLink } from "./music-artist-link";
 import type { AlbumExplicitMark } from "@/lib/music/album-explicit";
 import type { MusicCatalogItem } from "@/lib/music/types";
+import "./music-cover-card.css";
 
 export type MusicCardBadge =
   | { kind: "connector"; connectorId: string; label?: string }
@@ -118,6 +119,7 @@ export function MusicCoverCard({
   badge,
   explicitMark,
   onPlay,
+  playing = false,
   onOpen,
   onMenu,
   overlay,
@@ -129,6 +131,7 @@ export function MusicCoverCard({
   badge?: MusicCardBadge | null;
   explicitMark?: AlbumExplicitMark | null;
   onPlay?: () => void;
+  playing?: boolean;
   onOpen?: () => void;
   onMenu?: (event: MouseEvent<HTMLElement>) => void;
   overlay?: ReactNode;
@@ -139,63 +142,77 @@ export function MusicCoverCard({
   const caption = subtitle ?? coverCardSubtitle(item);
   const seed = coverCardSeed(item);
   const chip = badge === undefined ? autoBadge(item) : badge;
-  const activate = onPlay ?? onOpen;
-  const label = onPlay
-    ? item.kind === "track"
-      ? t("music.playTrack", { title: heading, artist: caption })
-      : t("music.card.playItem", { title: heading })
-    : t("music.card.openItem", { title: heading });
+  const activate = onOpen ?? onPlay;
+  const playLabel = item.kind === "track"
+    ? t("music.playTrack", { title: heading, artist: caption })
+    : t("music.card.playItem", { title: heading });
+  const label = !onOpen && onPlay ? playLabel : t("music.card.openItem", { title: heading });
 
   return (
     <div
-      className={`group flex w-full min-w-0 flex-col text-start ${className}`}
+      className={`music-cover-card group flex w-full min-w-0 flex-col text-start ${className}`}
       onContextMenu={onMenu}
     >
-      <button
-        type="button"
-        onClick={activate}
-        aria-label={label}
-        className="flex w-full min-w-0 flex-col text-start"
-      >
-        <span className="relative block w-full overflow-hidden rounded-md">
-          {item.kind === "playlist" ? (
-            <MusicPlaylistCover artwork={item.artwork} seed={seed} className="rounded-md" />
-          ) : (
-            <Poster
-              src={item.artwork}
-              seed={seed}
-              ratio="square"
-              className="w-full [--poster-radius:0px]"
-            />
-          )}
-          {onPlay && (
-            <span
-              aria-hidden="true"
-              className="pointer-events-none absolute bottom-[10px] end-[10px] grid size-9 place-items-center rounded-full bg-ink text-canvas opacity-0 shadow-lg transition-opacity duration-200 ease-out group-hover:opacity-100 group-focus-visible:opacity-100"
-            >
-              <Play size={14} fill="currentColor" />
-            </span>
-          )}
-          {overlay}
-        </span>
-        <span className="mt-[9px] flex min-w-0 items-center gap-[5px]">
-          <span className="truncate text-[13px] font-semibold text-ink" title={heading}>
-            {heading}
+      <div className="relative">
+        <button
+          type="button"
+          onClick={activate}
+          aria-label={label}
+          className="flex w-full min-w-0 flex-col text-start"
+        >
+          <span className="relative block w-full overflow-hidden rounded-md">
+            {item.kind === "playlist" ? (
+              <MusicPlaylistCover artwork={item.artwork} seed={seed} className="rounded-md" />
+            ) : (
+              <Poster
+                src={item.artwork}
+                seed={seed}
+                ratio="square"
+                className="w-full [--poster-radius:0px]"
+              />
+            )}
+            {overlay}
           </span>
-          {chip && <MusicCardBadgeChip badge={chip} />}
-          {explicitMark && (
-            <span
-              data-music-label={explicitMark === "explicit" ? "explicit" : "clean"}
-              title={t(`music.label.${explicitMark}`)}
-              aria-label={t(`music.label.${explicitMark}`)}
-              className="inline-flex shrink-0 items-center rounded-[2px] bg-elevated px-1 py-0.5 text-[9px] font-medium leading-none text-ink-muted"
-            >
-              {explicitMark === "explicit" ? "E" : t("music.label.clean")}
+          <span className="mt-[9px] flex min-w-0 items-center gap-[5px]">
+            <span className="truncate text-[13px] font-semibold text-ink" title={heading}>
+              {heading}
             </span>
-          )}
-          {item.kind === "track" && <MusicMediaBadge kind={item.mediaKind} compact />}
-        </span>
-      </button>
+            {chip && <MusicCardBadgeChip badge={chip} />}
+            {explicitMark && (
+              <span
+                data-music-label={explicitMark === "explicit" ? "explicit" : "clean"}
+                title={t(`music.label.${explicitMark}`)}
+                aria-label={t(`music.label.${explicitMark}`)}
+                className="inline-flex shrink-0 items-center rounded-[2px] bg-elevated px-1 py-0.5 text-[9px] font-medium leading-none text-ink-muted"
+              >
+                {explicitMark === "explicit" ? "E" : t("music.label.clean")}
+              </span>
+            )}
+            {item.kind === "track" && <MusicMediaBadge kind={item.mediaKind} compact />}
+          </span>
+        </button>
+        {onPlay && (
+          <div className="pointer-events-none absolute inset-x-0 top-0 aspect-square">
+            <button
+              type="button"
+              className="music-cover-play no-press bg-ink text-canvas"
+              aria-label={playLabel}
+              aria-busy={playing || undefined}
+              disabled={playing}
+              onClick={(event) => {
+                event.stopPropagation();
+                onPlay();
+              }}
+            >
+              {playing ? (
+                <LoaderCircle size={20} aria-hidden="true" className="animate-spin motion-reduce:animate-none" />
+              ) : (
+                <Play size={20} aria-hidden="true" />
+              )}
+            </button>
+          </div>
+        )}
+      </div>
       {caption &&
         (item.kind === "track" || item.kind === "album" ? (
           <MusicArtistLink

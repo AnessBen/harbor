@@ -1,6 +1,5 @@
 .music-dock-track {
   container: music-dock-track / inline-size;
-  overflow: hidden;
 }
 @container music-dock-track (max-width: 220px) {
   [data-music-dock-like] {

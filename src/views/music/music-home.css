@@ -124,6 +124,18 @@
 .music-feature-selector button[aria-pressed="true"] {
   background: var(--color-elevated);
 }
+.music-feature-choice > .music-live-mark {
+  inset-block-end: auto;
+  inset-block-start: 12px;
+  inset-inline-start: 12px;
+  padding: 3px 4px;
+}
+.music-feature-choice > .music-live-mark .music-eq-bars {
+  height: 9px;
+}
+.music-feature-choice > .music-live-mark .music-eq-bars i {
+  width: 2px;
+}
 .music-feature-selector img {
   width: 42px;
   height: 42px;
@@ -160,16 +172,28 @@
 .music-feature-choice > button:first-child > span {
   padding-top: 2px;
 }
-.music-feature-choice > button.music-feature-artist {
+.music-feature-choice > .music-feature-artist {
   position: absolute;
   inset-inline: 62px 10px;
-  bottom: 11px;
+  bottom: 9px;
   display: block;
+  overflow: hidden;
   padding: 0;
   font-size: 12px;
   line-height: 16px;
+  text-align: start;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: var(--color-ink-muted);
   border-radius: 0;
+}
+.music-feature-choice > .music-feature-artist button,
+.music-feature-choice > .music-feature-artist .harbor-marquee-line,
+.music-feature-choice > .music-feature-artist .harbor-marquee-line > span {
+  display: inline;
+  min-height: 0;
+  padding: 0;
+  line-height: 16px;
 }
 .music-home-local {
   display: flex;

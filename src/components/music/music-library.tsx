@@ -1,6 +1,6 @@
-import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type FormEvent, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { open, save } from "@tauri-apps/plugin-dialog";
-import { FileDown, FileUp, FolderOpen, LoaderCircle, Plus, Search, X } from "@/components/icons/music-icons";
+import { FileUp, FolderOpen, LoaderCircle, Plus, Search, X } from "@/components/icons/music-icons";
 import { Dropdown } from "@/components/dropdown";
 import { useSectionBack } from "@/lib/section-back";
 import { MusicDownloads } from "./music-downloads";
@@ -11,7 +11,12 @@ import { MusicLastFm } from "@/components/music/music-lastfm";
 import { MusicCoverCard } from "./music-cover-card";
 import { useMusicItemMenu } from "./music-item-menu";
 import { MusicPlaylistGridSkeleton } from "@/components/music/music-skeletons";
+import { ChevronDown } from "@/components/icons/music-icons";
 import { MusicPlaylistCover } from "./music-playlist-cover";
+import {
+  MusicPlaylistCoverEdit,
+  useMusicPlaylistCover,
+} from "./music-playlist-cover-edit";
 import { MusicServiceLogo } from "./music-service-logo";
 import { LibraryTrackList, PlaylistHeader } from "@/components/music/music-library-parts";
 import { useT } from "@/lib/i18n";
@@ -25,7 +30,7 @@ import {
   removeTrackFromMusicPlaylist,
   reorderMusicPlaylist,
 } from "@/lib/music/library";
-import { useMusicPlayer } from "@/lib/music/player";
+import { useMusicPlayback } from "@/lib/music/use-music-playback";
 import type { MusicCatalogItem, MusicPlaylist, MusicTrack } from "@/lib/music/types";
 import "./music-library.css";
 
@@ -51,20 +56,41 @@ const VIEWS: LibraryView[] = [
 
 const EMPTY_LIBRARY = { playlists: [] as MusicPlaylist[] };
 
+function PlaylistArt({ playlist }: { playlist: MusicPlaylist }) {
+  const custom = useMusicPlaylistCover(playlist.id);
+  return (
+    <MusicPlaylistCoverEdit playlistId={playlist.id} hasCustom={Boolean(custom)}>
+      {custom ? (
+        <span className="music-playlist-custom-cover">
+          <img src={custom} alt="" draggable={false} />
+        </span>
+      ) : (
+        <MusicPlaylistCover
+          artwork={playlist.tracks.map((track) => track.artwork)}
+          seed={playlist.id}
+          glyphSize={48}
+        />
+      )}
+    </MusicPlaylistCoverEdit>
+  );
+}
+
 export function MusicLibrary({
   onOpen,
   active = true,
   initialView,
   initialPlaylistId,
+  initialSpotifyKind,
 }: {
   onOpen: (item: MusicCatalogItem, siblings: MusicCatalogItem[]) => void;
   active?: boolean;
   initialView?: string;
   initialPlaylistId?: string;
+  initialSpotifyKind?: "playlists" | "liked";
 }) {
   const t = useT();
   const { openConnections } = useMusicConnections();
-  const player = useMusicPlayer();
+  const player = useMusicPlayback();
   const [library, setLibrary] = useState(EMPTY_LIBRARY);
   const [selectedId, setSelectedId] = useState<string | null>(initialPlaylistId ?? null);
   const [playlistName, setPlaylistName] = useState("");
@@ -282,7 +308,9 @@ export function MusicLibrary({
   }, [initialView, initialPlaylistId]);
 
   const localView = view === "albums" || view === "artists" || view === "tracks";
-  const currentQuery = selected && view === "playlists" ? trackQuery : query;
+  const deferredTrackQuery = useDeferredValue(trackQuery);
+  const filteringPlaylist = Boolean(selected && view === "playlists" && trackQuery.trim().toLocaleLowerCase() !== deferredTrackQuery.trim().toLocaleLowerCase());
+  const currentQuery = selected && view === "playlists" ? deferredTrackQuery : query;
   const normalized = currentQuery.trim().toLocaleLowerCase();
   const sourceTracks =
     selected && view === "playlists"
@@ -290,15 +318,12 @@ export function MusicLibrary({
       : view === "saved"
         ? player.likedTracks
         : player.recents;
-  const visibleTracks = sourceTracks.filter(
-    (track) =>
-      !normalized ||
-      `${track.title} ${track.artist} ${track.album ?? ""}`
-        .toLocaleLowerCase()
-        .includes(normalized),
-  );
-  if (sort === "title") visibleTracks.sort((a, b) => a.title.localeCompare(b.title));
-  if (sort === "duration") visibleTracks.sort((a, b) => a.durationSeconds - b.durationSeconds);
+  const visibleTracks = useMemo(() => {
+    const matches = sourceTracks.filter(track => !normalized || `${track.title} ${track.artist} ${track.album ?? ""}`.toLocaleLowerCase().includes(normalized));
+    if (sort === "title") matches.sort((a, b) => a.title.localeCompare(b.title));
+    if (sort === "duration") matches.sort((a, b) => a.durationSeconds - b.durationSeconds);
+    return matches;
+  }, [sourceTracks, normalized, sort]);
   const playlists = library.playlists.filter(
     (playlist) => !normalized || playlist.name.toLocaleLowerCase().includes(normalized),
   );
@@ -486,6 +511,7 @@ export function MusicLibrary({
       {view === "spotify" && (
         <MusicSpotifyLibrary
           active={active}
+          initialKind={initialSpotifyKind}
           onImported={(playlist) =>
             setLibrary((current) => ({
               ...current,
@@ -588,11 +614,7 @@ export function MusicLibrary({
             <>
               <div className="music-library-playlist-hero" ref={playlistHeading} tabIndex={-1}>
                 <div className="music-library-playlist-art">
-                  <MusicPlaylistCover
-                    artwork={selected.tracks.map((track) => track.artwork)}
-                    seed={selected.id}
-                    glyphSize={48}
-                  />
+                  <PlaylistArt playlist={selected} />
                 </div>
                 <div className="music-library-playlist-meta">
                   <PlaylistHeader
@@ -607,17 +629,9 @@ export function MusicLibrary({
                       closePlaylist();
                     }}
                     onError={setError}
+                    onExport={exportM3u}
                   />
                   <span>{t("music.card.trackCount", { count: selected.tracks.length })}</span>
-                  <button
-                    type="button"
-                    className="music-library-text"
-                    disabled={working || !selected.tracks.length}
-                    onClick={exportM3u}
-                  >
-                    <FileDown size={16} />
-                    {t("music.m3u.export")}
-                  </button>
                 </div>
               </div>
               <LibraryTrackList
@@ -627,6 +641,8 @@ export function MusicLibrary({
                 }
                 tracks={visibleTracks}
                 order={selected.tracks}
+                filtering={filteringPlaylist}
+                filterKey={normalized}
                 likedIds={player.likedIds}
                 onRemove={removeTrack}
                 onMove={moveTrack}
@@ -638,7 +654,20 @@ export function MusicLibrary({
                   className="music-library-add-tracks"
                   onToggle={(event) => setAdding(event.currentTarget.open)}
                 >
-                  <summary>{t("music.library.readyForPlaylist", { name: selected.name })}</summary>
+                  <summary>
+                    <span className="music-library-add-art">
+                      <MusicPlaylistCover
+                        artwork={selected.tracks.map((track) => track.artwork)}
+                        seed={selected.id}
+                        glyphSize={20}
+                      />
+                    </span>
+                    <span className="music-library-add-copy">
+                      <strong>{t("music.library.readyForPlaylist", { name: selected.name })}</strong>
+                      <small>{t("music.trackCount", { count: selected.tracks.length })}</small>
+                    </span>
+                    <ChevronDown size={18} className="music-library-add-chev" aria-hidden />
+                  </summary>
                   {adding && (
                     <>
                       {player.likedTracks.length > 0 && (
@@ -671,7 +700,7 @@ export function MusicLibrary({
       )}
       {(view === "saved" || view === "recent") && (
         <LibraryTrackList
-          title={viewLabel(view)}
+          title={view === "recent" ? "" : viewLabel(view)}
           subtitle={t("music.search.resultCount", { count: visibleTracks.length })}
           tracks={visibleTracks}
           likedIds={player.likedIds}

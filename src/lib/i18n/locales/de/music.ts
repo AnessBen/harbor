@@ -1,3 +1,4 @@
+import musicGif from "./music-gif";
 import musicListeningLab from "./music-listening-lab";
 import musicBillboard from "./music-billboard";
 import musicArtistExtras from "./music-artist-extras";
@@ -15,6 +16,7 @@ import musicPossible from "./music-possible";
 import musicLegal from "./music-legal";
 const music: Record<string, string> = {
   ...musicMiku,
+  ...musicGif,
   ...musicListeningLab,
   ...musicBillboard,
   ...musicArtistExtras,
@@ -209,6 +211,9 @@ const music: Record<string, string> = {
   "music.playlist.likeThis": "Ähnliche erstellen",
   "music.playlist.likeThisWorking": "Wird erstellt…",
   "music.playlist.likeThisName": "Wie {name}",
+  "music.playlist.likeThisAsk": "Woraus soll sie schöpfen?",
+  "music.playlist.likeThisFresh": "Nur für mich neue Musik",
+  "music.playlist.likeThisHeard": "Auch schon gehörte Songs",
   "music.row.newPlaylist": "Neue Playlist",
   "music.search.resultCount": "{count} Ergebnisse",
   "music.transport.shuffle": "Zufallswiedergabe",
@@ -231,6 +236,7 @@ const music: Record<string, string> = {
   "music.card.moreActions": "Weitere Aktionen für {title}",
   "music.card.goToArtist": "Zum Künstler",
   "music.card.copyTitle": "Titel und Künstler kopieren",
+  "music.card.goToPlaying": "Zur laufenden Wiedergabe",
   "music.playlist.none": "Noch keine Playlists.",
   ...musicQueue,
   ...musicTaste,
@@ -438,6 +444,8 @@ const music: Record<string, string> = {
     "Prüfe Client-ID und Weiterleitungs-URI in den Einstellungen deiner Spotify-App und versuche es erneut.",
   "music.recovery.title": "Hilfe zur Wiedergabe",
   "music.recovery.failed": "{source} konnte diesen Song nicht abspielen",
+  "music.recovery.skipping": "Nächster Song in {seconds}s",
+  "music.recovery.stay": "Hier bleiben",
   "music.recovery.source":
     "Das Audio konnte nicht geladen werden. Versuche unten eine andere Version, versuche diese Quelle erneut oder öffne den Song auf {source}.",
   "music.recovery.setup":
@@ -513,6 +521,8 @@ const music: Record<string, string> = {
   "music.row.playlistsSubtitle": "{count} Playlists",
   "music.row.playlists": "Deine Playlists",
   "music.genre.eyebrow": "Genre",
+  "music.label.eyebrow": "Plattenlabel",
+  "music.label.roster": "Künstler bei {query}",
   "music.genre.tagged": "Top-Künstler, -Titel und -Alben in {query}",
   "music.genre.back": "Zurück",
   "music.search.resume": "Zurück zu deiner Musik",

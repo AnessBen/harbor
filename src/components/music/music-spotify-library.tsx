@@ -21,7 +21,8 @@ import {
   type SpotifyLibraryPage,
   type SpotifyLibraryPlaylist,
 } from "@/lib/music/spotify-library";
-import type { MusicPlaylist } from "@/lib/music/types";
+import type { MusicPlaylist, MusicTrack } from "@/lib/music/types";
+import { registerMusicQueueOrigin } from "@/lib/music/playback-origin";
 import { openUrl } from "@/lib/window";
 import { useMusicConnections } from "./music-connections";
 import { useMusicPlaylistPicker } from "./music-playlist-picker";
@@ -33,9 +34,11 @@ import "./music-spotify-library.css";
 export function MusicSpotifyLibrary({
   onImported,
   active = true,
+  initialKind = "playlists",
 }: {
   onImported: (playlist: MusicPlaylist) => void;
   active?: boolean;
+  initialKind?: "playlists" | "liked";
 }) {
   const t = useT();
   const connections = useMusicConnections();
@@ -43,7 +46,7 @@ export function MusicSpotifyLibrary({
   const connected = account?.status === "connected";
   const { openSourcePicker } = useMusicSourcePicker();
   const { openPlaylistPicker } = useMusicPlaylistPicker();
-  const [kind, setKind] = useState<"playlists" | "liked">("playlists");
+  const [kind, setKind] = useState<"playlists" | "liked">(initialKind);
   const [selected, setSelected] = useState<SpotifyLibraryPlaylist | null>(null);
   const [page, setPage] = useState<SpotifyLibraryPage | null>(null);
   const [loading, setLoading] = useState(false);
@@ -62,6 +65,7 @@ export function MusicSpotifyLibrary({
   const origin = useRef<{ id: string; scroll: Element | null; top: number } | null>(null);
   const selectedId = selected?.id;
 
+  const more = useRef<HTMLButtonElement | null>(null);
   const read = useCallback(
     async (offset = 0, append = false) => {
       const run = ++generation.current;
@@ -113,6 +117,20 @@ export function MusicSpotifyLibrary({
       importAbort.current?.abort();
     };
   }, [connected, account?.account, read, refresh, selectedId, kind]);
+
+  useEffect(() => {
+    const node = more.current;
+    const next = page?.nextOffset;
+    if (!node || next == null || loading || working) return;
+    const watch = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) void read(next, true);
+      },
+      { rootMargin: "320px" },
+    );
+    watch.observe(node);
+    return () => watch.disconnect();
+  }, [page?.nextOffset, loading, working, read]);
 
   useEffect(() => {
     const changed = () => setRefresh((value) => value + 1);
@@ -230,6 +248,14 @@ export function MusicSpotifyLibrary({
   };
 
   const title = selected?.name ?? t("music.spotifyLibrary.title");
+  const play = (track: MusicTrack, queue: MusicTrack[]) => {
+    registerMusicQueueOrigin(queue, {
+      kind: "spotify", id: selected?.id ?? "spotify:liked",
+      name: selected?.name ?? t("music.spotifyLibrary.liked"),
+      collection: selected ? "playlist" : "liked", nextOffset: page?.nextOffset ?? null,
+    });
+    openSourcePicker(track, queue);
+  };
   const items = selected || kind === "liked" ? (page?.tracks ?? []) : (page?.playlists ?? []);
   const needsPermission =
     failure === "music.spotifyLibrary.permission" ||
@@ -406,7 +432,7 @@ export function MusicSpotifyLibrary({
           {(selected || kind === "liked") && !!page?.tracks.length && (
             <MusicCollectionControls
               tracks={page.tracks}
-              onPlay={openSourcePicker}
+              onPlay={play}
               disabled={!!working}
             />
           )}
@@ -452,7 +478,7 @@ export function MusicSpotifyLibrary({
                   track={track}
                   index={index + 1}
                   showDuration
-                  onPlay={() => openSourcePicker(track, page?.tracks ?? [])}
+                  onPlay={() => play(track, page?.tracks ?? [])}
                   onAddToQueue={() => enqueueMusic(track)}
                   onAddToPlaylist={() => openPlaylistPicker(track)}
                 />
@@ -480,12 +506,13 @@ export function MusicSpotifyLibrary({
               </span>
               {page.nextOffset != null && (
                 <button
+                  ref={more}
                   type="button"
                   className="music-spotify-button"
                   disabled={loading || !!working}
                   onClick={() => void read(page.nextOffset!, true)}
                 >
-                  {t("music.library.loadMore")}
+                  {t(loading ? "music.loading" : "music.library.loadMore")}
                 </button>
               )}
             </footer>

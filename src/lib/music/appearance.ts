@@ -2,6 +2,8 @@ import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { readMusicPreference, writeMusicPreference } from "./preferences";
 import { broadcastWindowState, subscribeWindowState } from "./window-sync";
+import { DEFAULT_MIKU_MODEL, normalizeMikuModel, type MikuModel } from "./miku-models";
+import { normalizeGifTiming, type GifTiming } from "./gif-clock";
 
 const KEY = "harbor.music.appearance.v1";
 type Appearance = {
@@ -9,6 +11,12 @@ type Appearance = {
   levels: boolean;
   dockVisualizer: boolean;
   mikuVisualizer: boolean;
+  mikuModel: MikuModel;
+  gifVisualizer: boolean;
+  gifId: string | null;
+  gifName: string;
+  gifSize: number;
+  gifTiming: GifTiming;
   immersive: boolean;
 };
 function read(): Appearance {
@@ -19,10 +27,16 @@ function read(): Appearance {
       levels: value.levels !== false,
       dockVisualizer: value.dockVisualizer === true,
       mikuVisualizer: value.mikuVisualizer === true,
+      mikuModel: normalizeMikuModel(value.mikuModel),
+      gifVisualizer: value.gifVisualizer === true,
+      gifId: typeof value.gifId === "string" ? value.gifId : null,
+      gifName: typeof value.gifName === "string" ? value.gifName : "",
+      gifSize: typeof value.gifSize === "number" && Number.isFinite(value.gifSize) ? Math.max(64, Math.min(220, value.gifSize)) : 126,
+      gifTiming: normalizeGifTiming(value.gifTiming),
       immersive: value.immersive === true,
     };
   } catch {
-    return { artworkColors: true, levels: true, dockVisualizer: false, mikuVisualizer: false, immersive: false };
+    return { artworkColors: true, levels: true, dockVisualizer: false, mikuVisualizer: false, mikuModel: DEFAULT_MIKU_MODEL, gifVisualizer: false, gifId: null, gifName: "", gifSize: 126, gifTiming: "auto", immersive: false };
   }
 }
 let appearance = read();
@@ -30,7 +44,7 @@ const listeners = new Set<() => void>();
 const APPEARANCE_CHANNEL = "harbor://music-appearance";
 
 subscribeWindowState<Appearance>(APPEARANCE_CHANNEL, (value) => {
-  appearance = { ...appearance, ...value };
+  appearance = { ...appearance, ...value, mikuModel: normalizeMikuModel(value?.mikuModel ?? appearance.mikuModel) };
   listeners.forEach((listener) => listener());
 });
 

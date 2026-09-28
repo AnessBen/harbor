@@ -76,6 +76,7 @@ export function MusicRollingStoneRow({
         onViewAll={onViewAll}
         onOpen={onOpen && ((item) => onOpen(item, items))}
         onPlay={onPlay && ((item) => onPlay(item, items))}
+        playable
       />
     </section>
   );

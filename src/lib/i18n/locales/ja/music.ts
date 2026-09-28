@@ -1,3 +1,4 @@
+import musicGif from "./music-gif";
 import musicListeningLab from "./music-listening-lab";
 import musicBillboard from "./music-billboard";
 import musicArtistExtras from "./music-artist-extras";
@@ -15,6 +16,7 @@ import musicPossible from "./music-possible";
 import musicLegal from "./music-legal";
 const music: Record<string, string> = {
   ...musicMiku,
+  ...musicGif,
   ...musicListeningLab,
   ...musicBillboard,
   ...musicArtistExtras,
@@ -209,6 +211,9 @@ const music: Record<string, string> = {
   "music.playlist.likeThis": "似たものを作成",
   "music.playlist.likeThisWorking": "作成中…",
   "music.playlist.likeThisName": "{name} のような",
+  "music.playlist.likeThisAsk": "どこから選びますか？",
+  "music.playlist.likeThisFresh": "自分にとって新しい曲だけ",
+  "music.playlist.likeThisHeard": "聴いたことのある曲も含める",
   "music.row.newPlaylist": "新しいプレイリスト",
   "music.search.resultCount": "{count}件の結果",
   "music.transport.shuffle": "シャッフル",
@@ -231,6 +236,7 @@ const music: Record<string, string> = {
   "music.card.moreActions": "{title}のその他の操作",
   "music.card.goToArtist": "アーティストを表示",
   "music.card.copyTitle": "曲名とアーティストをコピー",
+  "music.card.goToPlaying": "再生中の一覧を開く",
   "music.playlist.none": "プレイリストはまだありません。",
   ...musicQueue,
   ...musicTaste,
@@ -434,6 +440,8 @@ const music: Record<string, string> = {
     "Spotifyアプリの設定でClient IDとリダイレクトURIを確認して、もう一度お試しください。",
   "music.recovery.title": "再生のヘルプ",
   "music.recovery.failed": "{source}でこの曲を再生できませんでした",
+  "music.recovery.skipping": "{seconds}秒後に次の曲へ",
+  "music.recovery.stay": "ここに留まる",
   "music.recovery.source":
     "音声を読み込めませんでした。以下で別のバージョンを選ぶか、このソースで再試行するか、{source}で開いてください。",
   "music.recovery.setup":
@@ -508,6 +516,8 @@ const music: Record<string, string> = {
   "music.row.playlistsSubtitle": "{count} 件のプレイリスト",
   "music.row.playlists": "あなたのプレイリスト",
   "music.genre.eyebrow": "ジャンル",
+  "music.label.eyebrow": "レコードレーベル",
+  "music.label.roster": "{query} のアーティスト",
   "music.genre.tagged": "{query} の人気アーティスト、曲、アルバム",
   "music.genre.back": "戻る",
   "music.search.resume": "音楽に戻る",

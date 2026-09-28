@@ -2,6 +2,7 @@ import { Check } from "lucide-react";
 import { NavArrow } from "@/components/nav-arrow";
 import { useEffect, useRef, useState } from "react";
 import type { Meta } from "@/lib/cinemeta";
+import type { MusicSearchHit } from "@/lib/search";
 import { IMG } from "@/lib/providers/tmdb/tmdb-client";
 import { useTmdbImdbId } from "@/lib/providers/tmdb/tmdb-imdb-resolve";
 import { useMetaWatched } from "@/lib/watched-flag";
@@ -242,5 +243,43 @@ export function RailSkeleton({ portrait }: { portrait?: boolean }) {
         </div>
       ))}
     </div>
+  );
+}
+
+export function MusicRail({
+  items,
+  onOpen,
+}: {
+  items: MusicSearchHit[];
+  onOpen: (item: MusicSearchHit) => void;
+}) {
+  return (
+    <ScrollRail>
+      {items.map((item) => (
+        <button
+          key={item.id}
+          type="button"
+          onClick={() => onOpen(item)}
+          className="group flex w-[116px] shrink-0 flex-col gap-1.5 text-start [scroll-snap-align:start]"
+        >
+          <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-white/[0.06] ring-1 ring-white/10 transition duration-200 group-hover:scale-[1.04] group-hover:ring-white/25">
+            {item.artwork && (
+              <img
+                src={item.artwork}
+                alt=""
+                loading="lazy"
+                decoding="async"
+                draggable={false}
+                className="h-full w-full object-cover"
+              />
+            )}
+          </div>
+          <span className="line-clamp-1 text-[12.5px] font-medium text-white/90">{item.title}</span>
+          <span className="text-[11px] text-white/40">
+            {item.kind === "album" ? "Album" : "Song"}
+          </span>
+        </button>
+      ))}
+    </ScrollRail>
   );
 }

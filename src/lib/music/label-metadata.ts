@@ -50,6 +50,30 @@ async function mb<T>(path: string, parse: (body: Obj) => T, signal?: AbortSignal
   return value;
 }
 
+export function labelByName(name: string, signal?: AbortSignal): Promise<MusicLabelRef | null> {
+  const query = name.trim();
+  if (query.length < 2) return Promise.resolve(null);
+  return mb(
+    `label?query=${encodeURIComponent(`label:"${query}"`)}&limit=5&fmt=json`,
+    (body) => {
+      const wanted = query.toLowerCase();
+      const found = rows(body.labels)
+        .map((row) => ({
+          id: text(row.id),
+          name: text(row.name),
+          releases: typeof row.score === "number" ? row.score : 0,
+        }))
+        .filter((row) => uuid.test(row.id) && row.name && !PLACEHOLDER.has(row.id));
+      return (
+        found.find((row) => row.name.toLowerCase() === wanted) ??
+        found.sort((a, b) => b.releases - a.releases)[0] ??
+        null
+      );
+    },
+    signal,
+  );
+}
+
 export function artistLabels(artistId: string, signal?: AbortSignal): Promise<MusicLabelRef[]> {
   if (!uuid.test(artistId)) return Promise.resolve([]);
   return mb(

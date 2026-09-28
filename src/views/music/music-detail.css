@@ -6,10 +6,88 @@
 }
 .music-detail-page .music-detail-hero {
   align-items: center;
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--music-hero-tint, var(--color-accent)) 42%, var(--color-elevated)) 0%,
+      color-mix(in oklab, var(--music-hero-tint, var(--color-accent)) 14%, var(--color-elevated)) 62%,
+      var(--color-elevated) 100%
+    );
+}
+.music-detail-source {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 32px;
+  margin-block-start: 18px;
+  font-size: 12px;
+  color: var(--color-ink-subtle);
+  text-underline-offset: 4px;
+  transition: color 140ms ease-out;
+}
+.music-detail-source:hover {
+  color: var(--color-ink-muted);
+  text-decoration: underline;
+}
+.music-detail-source:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
+  border-radius: 4px;
 }
 .music-detail-title h1 {
   overflow-wrap: anywhere;
   text-wrap: balance;
+}
+.music-detail-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-block-start: 12px;
+  font-size: 14px;
+  color: var(--color-ink-muted);
+}
+.music-detail-meta > span {
+  display: inline-flex;
+  align-items: center;
+  line-height: 1.2;
+}
+.music-detail-meta > span > button {
+  line-height: inherit;
+}
+.music-detail-meta > span + span::before {
+  content: "·";
+  margin-inline: 9px;
+  line-height: 1;
+  color: var(--color-ink-subtle);
+}
+.music-detail-explicit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-inline-size: 18px;
+  block-size: 18px;
+  padding-inline: 4px;
+  border-radius: 3px;
+  background: var(--color-raised);
+  color: var(--color-ink-muted);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+}
+.music-meta-link {
+  color: var(--color-ink-muted);
+  text-align: start;
+  text-underline-offset: 4px;
+  transition: color 140ms ease-out;
+}
+.music-meta-link:hover {
+  color: var(--color-ink);
+  text-decoration: underline;
+}
+.music-meta-link:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
+  border-radius: 3px;
 }
 .music-detail-facts {
   display: flex;

@@ -1,4 +1,13 @@
 const musicNowPlaying: Record<string, string> = {
+  "music.now.sameContext": "Тот же источник",
+  "music.now.discoverNew": "Открыть новое",
+  "music.now.moreMode": "Выбрать больше музыки",
+  "music.now.continueFrom": "Продолжить из {name}",
+  "music.now.discoverHint": "Похожие треки, кроме очереди и недавно прослушанных.",
+  "music.now.moreAdded": "Добавлено треков: {count}",
+  "music.now.contextEnd": "В этом источнике больше нет треков. Попробуйте «Открыть новое».",
+  "music.now.noNewSongs": "Новые треки не найдены. Попробуйте позже.",
+  "music.now.moreError": "Не удалось загрузить ещё. Попробуйте снова.",
   "music.artist.filmography": "Кино и телевидение",
   "music.action.error": "Не удалось выполнить действие. Повторите попытку.",
   "music.radio.error": "Не удалось запустить радио. Повторите или выберите другой источник.",
@@ -76,6 +85,11 @@ const musicNowPlaying: Record<string, string> = {
 
   "music.artist.about": "Об исполнителе",
   "music.artist.save": "Сохранить исполнителя",
+  "music.artist.dontPlay": "Не воспроизводить этого исполнителя",
+  "music.artist.doPlay": "Снова воспроизводить этого исполнителя",
+  "music.artist.hideSongs": "Скрыть треки этого исполнителя",
+  "music.artist.showSongs": "Показать треки этого исполнителя",
+  "music.artist.moreLike": "Больше похожих исполнителей",
   "music.artist.unsave": "Удалить из сохранённых исполнителей",
 
   "music.artist.origin": "Происхождение",
@@ -95,6 +109,9 @@ const musicNowPlaying: Record<string, string> = {
   "music.artist.merch": "Мерч",
 
   "music.artist.official": "Официальный сайт",
+  "music.artist.social": "Соцсети",
+  "music.artist.gallery": "Фото: {name}",
+  "music.artist.zoom": "Масштаб",
 
   "music.artist.kicker": "Исполнитель",
   "music.artist.listenOn": "Слушать в",

@@ -1,3 +1,4 @@
+import musicGif from "./music-gif";
 import musicListeningLab from "./music-listening-lab";
 import musicBillboard from "./music-billboard";
 import musicArtistExtras from "./music-artist-extras";
@@ -15,6 +16,7 @@ import musicPossible from "./music-possible";
 import musicLegal from "./music-legal";
 const music: Record<string, string> = {
   ...musicMiku,
+  ...musicGif,
   ...musicListeningLab,
   ...musicBillboard,
   ...musicArtistExtras,
@@ -209,6 +211,9 @@ const music: Record<string, string> = {
   "music.playlist.likeThis": "Buat yang serupa",
   "music.playlist.likeThisWorking": "Membuat…",
   "music.playlist.likeThisName": "Seperti {name}",
+  "music.playlist.likeThisAsk": "Ambil dari mana?",
+  "music.playlist.likeThisFresh": "Hanya musik yang baru bagi saya",
+  "music.playlist.likeThisHeard": "Sertakan lagu yang pernah saya dengar",
   "music.row.newPlaylist": "Playlist baru",
   "music.search.resultCount": "{count} hasil",
   "music.transport.shuffle": "Acak",
@@ -231,6 +236,7 @@ const music: Record<string, string> = {
   "music.card.moreActions": "Tindakan lainnya untuk {title}",
   "music.card.goToArtist": "Buka artis",
   "music.card.copyTitle": "Salin judul dan artis",
+  "music.card.goToPlaying": "Buka yang sedang diputar",
   "music.playlist.none": "Belum ada playlist.",
   ...musicQueue,
   ...musicTaste,
@@ -435,6 +441,8 @@ const music: Record<string, string> = {
     "Periksa Client ID dan URI pengalihan di pengaturan aplikasi Spotify Anda, lalu coba lagi.",
   "music.recovery.title": "Bantuan pemutaran",
   "music.recovery.failed": "{source} tidak dapat memutar lagu ini",
+  "music.recovery.skipping": "Lanjut ke lagu berikutnya dalam {seconds}d",
+  "music.recovery.stay": "Tetap di sini",
   "music.recovery.source":
     "Audio tidak dapat dimuat. Coba versi lain di bawah, coba lagi sumber ini, atau buka di {source}.",
   "music.recovery.setup":
@@ -509,6 +517,8 @@ const music: Record<string, string> = {
   "music.row.playlistsSubtitle": "{count} playlist",
   "music.row.playlists": "Playlist kamu",
   "music.genre.eyebrow": "Genre",
+  "music.label.eyebrow": "Label rekaman",
+  "music.label.roster": "Artis di {query}",
   "music.genre.tagged": "Musisi, lagu dan album teratas di {query}",
   "music.genre.back": "Kembali",
   "music.search.resume": "Kembali ke musikmu",

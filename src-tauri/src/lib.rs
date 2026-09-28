@@ -1130,6 +1130,7 @@ pub fn run() {
             music::music_search_typed,
             music::music_video_stream,
             music::music_search_videos,
+            music::music_search_video_page,
             music::music_connections,
             music::music_connect,
             music::music_disconnect,

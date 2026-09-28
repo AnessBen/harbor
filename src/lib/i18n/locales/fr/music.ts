@@ -1,3 +1,4 @@
+import musicGif from "./music-gif";
 import musicListeningLab from "./music-listening-lab";
 import musicBillboard from "./music-billboard";
 import musicArtistExtras from "./music-artist-extras";
@@ -15,6 +16,7 @@ import musicPossible from "./music-possible";
 import musicLegal from "./music-legal";
 const music: Record<string, string> = {
   ...musicMiku,
+  ...musicGif,
   ...musicListeningLab,
   ...musicBillboard,
   ...musicArtistExtras,
@@ -210,6 +212,9 @@ const music: Record<string, string> = {
   "music.playlist.likeThis": "En créer une similaire",
   "music.playlist.likeThisWorking": "Création…",
   "music.playlist.likeThisName": "Comme {name}",
+  "music.playlist.likeThisAsk": "Dans quoi puiser ?",
+  "music.playlist.likeThisFresh": "Uniquement de la musique nouvelle pour moi",
+  "music.playlist.likeThisHeard": "Inclure des titres déjà écoutés",
   "music.row.newPlaylist": "Nouvelle playlist",
   "music.search.resultCount": "{count} résultats",
   "music.transport.shuffle": "Lecture aléatoire",
@@ -232,6 +237,7 @@ const music: Record<string, string> = {
   "music.card.moreActions": "Plus d’actions pour {title}",
   "music.card.goToArtist": "Voir l’artiste",
   "music.card.copyTitle": "Copier le titre et l’artiste",
+  "music.card.goToPlaying": "Aller à la lecture en cours",
   "music.playlist.none": "Aucune playlist pour le moment.",
   ...musicQueue,
   ...musicTaste,
@@ -438,6 +444,8 @@ const music: Record<string, string> = {
     "Vérifiez le Client ID et l’URI de redirection dans les paramètres de votre application Spotify, puis réessayez.",
   "music.recovery.title": "Aide à la lecture",
   "music.recovery.failed": "{source} n’a pas pu lire ce titre",
+  "music.recovery.skipping": "Passage au titre suivant dans {seconds}s",
+  "music.recovery.stay": "Rester ici",
   "music.recovery.source":
     "Impossible de charger l’audio. Essayez une autre version ci-dessous, réessayez cette source ou ouvrez le titre sur {source}.",
   "music.recovery.setup":
@@ -514,6 +522,8 @@ const music: Record<string, string> = {
   "music.row.playlistsSubtitle": "{count} playlists",
   "music.row.playlists": "Vos playlists",
   "music.genre.eyebrow": "Genre",
+  "music.label.eyebrow": "Label",
+  "music.label.roster": "Artistes chez {query}",
   "music.genre.tagged": "Meilleurs artistes, titres et albums en {query}",
   "music.genre.back": "Retour",
   "music.search.resume": "Retour à votre musique",

@@ -2,6 +2,8 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { isMusicLiked } from "./liked";
 import { setMusicWindowTitle } from "./window-title";
+import { clearMediaControls, mediaKeyGate, updateMediaControls } from "@/lib/media-session";
+import { videoOwnsMediaKeys } from "@/lib/player/media-key-owner";
 import {
   getMusicState,
   nextMusic,
@@ -15,6 +17,7 @@ import {
 
 const IS_TAURI = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 const EVENT = "harbor://taskbar-button";
+const MEDIA_KEY_EVENT = "harbor://media-key";
 const STEP_SECONDS = 30;
 
 let muted = 0;
@@ -55,9 +58,57 @@ function run(action: string): void {
   }
 }
 
+function mediaKey(action: string): void {
+  if (videoOwnsMediaKeys()) return;
+  const state = getMusicState();
+  if (!state.current || !mediaKeyGate()) return;
+  const playing = state.phase === "playing";
+  switch (action) {
+    case "playpause":
+      toggleMusicPlayback();
+      return;
+    case "play":
+      if (!playing) toggleMusicPlayback();
+      return;
+    case "pause":
+    case "stop":
+      if (playing) toggleMusicPlayback();
+      return;
+    case "next":
+      nextMusic();
+      return;
+    case "previous":
+      previousMusic();
+      return;
+    default:
+  }
+}
+
+/** Without this the OS never learns Harbor is playing music, so the media keys go elsewhere. */
+function pushSession(): void {
+  if (videoOwnsMediaKeys()) return;
+  const state = getMusicState();
+  const track = state.current;
+  if (!track) {
+    clearMediaControls();
+    return;
+  }
+  const art = Array.isArray(track.artwork) ? track.artwork[0] : track.artwork;
+  updateMediaControls(
+    state.phase === "playing",
+    track.title || "",
+    track.artist || "",
+    typeof art === "string" && art.startsWith("https://") ? art : null,
+    state.duration || null,
+    state.currentTime,
+    state.volume,
+  );
+}
+
 function push(): void {
   const state = getMusicState();
   const playing = state.phase === "playing";
+  pushSession();
   const liked = isMusicLiked(state.likedIds, state.current);
   const silent = state.volume <= 0;
   setMusicWindowTitle(state.current?.title ?? null, state.current?.artist ?? null);
@@ -77,13 +128,24 @@ function appIconFollowsArtwork(): boolean {
   }
 }
 
+async function restoreAppIcon(): Promise<void> {
+  try {
+    const raw = localStorage.getItem("harbor.settings");
+    const chosen = raw ? (JSON.parse(raw).customAppIcon as string | undefined) : undefined;
+    const { applyAppIcon } = await import("@/lib/app-icon");
+    await applyAppIcon(chosen ?? "");
+  } catch {}
+}
+
 function pushArtwork(artwork: string | null): void {
   const url = artwork?.startsWith("https://") ? artwork : null;
   const appIcon = appIconFollowsArtwork();
   const key = `${url ?? ""}|${appIcon ? 1 : 0}`;
   if (key === lastArt) return;
+  const tookIcon = lastArt.endsWith("|1");
   lastArt = key;
   invoke("media_controls_music_art", { artUrl: url, appIcon }).catch(() => {});
+  if (!url && tookIcon) void restoreAppIcon();
 }
 
 export function syncMusicTaskbarArtwork(): void {
@@ -96,9 +158,16 @@ export function startMusicTaskbarButtons(): () => void {
   if (!IS_TAURI) return () => {};
   let stop: (() => void) | null = null;
   let live = true;
+  let stopKeys: (() => void) | null = null;
   void listen<string>(EVENT, (event) => run(event.payload))
     .then((unlisten) => {
       if (live) stop = unlisten;
+      else unlisten();
+    })
+    .catch(() => {});
+  void listen<string>(MEDIA_KEY_EVENT, (event) => mediaKey(event.payload))
+    .then((unlisten) => {
+      if (live) stopKeys = unlisten;
       else unlisten();
     })
     .catch(() => {});
@@ -109,7 +178,10 @@ export function startMusicTaskbarButtons(): () => void {
     unsubscribe();
     setMusicWindowTitle(null, null);
     pushArtwork(null);
+    if (!videoOwnsMediaKeys()) clearMediaControls();
     stop?.();
     stop = null;
+    stopKeys?.();
+    stopKeys = null;
   };
 }

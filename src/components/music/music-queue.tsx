@@ -1,4 +1,4 @@
-import { getMusicSourceCandidates } from "@/lib/music/sources";
+import { getMusicSourceCandidates, musicPlaybackSource } from "@/lib/music/sources";
 import { replaceQueueTrack, selectableSources } from "@/lib/music/queue-source";
 import { MusicQueueOrder } from "@/lib/music/queue-order";
 import { MusicTrackLabels } from "./music-track-labels";
@@ -234,7 +234,7 @@ function QueueTrack({
           </span>
         </div>
         <span className="music-queue-track-meta">
-          <MusicServiceLogo source={track.connectorId ?? ""} itemId={track.id} size={16} />
+          <MusicServiceLogo source={musicPlaybackSource(track.connectorId)} size={16} />
           {track.durationSeconds > 0 && <span>{track.durationLabel}</span>}
         </span>
         {!current && (
@@ -300,7 +300,7 @@ function QueueTrack({
             aria-label={t("music.source.another")}
             title={t("music.source.another")}
           >
-            <MusicServiceLogo source={track.connectorId ?? ""} itemId={track.id} size={17} />
+            <MusicServiceLogo source={musicPlaybackSource(track.connectorId)} size={17} />
           </button>
         </div>
       )}

@@ -1,3 +1,4 @@
+import musicGif from "./music-gif";
 import musicListeningLab from "./music-listening-lab";
 import musicBillboard from "./music-billboard";
 import musicArtistExtras from "./music-artist-extras";
@@ -15,6 +16,7 @@ import musicPossible from "./music-possible";
 import musicLegal from "./music-legal";
 const music: Record<string, string> = {
   ...musicMiku,
+  ...musicGif,
   ...musicListeningLab,
   ...musicBillboard,
   ...musicArtistExtras,
@@ -210,6 +212,9 @@ const music: Record<string, string> = {
   "music.playlist.likeThis": "Crear una similar",
   "music.playlist.likeThisWorking": "Creando…",
   "music.playlist.likeThisName": "Como {name}",
+  "music.playlist.likeThisAsk": "¿De dónde debe sacarla?",
+  "music.playlist.likeThisFresh": "Solo música nueva para mí",
+  "music.playlist.likeThisHeard": "Incluir canciones que ya escuché",
   "music.row.newPlaylist": "Nueva playlist",
   "music.search.resultCount": "{count} resultados",
   "music.transport.shuffle": "Aleatorio",
@@ -232,6 +237,7 @@ const music: Record<string, string> = {
   "music.card.moreActions": "Más acciones para {title}",
   "music.card.goToArtist": "Ir al artista",
   "music.card.copyTitle": "Copiar título y artista",
+  "music.card.goToPlaying": "Ir a lo que suena",
   "music.playlist.none": "Aún no hay playlists.",
   ...musicQueue,
   ...musicTaste,
@@ -435,6 +441,8 @@ const music: Record<string, string> = {
     "Comprueba el Client ID y la URI de redirección en los ajustes de tu aplicación de Spotify e inténtalo de nuevo.",
   "music.recovery.title": "Ayuda con la reproducción",
   "music.recovery.failed": "{source} no pudo reproducir esta canción",
+  "music.recovery.skipping": "Pasando a la siguiente canción en {seconds}s",
+  "music.recovery.stay": "Quedarse aquí",
   "music.recovery.source":
     "No se pudo cargar el audio. Prueba otra versión a continuación, vuelve a intentar con esta fuente o ábrela en {source}.",
   "music.recovery.setup":
@@ -510,6 +518,8 @@ const music: Record<string, string> = {
   "music.row.playlistsSubtitle": "{count} listas",
   "music.row.playlists": "Tus listas",
   "music.genre.eyebrow": "Género",
+  "music.label.eyebrow": "Sello discográfico",
+  "music.label.roster": "Artistas de {query}",
   "music.genre.tagged": "Mejores artistas, canciones y álbumes de {query}",
   "music.genre.back": "Atrás",
   "music.search.resume": "Volver a tu música",

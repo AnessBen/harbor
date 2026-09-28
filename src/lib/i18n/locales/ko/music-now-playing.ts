@@ -1,4 +1,13 @@
 const musicNowPlaying: Record<string, string> = {
+  "music.now.sameContext": "같은 소스",
+  "music.now.discoverNew": "새 음악 찾기",
+  "music.now.moreMode": "추가할 음악 선택",
+  "music.now.continueFrom": "{name}에서 계속",
+  "music.now.discoverHint": "대기열과 최근 재생 기록을 제외한 비슷한 곡입니다.",
+  "music.now.moreAdded": "{count}곡 추가됨",
+  "music.now.contextEnd": "이 소스에 더 이상 곡이 없습니다. 새 음악 찾기를 시도하세요.",
+  "music.now.noNewSongs": "새로운 곡이 없습니다. 나중에 다시 시도하세요.",
+  "music.now.moreError": "추가로 불러오지 못했습니다. 다시 시도하세요.",
   "music.artist.filmography": "영화 및 TV",
   "music.action.error": "작업을 완료하지 못했습니다. 다시 시도하세요.",
   "music.radio.error": "라디오를 시작하지 못했습니다. 다시 시도하거나 다른 소스를 선택하세요.",
@@ -75,6 +84,11 @@ const musicNowPlaying: Record<string, string> = {
 
   "music.artist.about": "아티스트 소개",
   "music.artist.save": "아티스트 저장",
+  "music.artist.dontPlay": "이 아티스트 재생 안 함",
+  "music.artist.doPlay": "이 아티스트 다시 재생",
+  "music.artist.hideSongs": "이 아티스트의 곡 숨기기",
+  "music.artist.showSongs": "이 아티스트의 곡 표시",
+  "music.artist.moreLike": "비슷한 아티스트 더 보기",
   "music.artist.unsave": "저장한 아티스트에서 제거",
 
   "music.artist.origin": "출신",
@@ -94,6 +108,9 @@ const musicNowPlaying: Record<string, string> = {
   "music.artist.merch": "굿즈",
 
   "music.artist.official": "공식 웹사이트",
+  "music.artist.social": "소셜",
+  "music.artist.gallery": "{name} 사진",
+  "music.artist.zoom": "확대",
 
   "music.artist.kicker": "아티스트",
   "music.artist.listenOn": "들을 수 있는 곳",

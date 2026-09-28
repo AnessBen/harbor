@@ -13,6 +13,9 @@ import { metaLooksAnime } from "@/lib/anime-detect";
 import { AnimeRow } from "./anime-row";
 import { AnimeRelations } from "./anime-relations";
 import { MangaRow } from "./manga-row";
+import { MusicRow } from "./music-row";
+import { EBookRow } from "./ebook-row";
+import { SportsRow } from "./sports-row";
 import { CharacterGroup } from "./character-group";
 import { EmptyState } from "./empty-state";
 import { GuideModal } from "./guide-modal";
@@ -24,6 +27,8 @@ import { matchPersonForQuery, PersonTopMatch } from "./person-top-match";
 import { PeopleRow } from "./people-row";
 import { collectionForTitle, useCollectionHits } from "./use-collection-hits";
 import { MetaList } from "./meta-list";
+import { SearchFilterBar, type SearchFilterKey } from "./search-filter-bar";
+import { requestMusicSearch } from "@/lib/music/navigation";
 import { AddonHits } from "./addon-hits";
 import { AddonResults } from "./addon-results";
 import { MagnetCard } from "./magnet-card";
@@ -52,13 +57,17 @@ export function SearchOverlay() {
   } = useSearch();
   const inputRef = useRef<HTMLInputElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
-  const { openFilter, openMeta, openPerson } = useView();
+  const { openFilter, openMeta, openPerson, setView } = useView();
   const [explore, setExplore] = useState<ExploreFrame[]>([]);
   const t = useT();
   const [guideOpen, setGuideOpen] = useState(false);
   const [aiActive, setAiActive] = useState(false);
   const [aiMode, setAiMode] = useState(false);
   const [aiRunSignal, setAiRunSignal] = useState(0);
+  const [mediaFilter, setMediaFilter] = useState<SearchFilterKey>("all");
+  useEffect(() => {
+    setMediaFilter("all");
+  }, [query]);
   const { settings, update } = useSettings();
   const { mounted, closing } = useExitPresence(open, 150);
 
@@ -219,6 +228,20 @@ export function SearchOverlay() {
   };
 
   const trimmed = query.trim();
+  const filterCounts: Partial<Record<SearchFilterKey, number>> = currentResults
+    ? {
+        movies: currentResults.movies.length,
+        shows: currentResults.series.length,
+        people: currentResults.people.length,
+        live: currentResults.liveTv.length,
+        anime: currentResults.anime.length,
+        manga: currentResults.manga.length,
+        music: currentResults.music.length,
+        ebooks: currentResults.ebooks.length,
+        sports: currentResults.sports.length,
+      }
+    : {};
+  const showKind = (key: SearchFilterKey) => mediaFilter === "all" || mediaFilter === key;
   const personMatch = matchPersonForQuery(currentResults?.people, trimmed);
   const topMatchIsAnime =
     !personMatch &&
@@ -366,6 +389,11 @@ export function SearchOverlay() {
                   commit();
                   openPerson(id);
                 }}
+                onOpenMusic={(q) => {
+                  commit();
+                  requestMusicSearch(q);
+                  setView("music");
+                }}
               />
             ) : (
               <>
@@ -436,7 +464,12 @@ export function SearchOverlay() {
                   !aiMode &&
                   currentResults && (
                     <div className="harbor-search-section flex flex-col gap-6 pb-2">
-                      {personMatch ? (
+                      <SearchFilterBar
+                        counts={filterCounts}
+                        value={mediaFilter}
+                        onChange={setMediaFilter}
+                      />
+                      {mediaFilter === "all" && personMatch ? (
                         <PersonTopMatch
                           person={personMatch}
                           onClose={commit}
@@ -445,7 +478,7 @@ export function SearchOverlay() {
                           }
                         />
                       ) : (
-                        currentResults.topMatch && (
+                        mediaFilter === "all" && currentResults.topMatch && (
                           <TopMatch
                             match={currentResults.topMatch}
                             onClose={commit}
@@ -470,30 +503,41 @@ export function SearchOverlay() {
                           />
                         )
                       )}
-                      {topAnime && <AnimeRelations anime={topAnime} onClose={commit} />}
-                      <LiveTvRow items={currentResults.liveTv} onClose={commit} />
+                      {showKind("anime") && topAnime && (
+                        <AnimeRelations anime={topAnime} onClose={commit} />
+                      )}
+                      <LiveTvRow
+                        items={showKind("live") ? currentResults.liveTv : []}
+                        onClose={commit}
+                      />
                       <AddonHits hits={currentResults.addons} onClose={commit} />
                       <PeopleRow
                         people={
-                          personMatch
-                            ? currentResults.people.filter((p) => p.id !== personMatch.id)
-                            : currentResults.people
+                          !showKind("people")
+                            ? []
+                            : personMatch
+                              ? currentResults.people.filter((p) => p.id !== personMatch.id)
+                              : currentResults.people
                         }
                         onClose={commit}
                         onOpenPerson={(p) =>
                           pushExplore({ kind: "person", id: p.id, name: p.name })
                         }
                       />
-                      <div className="grid gap-8 lg:grid-cols-2">
+                      <div
+                        className={`grid gap-8 ${
+                          showKind("movies") && showKind("shows") ? "lg:grid-cols-2" : ""
+                        }`}
+                      >
                         <MetaList
                           title={t("Movies")}
-                          items={currentResults.movies}
+                          items={showKind("movies") ? currentResults.movies : []}
                           onClose={commit}
                           stagger
                         />
                         <MetaList
                           title={t("Series")}
-                          items={currentResults.series}
+                          items={showKind("shows") ? currentResults.series : []}
                           onClose={commit}
                           stagger
                         />
@@ -511,8 +555,11 @@ export function SearchOverlay() {
                           }
                         />
                       )}
-                      <AnimeRow items={currentResults.anime} onClose={commit} />
-                      <MangaRow items={currentResults.manga} onClose={commit} />
+                      <AnimeRow items={showKind("anime") ? currentResults.anime : []} onClose={commit} />
+                      <MangaRow items={showKind("manga") ? currentResults.manga : []} onClose={commit} />
+                      <MusicRow items={showKind("music") ? currentResults.music : []} onClose={commit} />
+                      <EBookRow items={showKind("ebooks") ? currentResults.ebooks : []} onClose={commit} />
+                      <SportsRow items={showKind("sports") ? currentResults.sports : []} onClose={commit} />
                       <CharacterGroup items={currentResults.characters} onClose={commit} />
                       <AddonResults groups={currentResults.addonGroups} onClose={commit} />
                     </div>

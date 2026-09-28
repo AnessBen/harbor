@@ -5,6 +5,7 @@ import { artistIdentityKey, peekArtistIdentity, resolveArtist } from "@/lib/musi
 import { collapseArtistRows } from "@/lib/music/search-artists";
 import type { MusicCatalogItem } from "@/lib/music/types";
 import { useT, useUiLanguage } from "@/lib/i18n";
+import { MusicBillboardRank } from "./music-billboard-rank";
 
 const DEBOUNCE_MS = 200;
 const MIN_CHARS = 2;
@@ -181,6 +182,14 @@ export function MusicSearchSuggest({
                   <span className="truncate text-[12.5px] text-ink">{titleOf(item)}</span>
                   {sub ? <span className="truncate text-[11px] text-ink-subtle">{sub}</span> : null}
                 </span>
+                {item.kind === "track" && (
+                  <MusicBillboardRank
+                    title={item.title}
+                    artist={item.artist}
+                    logoSize={11}
+                    className="ms-auto inline-flex shrink-0 items-center gap-1 text-[10.5px] font-semibold text-ink-subtle"
+                  />
+                )}
               </button>
             );
           })}

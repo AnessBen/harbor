@@ -2,6 +2,7 @@ import { isMusicLiked } from "@/lib/music/liked";
 import { artistCreditParts } from "@/lib/music/search-artists";
 import { MusicArtistLink } from "./music-artist-link";
 import { MusicDownloadButton } from "./music-download-button";
+import { HoverTooltip } from "@/components/hover-tooltip";
 import { MusicListeningDetails } from "./music-listening-details";
 import { useRecordingProfile } from "@/lib/music/use-recording-profile";
 import type { MusicArtistRef, MusicTrack } from "@/lib/music/types";
@@ -32,7 +33,8 @@ import {
 import { MusicGlyph } from "@/components/icons/music-glyph";
 import { Poster } from "@/components/poster";
 import { useMusicTrackContextMenu } from "./music-track-menu";
-import { useUpNextSuggestions } from "@/lib/music/up-next";
+import { MusicQueueContinuation } from "./music-queue-continuation";
+import { MusicNowTitle } from "./music-now-title";
 import { MusicUpNextRow } from "./music-up-next-row";
 import { MusicVideoSurface } from "./music-video-surface";
 import { MusicVideoFullscreen } from "./music-video-fullscreen";
@@ -74,6 +76,8 @@ import { getMusicSpeakerState } from "@/lib/music/casting";
 import { musicTrackQuality } from "@/lib/music/quality";
 import "./music-now-playing.css";
 
+const NOW_LIKE_SPOKES = [0, 45, 90, 135, 180, 225, 270, 315];
+
 export function MusicNowPlaying({
   inset,
   dockRef,
@@ -107,6 +111,7 @@ export function MusicNowPlaying({
   const [panel, setPanel] = useState<"queue" | "signal" | "about" | "lyrics">("queue");
   const [searching, setSearching] = useState(false);
   const [searchExit, setSearchExit] = useState(false);
+  const [burst, setBurst] = useState(0);
   const searchRef = useRef<HTMLButtonElement>(null);
   const searchSlotRef = useRef<HTMLDivElement>(null);
   const closeSearch = useCallback(() => {
@@ -324,7 +329,6 @@ export function MusicNowPlaying({
   }, [panel, activeLyric, lyricsState]);
 
   const next = musicUpcoming(player.queue, player.queueIndex, 40);
-  const suggested = useUpNextSuggestions(current, panel === "queue" && next.length === 0);
 
   const lyricsOff = hasLyrics === false;
   const tabOpen = (id: string) => id !== "lyrics" || !lyricsOff;
@@ -334,8 +338,8 @@ export function MusicNowPlaying({
   const output = speaker.active
     ? speaker.device?.name
     : outputs.find((device) => device.name === audio.settings.device)?.description;
-  const upNext = next.length ? next : suggested.tracks;
-  const upNextQueue = next.length ? player.queue : [current, ...suggested.tracks];
+  const upNext = next;
+  const upNextQueue = player.queue;
 
   return (
     <>
@@ -415,6 +419,7 @@ export function MusicNowPlaying({
             </button>
           </div>
         </header>
+        <div className="music-now-scroll">
         <div className="music-now-layout">
           {artMenu.menu}
           <div className="music-now-art-column">
@@ -448,7 +453,7 @@ export function MusicNowPlaying({
               <span>{musicSourceName(current)}</span>
               <ArrowUpRight size={15} aria-hidden="true" />
             </button>
-            <h1>{display.title}</h1>
+            <MusicNowTitle key={current.id} title={display.title} />
             <div className="music-now-artist">
               <MusicArtistLink
                 name={
@@ -466,31 +471,61 @@ export function MusicNowPlaying({
               </button>
             )}
             <div className="music-now-actions">
-              <MusicDownloadButton track={current} className="music-now-video" />
-              <button type="button" onClick={() => onExplore("videos")} className="music-now-video">
-                <Video size={19} aria-hidden="true" />
-                {t("music.now.videos")}
-              </button>
-              {video && (
+              <MusicDownloadButton track={current} className="music-now-action" withTooltip />
+              <HoverTooltip label={t("music.now.videos")} side="top" align="center">
                 <button
                   type="button"
-                  onClick={toggleMusicVideoFullscreen}
-                  className="music-now-video"
-                  title={t("Fullscreen")}
+                  onClick={() => onExplore("videos")}
+                  className="music-now-action music-now-videos"
+                  aria-label={t("music.now.videos")}
                 >
-                  <Maximize size={19} aria-hidden="true" />
-                  {t("Fullscreen")}
+                  <Video size={22} aria-hidden="true" />
                 </button>
+              </HoverTooltip>
+              {video && (
+                <HoverTooltip label={t("Fullscreen")} side="top" align="center">
+                  <button
+                    type="button"
+                    onClick={toggleMusicVideoFullscreen}
+                    className="music-now-action"
+                    aria-label={t("Fullscreen")}
+                  >
+                    <Maximize size={22} aria-hidden="true" />
+                  </button>
+                </HoverTooltip>
               )}
-              <button
-                type="button"
-                onClick={() => toggleMusicLiked(current)}
-                aria-pressed={liked}
-                aria-label={t(liked ? "music.unsaveTrack" : "music.saveTrack")}
-                className="music-now-save"
-              >
-                <Heart size={20} fill={liked ? "currentColor" : "none"} aria-hidden="true" />
-              </button>
+              <HoverTooltip label={t(liked ? "music.unsaveTrack" : "music.saveTrack")} side="top" align="center">
+                <button
+                  type="button"
+                  data-burst={burst || undefined}
+                  onClick={() => {
+                    if (!liked) setBurst((count) => count + 1);
+                    toggleMusicLiked(current);
+                  }}
+                  aria-pressed={liked}
+                  aria-label={t(liked ? "music.unsaveTrack" : "music.saveTrack")}
+                  className="music-now-action"
+                >
+                  <Heart size={22} fill={liked ? "currentColor" : "none"} aria-hidden="true" />
+                  {burst > 0 && liked && (
+                    <span key={burst} className="dock-like-burst" aria-hidden="true">
+                      <span className="dock-like-ring" />
+                      {NOW_LIKE_SPOKES.map((rotate, index) => (
+                        <span
+                          key={index}
+                          className="dock-like-dot"
+                          style={
+                            {
+                              "--rotate": `${rotate}deg`,
+                              "--translate-y": index % 2 ? "-16px" : "-21px",
+                            } as CSSProperties
+                          }
+                        />
+                      ))}
+                    </span>
+                  )}
+                </button>
+              </HoverTooltip>
               <button
                 type="button"
                 onClick={() => setPanel("signal")}
@@ -610,6 +645,7 @@ export function MusicNowPlaying({
                 id={`music-now-panel-${panel}`}
                 aria-labelledby={`music-now-tab-${panel}`}
                 className="music-now-panel"
+                data-panel={panel}
               >
                 {panel === "about" ? (
                   <MusicListeningDetails
@@ -690,8 +726,8 @@ export function MusicNowPlaying({
                     showLevels={false}
                   />
                 ) : (
-                  <>
-                    {upNext.length ? (
+                  <MusicQueueContinuation remaining={upNext.length}>
+                    {upNext.length > 0 && (
                       <ol className="music-now-next-list">
                         {upNext.map((track, index) => (
                           <MusicUpNextRow
@@ -702,17 +738,8 @@ export function MusicNowPlaying({
                           />
                         ))}
                       </ol>
-                    ) : (
-                      <div className="music-now-empty">
-                        <MusicGlyph name="queue" size={23} aria-hidden="true" />
-                        <p>{suggested.loading ? t("music.now.queueBuilding") : t("music.now.queueEmpty")}</p>
-                        <button type="button" onClick={() => onExplore("artist")}>
-                          {t("music.now.exploreArtist")}
-                          <ArrowUpRight size={16} aria-hidden="true" />
-                        </button>
-                      </div>
                     )}
-                  </>
+                  </MusicQueueContinuation>
                 )}
               </div>
             )}
@@ -733,6 +760,7 @@ export function MusicNowPlaying({
               </button>
             </div>
           </div>
+        </div>
         </div>
         <MusicKaraoke open={karaoke} onClose={() => setKaraoke(false)} />
       </section>

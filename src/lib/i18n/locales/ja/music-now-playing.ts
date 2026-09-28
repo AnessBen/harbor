@@ -1,4 +1,13 @@
 const musicNowPlaying: Record<string, string> = {
+  "music.now.sameContext": "同じソース",
+  "music.now.discoverNew": "新しい曲を探す",
+  "music.now.moreMode": "追加する音楽を選択",
+  "music.now.continueFrom": "{name} の続きを再生",
+  "music.now.discoverHint": "キューと最近の再生履歴を除いた、似ている曲。",
+  "music.now.moreAdded": "{count} 曲を追加しました",
+  "music.now.contextEnd": "このソースに続きはありません。新しい曲を探してみましょう。",
+  "music.now.noNewSongs": "新しい曲が見つかりませんでした。後でもう一度お試しください。",
+  "music.now.moreError": "追加の読み込みに失敗しました。もう一度お試しください。",
   "music.artist.filmography": "映画・テレビ",
   "music.action.error": "操作を完了できませんでした。再試行してください。",
   "music.radio.error": "ラジオを開始できませんでした。再試行するか別のソースを選択してください。",
@@ -75,6 +84,11 @@ const musicNowPlaying: Record<string, string> = {
 
   "music.artist.about": "アーティストについて",
   "music.artist.save": "アーティストを保存",
+  "music.artist.dontPlay": "このアーティストを再生しない",
+  "music.artist.doPlay": "このアーティストを再び再生",
+  "music.artist.hideSongs": "このアーティストの曲を非表示",
+  "music.artist.showSongs": "このアーティストの曲を表示",
+  "music.artist.moreLike": "似たアーティストをもっと見る",
   "music.artist.unsave": "保存したアーティストから削除",
 
   "music.artist.origin": "出身",
@@ -94,6 +108,9 @@ const musicNowPlaying: Record<string, string> = {
   "music.artist.merch": "グッズ",
 
   "music.artist.official": "公式サイト",
+  "music.artist.social": "SNS",
+  "music.artist.gallery": "{name} の写真",
+  "music.artist.zoom": "ズーム",
 
   "music.artist.kicker": "アーティスト",
   "music.artist.listenOn": "聴けるサービス",

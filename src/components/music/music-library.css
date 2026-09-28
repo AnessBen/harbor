@@ -275,9 +275,10 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: 14px;
+  margin-block-start: 18px;
 }
-.music-library-playlist-heading .music-playlist-commands button {
+.music-library-playlist-heading .music-playlist-commands button:not(.music-collection-play):not(.music-collection-shuffle):not(.music-collection-extra) {
   min-height: 44px;
   border-radius: 6px;
 }
@@ -286,13 +287,76 @@
   border-top: 1px solid var(--color-edge-soft);
   padding-top: 16px;
 }
-.music-library-add-tracks > summary,
 .music-library-lastfm > summary {
   width: fit-content;
   cursor: pointer;
   min-height: 44px;
   font-size: 13px;
   color: var(--color-ink-muted);
+}
+.music-library-add-tracks > summary {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: fit-content;
+  max-inline-size: 420px;
+  padding: 10px 16px 10px 10px;
+  cursor: pointer;
+  border-radius: 12px;
+  background: var(--color-elevated);
+  transition:
+    background-color 180ms ease-out,
+    transform 180ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+.music-library-add-tracks > summary::-webkit-details-marker {
+  display: none;
+}
+.music-library-add-tracks > summary::marker {
+  content: "";
+}
+.music-library-add-tracks > summary:hover {
+  background: var(--color-raised);
+  transform: translateY(-1px);
+}
+.music-library-add-art {
+  display: block;
+  inline-size: 48px;
+  block-size: 48px;
+  flex-shrink: 0;
+  overflow: hidden;
+  border-radius: 8px;
+}
+.music-library-add-copy {
+  display: flex;
+  min-inline-size: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+.music-library-add-copy strong {
+  overflow: hidden;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--color-ink);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.music-library-add-copy small {
+  font-size: 11.5px;
+  color: var(--color-ink-subtle);
+}
+.music-library-add-chev {
+  flex-shrink: 0;
+  color: var(--color-ink-subtle);
+  transition: transform 200ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+.music-library-add-tracks[open] .music-library-add-chev {
+  transform: rotate(180deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .music-library-add-tracks > summary,
+  .music-library-add-chev {
+    transition: none;
+  }
 }
 .music-library-lastfm > section {
   max-width: 440px;
@@ -576,4 +640,30 @@
 }
 [data-now-playing] .music-library-track-copy strong {
   color: var(--color-accent);
+}
+
+.music-like-this-ask {
+  display: flex;
+  flex-direction: column;
+  padding: 10px 8px 8px;
+}
+.music-like-this-ask > p {
+  padding: 0 8px 8px;
+  font-size: 11.5px;
+  color: var(--color-ink-subtle);
+}
+.music-like-this-ask > button {
+  display: flex;
+  align-items: center;
+  min-height: 42px;
+  padding-inline: 10px;
+  border-radius: 7px;
+  text-align: start;
+  font-size: 13px;
+  color: var(--color-ink);
+}
+.music-like-this-ask > button:hover,
+.music-like-this-ask > button:focus-visible {
+  background: var(--color-elevated);
+  outline: none;
 }
