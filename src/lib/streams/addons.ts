@@ -5,7 +5,7 @@ import { isAddonRanked, isStatusOnlyAddon } from "./addon-detect";
 import type { AddonRankFn } from "./addon-priority";
 import { hasUncachedMarker } from "./cached";
 import { infoHashFromSources, infoHashFromUrl } from "@/lib/torrent/magnet";
-import { isPluginAddon, runPluginAddon } from "./plugins/addon";
+import { isPluginAddon, PLUGIN_ADDON_PREFIX, runPluginAddon } from "./plugins/addon";
 import type { StreamRequestContext } from "./plugins/types";
 import type { Stream } from "./types";
 
@@ -44,6 +44,17 @@ export type AddonProgress = {
   settledAddonIds: string[];
 };
 
+/** The plugin whose catalogue a request came from, when it names one.
+ *
+ * A row listed by a plugin belongs to that plugin: it is the only one that has the page, and the
+ * others would be searching their own sites for a title that was never theirs. A row from anywhere
+ * else names no plugin, and every plugin stays free to answer. */
+export function pinnedPluginBase(
+  forced: readonly { base: string }[] | undefined,
+): string | undefined {
+  return forced?.find((entry) => entry.base.startsWith(PLUGIN_ADDON_PREFIX))?.base;
+}
+
 /** The id a plugin is asked with. A plugin's own catalogue rows address it by an id its manifest
  * cannot declare for itself, so the id the catalogue handed the request is taken first; only then
  * is the repository's declared prefixes consulted. */
@@ -70,12 +81,22 @@ export async function fetchAddonStreams(
   forced?: Array<{ base: string; id: string }>,
 ): Promise<Stream[]> {
   const forcedBases = new Map((forced ?? []).map((f) => [f.base, f.id]));
+  // A request that names a plugin is that plugin's to answer, the way CloudStream asks only the
+  // provider whose catalogue the item came from. The pin is honoured only while that plugin is
+  // still installed and enabled; otherwise every plugin is left free rather than all of them being
+  // stood down for a catalogue that is no longer here.
+  const pinned = pinnedPluginBase(forced);
+  const pinnedPlugin = pinned != null && addons.some((a) => a.transportUrl === pinned) ? pinned : undefined;
   const namedTasks: Array<{ addonId: string; name: string; p: Promise<Stream[]>; plugin?: boolean }> = [];
   const skipped: string[] = [];
   for (let i = 0; i < addons.length; i++) {
     const addon = addons[i];
     const priority = ranks ? ranks(i, addon) : i;
     if (isPluginAddon(addon)) {
+      if (pinnedPlugin && addon.transportUrl !== pinnedPlugin) {
+        skipped.push(`${addon.manifest.name}(other-plugin)`);
+        continue;
+      }
       const pluginId = pluginQueryId(
         addon,
         req,

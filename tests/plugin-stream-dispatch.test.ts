@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { pluginQueryId } from "../src/lib/streams/addons.ts";
+import { pinnedPluginBase, pluginQueryId } from "../src/lib/streams/addons.ts";
 import { pluginIdPrefixes } from "../src/lib/streams/plugins/addon.ts";
 import type { Addon } from "../src/lib/addons.ts";
 
@@ -41,6 +41,23 @@ test("a plugin also answers to its own ids when the repository never declared th
     CAPSTAN,
     "the declared prefix has to be enough on its own",
   );
+});
+
+test("a row from a plugin's catalogue is asked of that plugin alone", () => {
+  const uhdr = "harbor-plugin://plugin:repo.uhdmovies";
+  // The catalogue handed the request the listing plugin's base, so the others stand down.
+  assert.equal(pinnedPluginBase([{ base: uhdr }]), uhdr);
+  assert.equal(
+    pinnedPluginBase([
+      { base: "https://v3-cinemeta.strem.io" },
+      { base: uhdr },
+    ]),
+    uhdr,
+  );
+  // A row from a normal addon names no plugin, so every plugin stays free to answer.
+  assert.equal(pinnedPluginBase([{ base: "https://v3-cinemeta.strem.io" }]), undefined);
+  assert.equal(pinnedPluginBase([]), undefined);
+  assert.equal(pinnedPluginBase(undefined), undefined);
 });
 
 test("the ids a plugin was always asked with are untouched", () => {
