@@ -84,6 +84,16 @@ function outage(provider: BridgeProvider, note: string, hooks: ExtensionHooks): 
   hooks.outage(note);
 }
 
+/** The page an item named for itself. A catalogue row carries the page it was listed from, and
+ * that is the page the person was looking at; a title search can land on a different one -- the
+ * page it picks may carry no episode list at all. Only the provider that listed the row can open
+ * it, so a named page counts for that provider and no other. */
+export function namedPage(req: StreamPluginRequest, providerId: string): string | undefined {
+  if (!req.providerId || req.providerId !== providerId) return undefined;
+  const url = req.url?.trim();
+  return url && /^https?:\/\//i.test(url) ? url : undefined;
+}
+
 async function fromProvider(
   provider: BridgeProvider,
   req: StreamPluginRequest,
@@ -93,6 +103,7 @@ async function fromProvider(
 ): Promise<PluginStream[]> {
   const key = `${provider.id}|${identityKey(req)}`;
   const urls: string[] = [];
+  const named = namedPage(req, provider.id);
   const remembered = pageMemo.get(key);
   if (remembered) {
     urls.push(remembered);
@@ -109,7 +120,11 @@ async function fromProvider(
       if (found.note) outage(provider, found.note, hooks);
       else
         hooks.log("warn", `${provider.name}: ${found.items.length} results, none matched ${req.title}`);
-      return [];
+      // The row's own page is the last thing left to open, and it is worth opening: the search
+      // found nothing, so nothing else has named a page for this title.
+      if (!named) return [];
+      hooks.log("info", `${provider.name}: opening the page this row was listed from`);
+      urls.push(named);
     }
   }
   for (const url of urls) {
@@ -158,7 +173,9 @@ async function fromProvider(
         out.push(...made);
       }
       if (out.length) {
-        remember(key, url);
+        // The memo answers for a title; a row's own page answers for one row of it, so keeping it
+        // under the title would hand a later row this row's page.
+        if (url !== named) remember(key, url);
         return out;
       }
     } catch (e) {
@@ -191,6 +208,10 @@ export async function runExtensionPlugin(
   if (!providers.length) {
     throw new Error(`${plugin.name} is not loaded in the extension bridge`);
   }
+  // Every provider the plugin carries is asked, exactly as for any other request. The page a
+  // catalogue row was listed from is only a fallback, and fromProvider already opens it only for
+  // the provider that owns it, so narrowing the fan-out here would cost the plugin its other
+  // sources for no gain.
   const settled = await Promise.allSettled(
     providers.map((p) => fromProvider(p, req, signal, deadline, hooks)),
   );

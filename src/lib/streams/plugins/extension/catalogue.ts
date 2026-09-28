@@ -86,8 +86,30 @@ function image(v: unknown): string | undefined {
   return /^https?:\/\//i.test(s) ? s : undefined;
 }
 
+/** A provider names a row after everything it carries -- the season range, the audio, the quality,
+ * the size -- so the title it is actually about has to be taken back out of it before the row can
+ * be shown, or searched for by name. In practice that trailing detail begins at the first bracket,
+ * or at a release marker standing on its own. */
+const TITLE_BREAK = /[({\[]/;
+const RELEASE_BREAK =
+  /(?:\s|^)(?:web-?dl|webrip|bluray|bdrip|hdtv|hdrip|dvdrip|remux|[a-z]{2,3}rip|[sh][0-9]{1,2}(?:e[0-9]{1,3})?|[0-9]{3,4}[pi])(?=\s|$)/i;
+
+export function listingTitle(name: string): string {
+  const raw = name.trim();
+  if (!raw) return raw;
+  const marks = [raw.search(TITLE_BREAK), raw.search(RELEASE_BREAK)].filter((at) => at >= 0);
+  if (!marks.length) return raw;
+  const head = raw
+    .slice(0, Math.min(...marks))
+    .replace(/[\s\-–—|·:,]+$/u, "")
+    .trim();
+  // "(500) Days of Summer" starts with a bracket and would leave nothing behind, so too short a
+  // cut is refused rather than guessed at.
+  return head.length >= 2 ? head : raw;
+}
+
 function metaFor(cat: PluginCatalogue, item: BridgeSearchItem): Meta | null {
-  const name = text(item.name).slice(0, 300);
+  const name = listingTitle(text(item.name)).slice(0, 300);
   const url = text(item.url);
   if (!name || !url) return null;
   return {
