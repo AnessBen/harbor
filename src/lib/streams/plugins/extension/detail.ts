@@ -226,15 +226,57 @@ export function capstanDetailFrom(
   };
 }
 
+/** What a load is remembered under, and asked for under. The type belongs in the key: what a
+ * provider calls an item decides how its ids are read back and how its own episodes are typed,
+ * so an answer built for one type is not an answer to a request made as another. */
+function loadKey(id: string, type: MetaType): string {
+  return `${type}|${id}`;
+}
+
+/** The loads in flight, so that two callers asking for the same item at once -- a strict-mode
+ * double mount, or a second view opening the same row -- spend one bridge call rather than two.
+ * The page a provider serves is not cheap to parse, and the plugin is charged for each one. */
+const loading = new Map<string, Promise<CapstanDetail | null>>();
+
+/** What a load answered, briefly. A surface that features an item reads its page to find the
+ * artwork, and the detail page reads that same page moments later when the item is opened;
+ * without this the plugin is charged twice for one look. Only a page a provider actually served
+ * is kept -- a failure is left to be retried, because a page that is down now is often up again
+ * on the next attempt. */
+const RECENT_TTL_MS = 2 * 60_000;
+const RECENT_MAX = 40;
+const recent = new Map<string, { at: number; detail: CapstanDetail }>();
+
+function remember(key: string, detail: CapstanDetail): void {
+  recent.delete(key);
+  recent.set(key, { at: Date.now(), detail });
+  while (recent.size > RECENT_MAX) {
+    const first = recent.keys().next().value;
+    if (first === undefined) break;
+    recent.delete(first);
+  }
+}
+
 export async function loadCapstanDetail(
   id: string,
   type: MetaType,
   origin?: Meta["addonOrigin"],
 ): Promise<CapstanDetail | null> {
+  const key = loadKey(id, type);
+  const kept = recent.get(key);
+  if (kept && Date.now() - kept.at < RECENT_TTL_MS) return kept.detail;
+  const running = loading.get(key);
+  if (running) return running;
   const parsed = parseCapstanId(id);
   if (!parsed || !extensionsSupported()) return null;
-  const loaded = await bridgeLoad(parsed.providerId, parsed.url).catch(() => null);
-  const media = loaded?.media;
-  if (!media) return null;
-  return capstanDetailFrom(id, type, media, origin);
+  const work = (async () => {
+    const loaded = await bridgeLoad(parsed.providerId, parsed.url).catch(() => null);
+    const media = loaded?.media;
+    if (!media) return null;
+    const detail = capstanDetailFrom(id, type, media, origin);
+    remember(key, detail);
+    return detail;
+  })().finally(() => loading.delete(key));
+  loading.set(key, work);
+  return work;
 }

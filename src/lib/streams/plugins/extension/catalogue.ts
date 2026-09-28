@@ -130,6 +130,22 @@ function rowKey(cat: PluginCatalogue): string {
   return `${cat.providerId}|${cat.row}`;
 }
 
+/** A page of a row, briefly. The hero and the rail below it ask for the same first page, and a
+ * provider is a service someone runs: two interfaces reading it should cost it one request. */
+const PAGE_TTL_MS = 2 * 60_000;
+const PAGE_CACHE_MAX = 60;
+const pages = new Map<string, { at: number; metas: Meta[] }>();
+
+function rememberPage(key: string, metas: Meta[]): void {
+  pages.delete(key);
+  pages.set(key, { at: Date.now(), metas });
+  while (pages.size > PAGE_CACHE_MAX) {
+    const first = pages.keys().next().value;
+    if (first === undefined) break;
+    pages.delete(first);
+  }
+}
+
 export async function extensionCatalogueMetas(
   cat: PluginCatalogue,
   page: number,
@@ -138,6 +154,9 @@ export async function extensionCatalogueMetas(
   const key = rowKey(cat);
   const last = exhausted.get(key);
   if (last != null && asked > last) return [];
+  const cacheKey = `${key}|${asked}`;
+  const cached = pages.get(cacheKey);
+  if (cached && Date.now() - cached.at < PAGE_TTL_MS) return cached.metas;
   const found = await bridgeCataloguePage(cat.providerId, cat.row, asked);
   if (!found.hasNext) {
     if (exhausted.size >= EXHAUSTED_MAX) exhausted.clear();
@@ -153,5 +172,6 @@ export async function extensionCatalogueMetas(
     seen.add(meta.id);
     out.push(meta);
   }
+  rememberPage(cacheKey, out);
   return out;
 }
