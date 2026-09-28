@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Puzzle, Search, X } from "lucide-react";
+import { Puzzle, Search, X, ListOrdered } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import {
   listBrowseCatalogs,
@@ -15,6 +15,8 @@ import { FeedShelf } from "@/components/feed-shelf";
 import { CatalogShelf } from "./catalogs/catalog-shelf";
 import { PluginPicker, ALL_PLUGINS } from "./plugins/plugin-picker";
 import { PluginHero } from "./plugins/plugin-hero";
+import { PluginArrange } from "./plugins/plugin-arrange";
+import { forFilter, readOrder, type SectionOrder } from "./plugins/section-order";
 
 const SEARCH_DEBOUNCE_MS = 350;
 
@@ -39,6 +41,10 @@ export function Plugins({ active = true }: { active?: boolean }) {
     () => localStorage.getItem(PLUGIN_FILTER_KEY) ?? ALL_PLUGINS,
   );
   const [results, setResults] = useState<PluginSearchGroup[] | null>(null);
+  // What the user arranged, or nothing. Read once and kept in state so a move is instant and so the
+  // tab redraws from the same value the panel wrote rather than reading storage on every render.
+  const [order, setOrder] = useState<SectionOrder>(() => readOrder());
+  const [arranging, setArranging] = useState(false);
   const genRef = useRef(0);
   const searchGen = useRef(0);
   void active;
@@ -79,6 +85,7 @@ export function Plugins({ active = true }: { active?: boolean }) {
     list.push(cat);
     grouped.set(cat.addonName, list);
   }
+  const allGroups = [...grouped.entries()];
 
   const wanted = query.trim();
 
@@ -100,12 +107,16 @@ export function Plugins({ active = true }: { active?: boolean }) {
     name,
     icon: list[0]?.addonLogo,
   }));
-  const shownGroups = pluginFilter
-    ? [...grouped.entries()].filter(([name]) => name === pluginFilter)
-    : [...grouped.entries()];
+  // The picker and the hero read the same selection, so a chosen plugin's rows are what the tab
+  // lists and what the hero is made of.
+  const shownGroups = forFilter(
+    allGroups,
+    pluginFilter === ALL_PLUGINS ? null : pluginFilter,
+    order,
+  );
   const heroCatalogs = useMemo(
     () => shownGroups.flatMap(([, list]) => list),
-    [catalogs, pluginFilter],
+    [catalogs, pluginFilter, order],
   );
 
   useEffect(() => {
@@ -137,11 +148,21 @@ export function Plugins({ active = true }: { active?: boolean }) {
       <div {...contentDrag} className="flex flex-col gap-8">
         <header className="flex items-center justify-end gap-6">
           {!loading && catalogs.length > 0 && (
-            <PluginPicker
-              plugins={pickerPlugins}
-              value={pluginFilter}
-              onChange={setPluginFilter}
-            />
+            <>
+              <button
+                type="button"
+                onClick={() => setArranging(true)}
+                className="flex h-10 items-center gap-2 rounded-full border border-edge-soft bg-elevated/40 px-3.5 text-[13px] text-ink transition-colors hover:bg-elevated/70"
+              >
+                <ListOrdered size={15} className="text-ink-subtle" />
+                <span className="font-medium">{t("Arrange")}</span>
+              </button>
+              <PluginPicker
+                plugins={pickerPlugins}
+                value={pluginFilter}
+                onChange={setPluginFilter}
+              />
+            </>
           )}
         </header>
 
@@ -198,6 +219,10 @@ export function Plugins({ active = true }: { active?: boolean }) {
           <ShelfSkeletons />
         ) : catalogs.length === 0 ? (
           <EmptyState onOpenPlugins={() => openSettings("plugins")} />
+        ) : shownGroups.length === 0 ? (
+          <p className="rounded-2xl border border-dashed border-edge-soft bg-canvas/30 px-6 py-12 text-center text-[13.5px] text-ink-muted">
+            {t("Every row is hidden. Use Arrange to bring one back.")}
+          </p>
         ) : (
           shownGroups.map(([pluginName, list]) => (
             <section key={pluginName} className="flex flex-col gap-4">
@@ -226,6 +251,13 @@ export function Plugins({ active = true }: { active?: boolean }) {
           ))
         )}
       </div>
+      {arranging && (
+        <PluginArrange
+          groups={allGroups}
+          onChanged={setOrder}
+          onClose={() => setArranging(false)}
+        />
+      )}
     </main>
   );
 }
