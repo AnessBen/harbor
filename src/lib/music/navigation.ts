@@ -7,6 +7,7 @@ export type MusicExploreRequest = {
   album?: MusicAlbumRef;
   artist?: MusicArtistRef;
   label?: string;
+  contextId?: string;
 };
 export const MUSIC_EXPLORE_EVENT = "harbor:music-explore";
 let pending: MusicExploreRequest | null = null;

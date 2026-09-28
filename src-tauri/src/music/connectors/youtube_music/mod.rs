@@ -226,6 +226,7 @@ impl MusicConnector for YouTubeMusicConnector {
             status,
             &["search", "browse", "play"],
         )
+        .anonymous()
     }
 }
 

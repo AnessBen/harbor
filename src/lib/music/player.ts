@@ -1,7 +1,8 @@
-import { activeProfileId } from "@/lib/active-profile-id";
-import { observeMusicListening } from "./listening-affinity";
-import { filterBlockedTracks } from "./artist-blocks";
+import { activeProfileId, activeProfileIsPrimary } from "@/lib/active-profile-id";
+import { hydrateListeningAffinity, observeMusicListening } from "./listening-affinity";
+import { filterBlockedTracks, hydrateArtistBlockStore } from "./artist-blocks";
 import { isMusicLiked, likedIdsFor, withoutLiked } from "./liked";
+import { hydrateLikedArtistStore } from "./liked-artists";
 import { dedupeMusicTracks, sameMusicTrack } from "./track-identity";
 import {
   answerDeckRequests,
@@ -31,6 +32,7 @@ import {
   type MusicCheckpoint,
 } from "./session-checkpoint";
 import { beginMusicQueue, getMusicPlaybackOrigin, restoreMusicPlaybackOrigin } from "./playback-origin";
+import { hydrateMusicContextTracks, hydrateMusicRecentContexts } from "./recent-context";
 import type {
   MusicAudioQuality,
   MusicPlayerState,
@@ -346,8 +348,16 @@ export function initializeMusic(): Promise<void> {
   if (initialization) return initialization;
   activeProfile = activeProfileId();
   const migration = readLegacyMigration();
+  void hydrateListeningAffinity(activeProfile).catch(() => {});
+  void hydrateMusicContextTracks().catch(() => {});
+  void hydrateMusicRecentContexts().catch(() => {});
+  void hydrateLikedArtistStore().catch(() => {});
+  void hydrateArtistBlockStore().catch(() => {});
   initialization = Promise.all([
-    invoke<NativeMusicBootstrap>("music_db_init", { migration, profile: activeProfile }),
+    invoke<NativeMusicBootstrap>("music_db_init", {
+      migration,
+      profile: activeProfileIsPrimary() ? null : activeProfile,
+    }),
     readCheckpointFromDb().catch(() => null),
   ])
     .then(([bootstrap, stored]) => {
@@ -686,6 +696,9 @@ function skipUnavailableTrack(track: MusicTrack, queue: MusicTrack[]): boolean {
 }
 
 const SOURCE_ATTEMPT_CEILING = 6;
+// A source the listener picked by hand is a decision, not a guess: if it fails, say so rather
+// than quietly playing something else under the same name.
+let explicitSource: string | null = null;
 
 async function nextPlayableSource(
   attemptTrack: MusicTrack,
@@ -710,8 +723,10 @@ export async function playMusic(
   failedAttempts = new Set<string>(),
   continuing = false,
   skipUnavailable = false,
+  explicit = false,
 ): Promise<void> {
   await initializeMusic();
+  if (!continuing) explicitSource = explicit ? (track.connectorId ?? null) : null;
   const request = ++playRequest;
   observedPause = null;
   if (!continuing && !failedAttempts.size) {
@@ -842,8 +857,10 @@ export async function playMusic(
               !failedAttempts.has(`${candidate.track.connectorId}:${candidate.track.id}`),
           );
           const want = readMusicPreference("harbor.music.preferred-source.v1");
+          const chosenByHand =
+            explicitSource !== null && attemptTrack.connectorId === explicitSource;
           const replacement =
-            failedAttempts.size < SOURCE_ATTEMPT_CEILING
+            !chosenByHand && failedAttempts.size < SOURCE_ATTEMPT_CEILING
               ? (usable.find((candidate) => candidate.connectorId === want) ?? usable[0])?.track
               : undefined;
           if (!replacement) {

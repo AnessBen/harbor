@@ -40,7 +40,10 @@ function MadeForYouRow({ mixes, t, title }: { mixes: DailyMix[]; t: Translate; t
       if (request.current !== generation) return;
       if (!tracks.length) throw new Error("music.radio.error");
       if (play) {
-        recordMusicSimilarPlayback(tracks[0], tracks);
+        recordMusicSimilarPlayback(tracks[0], tracks, {
+          id: mix.id,
+          name: mixName(mix, t),
+        });
         await playMusic(tracks[0], tracks);
         return;
       }
@@ -49,6 +52,7 @@ function MadeForYouRow({ mixes, t, title }: { mixes: DailyMix[]; t: Translate; t
         track: tracks[0],
         queue: tracks,
         label: mixName(mix, t),
+        contextId: mix.id,
       });
     } catch {
       if (request.current === generation) setFailed(mix.id);

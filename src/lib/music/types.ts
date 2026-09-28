@@ -193,4 +193,6 @@ export type MusicConnection = {
   error?: string;
   capabilities: MusicConnectionCapability[];
   needs: MusicConnectionField[];
+  /** A source needing no account: always usable, never signed in or out of. */
+  anonymous?: boolean;
 };

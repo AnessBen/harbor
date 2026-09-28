@@ -4,7 +4,6 @@ import { pushBackHandler } from "@/lib/back-intercept";
 import { useModalExit } from "@/components/modal-shell";
 import { artistCreditParts } from "@/lib/music/search-artists";
 import { MusicArtistLink } from "./music-artist-link";
-import { MusicDownloadButton } from "./music-download-button";
 import { useRecordingProfile } from "@/lib/music/use-recording-profile";
 import {
   useEffect,
@@ -910,7 +909,6 @@ export function MusicDock() {
               )}
             </button>
           )}
-          {dockParts.download && <MusicDownloadButton track={current} className={ICON_BUTTON} />}
           {dockParts.audio && (
             <button
               type="button"

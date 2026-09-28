@@ -1,7 +1,6 @@
 import { isMusicLiked } from "@/lib/music/liked";
 import { artistCreditParts } from "@/lib/music/search-artists";
 import { MusicArtistLink } from "./music-artist-link";
-import { MusicDownloadButton } from "./music-download-button";
 import { HoverTooltip } from "@/components/hover-tooltip";
 import { MusicListeningDetails } from "./music-listening-details";
 import { useRecordingProfile } from "@/lib/music/use-recording-profile";
@@ -471,7 +470,6 @@ export function MusicNowPlaying({
               </button>
             )}
             <div className="music-now-actions">
-              <MusicDownloadButton track={current} className="music-now-action" withTooltip />
               <HoverTooltip label={t("music.now.videos")} side="top" align="center">
                 <button
                   type="button"

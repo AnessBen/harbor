@@ -273,6 +273,7 @@ impl MusicConnector for CatalogConnector {
             status,
             &["search", "browse"],
         )
+        .anonymous()
     }
 }
 

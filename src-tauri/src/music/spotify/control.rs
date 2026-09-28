@@ -7,6 +7,9 @@ const CONNECT_BEFORE_PLAY: &str = "Connect Spotify Premium before playing this s
 
 impl SpotifyState {
     pub async fn play(&self, track: MusicTrack, volume: f64) -> Result<(), String> {
+        // Best effort: a stale session is rebuilt here, and a genuine sign-in problem still
+        // falls through to the message below rather than surfacing a reconnect error.
+        let _ = self.ensure_session().await;
         let slot = self.runtime.lock().await;
         let runtime = slot
             .as_ref()

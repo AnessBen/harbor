@@ -118,7 +118,7 @@ export function MusicConnectionsProvider({ children }: { children: ReactNode }) 
       connections: list,
       status: error ? "error" : connections ? "ready" : "loading",
       error,
-      connected: list.filter((item) => item.status === "connected").length,
+      connected: list.filter((item) => item.status === "connected" && !item.anonymous).length,
       reload,
       apply,
       request,

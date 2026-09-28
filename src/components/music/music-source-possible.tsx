@@ -102,9 +102,33 @@ export function MusicSourcePossible({
         {t("music.source.possible.note")}
       </p>
       {state.searching ? (
-        <div className="grid gap-px py-3" aria-label={t("music.source.possible.loading")}>
+        <div
+          role="status"
+          aria-label={t("music.source.possible.loading")}
+          className="mt-2 grid gap-px pb-2"
+        >
           {[0, 1, 2].map((item) => (
-            <div key={item} className="h-16 animate-pulse rounded-md bg-elevated/45" />
+            <div
+              key={item}
+              aria-hidden="true"
+              className="grid min-h-16 w-full grid-cols-[44px_minmax(0,1fr)_auto] items-center gap-3 rounded-md px-2 py-2"
+            >
+              <span className="size-11 animate-pulse rounded-md bg-raised" />
+              <span className="min-w-0">
+                <span
+                  className="block h-[13px] animate-pulse rounded bg-elevated/60"
+                  style={{ width: `${68 - item * 9}%` }}
+                />
+                <span
+                  className="mt-1 block h-[11px] animate-pulse rounded bg-elevated/45"
+                  style={{ width: `${44 - item * 7}%` }}
+                />
+                <span
+                  className="mt-1.5 block h-[10px] animate-pulse rounded bg-elevated/35"
+                  style={{ width: `${30 - item * 4}%` }}
+                />
+              </span>
+            </div>
           ))}
         </div>
       ) : state.tracks.length === 0 ? (

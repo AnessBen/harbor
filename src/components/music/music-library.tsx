@@ -3,7 +3,6 @@ import { open, save } from "@tauri-apps/plugin-dialog";
 import { FileUp, FolderOpen, LoaderCircle, Plus, Search, X } from "@/components/icons/music-icons";
 import { Dropdown } from "@/components/dropdown";
 import { useSectionBack } from "@/lib/section-back";
-import { MusicDownloads } from "./music-downloads";
 import { MusicLocalCollection } from "./music-local-collection";
 import { MusicSpotifyLibrary } from "./music-spotify-library";
 import { useMusicConnections } from "./music-connections";
@@ -35,7 +34,6 @@ import type { MusicCatalogItem, MusicPlaylist, MusicTrack } from "@/lib/music/ty
 import "./music-library.css";
 
 type LibraryView =
-  | "downloads"
   | "albums"
   | "artists"
   | "tracks"
@@ -44,7 +42,6 @@ type LibraryView =
   | "recent"
   | "spotify";
 const VIEWS: LibraryView[] = [
-  "downloads",
   "albums",
   "artists",
   "tracks",
@@ -330,9 +327,7 @@ export function MusicLibrary({
   const viewLabel = (value: LibraryView) =>
     value === "spotify"
       ? "Spotify"
-      : value === "downloads"
-        ? t("music.download.library")
-        : t(
+      : t(
             value === "saved"
               ? "music.saved"
               : value === "recent"
@@ -507,7 +502,6 @@ export function MusicLibrary({
           onConnect={() => openConnections("local")}
         />
       )}
-      {view === "downloads" && <MusicDownloads query={query} />}
       {view === "spotify" && (
         <MusicSpotifyLibrary
           active={active}

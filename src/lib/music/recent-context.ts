@@ -1,14 +1,19 @@
 import { useSyncExternalStore } from "react";
 import { requestMusicExplore } from "./navigation";
+import {
+  hydrateJsonStore,
+  readJsonStore,
+  readLocalJson,
+  writeLocalJson,
+} from "./local-store";
 import { musicTrackKeys } from "./playlist-membership";
-import { readMusicPreference, writeMusicPreference } from "./preferences";
 import type { MusicTrack } from "./types";
 
 export type MusicTrackIdentity = Pick<MusicTrack, "id" | "connectorId" | "title" | "artist">;
 
 const KEY = "harbor.music.recent-contexts.v1";
-const CONTEXT_LIMIT = 12;
-const LINK_LIMIT = 400;
+const CONTEXT_LIMIT = 200;
+const LINK_LIMIT = 8000;
 const LINKS_PER_CONTEXT = 120;
 const ARTWORK_LIMIT = 4;
 
@@ -31,6 +36,47 @@ const EMPTY: MusicRecentContextStore = { contexts: [], links: [] };
 
 function contextKey(kind: MusicRecentContextKind, id: string): string {
   return `${kind}:${id}`;
+}
+
+const MIX_STORE = "context-tracks";
+const HELD_LIMIT = 24;
+const heldTracks = new Map<string, MusicTrack[]>();
+let hydrated = false;
+
+function persistHeld(): void {
+  writeLocalJson(MIX_STORE, Object.fromEntries(heldTracks));
+}
+
+export async function hydrateMusicContextTracks(): Promise<void> {
+  if (hydrated) return;
+  hydrated = true;
+  const saved = await readLocalJson<Record<string, MusicTrack[]>>(MIX_STORE);
+  if (!saved) return;
+  for (const [key, tracks] of Object.entries(saved)) {
+    if (!heldTracks.has(key) && Array.isArray(tracks) && tracks.length) {
+      heldTracks.set(key, tracks);
+    }
+  }
+}
+
+export function rememberMusicContextTracks(
+  kind: MusicRecentContextKind,
+  id: string,
+  tracks: readonly MusicTrack[],
+): void {
+  if (!tracks.length) return;
+  const key = contextKey(kind, id);
+  heldTracks.delete(key);
+  heldTracks.set(key, [...tracks]);
+  while (heldTracks.size > HELD_LIMIT) heldTracks.delete(heldTracks.keys().next().value!);
+  persistHeld();
+}
+
+export function heldMusicContextTracks(
+  kind: MusicRecentContextKind,
+  id: string,
+): MusicTrack[] | null {
+  return heldTracks.get(contextKey(kind, id)) ?? null;
 }
 
 function isKind(value: unknown): value is MusicRecentContextKind {
@@ -75,11 +121,19 @@ function parseLink(value: unknown): MusicRecentLink | null {
   return { key, kind: entry.kind, id };
 }
 
+const CONTEXT_STORE = "recent-contexts";
+
+export async function hydrateMusicRecentContexts(): Promise<void> {
+  await hydrateJsonStore(CONTEXT_STORE, KEY);
+  store = read();
+  index = buildIndex(store);
+  for (const listener of listeners) listener();
+}
+
 function read(): MusicRecentContextStore {
   try {
-    const raw = readMusicPreference(KEY);
-    if (!raw) return EMPTY;
-    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    const parsed = readJsonStore<Record<string, unknown> | null>(CONTEXT_STORE, KEY, null);
+    if (!parsed) return EMPTY;
     const contexts = Array.isArray(parsed?.contexts)
       ? parsed.contexts
           .map(parseContext)
@@ -124,7 +178,7 @@ function subscribe(listener: () => void): () => void {
 function commit(next: MusicRecentContextStore): void {
   store = next;
   index = buildIndex(next);
-  writeMusicPreference(KEY, JSON.stringify(next));
+  writeLocalJson(CONTEXT_STORE, next);
   for (const listener of listeners) listener();
 }
 
@@ -207,8 +261,18 @@ export function useMusicTrackContext(
   );
 }
 
-export async function reopenMusicMix(seed: MusicTrack): Promise<void> {
+export async function reopenMusicMix(context: MusicRecentContext): Promise<void> {
+  const seed = context.seed;
+  if (!seed) return;
+  await hydrateMusicContextTracks();
+  const held = heldMusicContextTracks("similar", context.id);
+  if (held?.length) {
+    requestMusicExplore({ kind: "similar", track: held[0], queue: held, label: context.name });
+    return;
+  }
   const { musicSimilarTracks } = await import("./player");
   const mix = await musicSimilarTracks(seed);
-  requestMusicExplore({ kind: "similar", track: seed, queue: mix.length > 0 ? mix : [seed] });
+  const queue = mix.length > 0 ? mix : [seed];
+  rememberMusicContextTracks("similar", context.id, queue);
+  requestMusicExplore({ kind: "similar", track: seed, queue, label: context.name });
 }

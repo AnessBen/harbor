@@ -434,6 +434,7 @@ const music: Record<string, string> = {
   "music.connections.scrobbler": "Scrobbling",
   "music.connections.catalog": "Catalog",
   "music.connections.statusConnected": "Connected",
+  "music.connections.statusAvailable": "Available",
   "music.connections.statusDisconnected": "Not connected",
   "music.connections.statusError": "Needs attention",
   "music.connections.statusUnavailable": "Unavailable",

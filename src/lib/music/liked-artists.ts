@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import { hydrateJsonStore, readJsonStore, writeLocalJson } from "./local-store";
 import type { MusicArtistRef } from "./types";
 
 const KEY = "harbor.music.liked-artists.v1";
@@ -21,27 +22,28 @@ export function musicArtistKey(artist: ArtistIdentity): string {
     : `${artist.connectorId}:${artist.id}`;
 }
 
+const STORE = "liked-artists";
+
 function load(): LikedArtist[] {
-  try {
-    const raw = localStorage.getItem(KEY);
-    const parsed = raw ? JSON.parse(raw) : null;
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter(
-      (entry): entry is LikedArtist =>
-        !!entry && typeof entry.key === "string" && typeof entry.name === "string",
-    );
-  } catch {
-    return [];
-  }
+  const parsed = readJsonStore<unknown>(STORE, KEY, null);
+  if (!Array.isArray(parsed)) return [];
+  return parsed.filter(
+    (entry): entry is LikedArtist =>
+      !!entry && typeof entry.key === "string" && typeof entry.name === "string",
+  );
+}
+
+export async function hydrateLikedArtistStore(): Promise<void> {
+  await hydrateJsonStore(STORE, KEY);
+  liked = load();
+  for (const listener of listeners) listener();
 }
 
 let liked: LikedArtist[] = load();
 
 function commit(next: LikedArtist[]): void {
   liked = next;
-  try {
-    localStorage.setItem(KEY, JSON.stringify(next));
-  } catch {}
+  writeLocalJson(STORE, next);
   for (const listener of listeners) listener();
 }
 

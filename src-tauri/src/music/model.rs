@@ -177,6 +177,8 @@ pub struct MusicConnection {
     pub error: Option<String>,
     pub capabilities: Vec<String>,
     pub needs: Vec<MusicConnectionField>,
+    /// A source needing no account is always usable, so it is never signed in or out of.
+    pub anonymous: bool,
 }
 
 impl MusicConnection {
@@ -191,7 +193,13 @@ impl MusicConnection {
             error: None,
             capabilities: capabilities.iter().map(|value| value.to_string()).collect(),
             needs: Vec::new(),
+            anonymous: false,
         }
+    }
+
+    pub fn anonymous(mut self) -> Self {
+        self.anonymous = true;
+        self
     }
 
     pub fn needs(mut self, needs: Vec<MusicConnectionField>) -> Self {

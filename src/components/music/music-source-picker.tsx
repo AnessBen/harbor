@@ -343,7 +343,7 @@ export function MusicSourcePicker({
         : track,
     );
     onStarting();
-    void playMusic(selected, queue)
+    void playMusic(selected, queue, undefined, false, false, true)
       .then(() => {
         request.onReady?.(selected, queue);
       })

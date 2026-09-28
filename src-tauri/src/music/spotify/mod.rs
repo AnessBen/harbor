@@ -134,6 +134,31 @@ impl SpotifyState {
         self.status().await
     }
 
+    // librespot is authorised with an access token that expires within the hour, and nothing
+    // else renews it: the web token has its own refresh path, which is why browsing keeps
+    // working while playback dies. Rebuild an expired session from the cached credentials.
+    pub(super) async fn ensure_session(&self) -> Result<(), String> {
+        {
+            let slot = self.runtime.lock().await;
+            if slot
+                .as_ref()
+                .is_some_and(|runtime| !runtime.session.is_invalid())
+            {
+                return Ok(());
+            }
+        }
+        let app = self
+            .app
+            .read()
+            .clone()
+            .ok_or_else(|| NOT_INITIALIZED.to_string())?;
+        let cache_dir = self.cache_path()?;
+        let credentials =
+            keystore::load(&app, &cache_dir).ok_or_else(|| tokens::CONNECT_FIRST.to_string())?;
+        let cache = session::make_cache(&cache_dir)?;
+        self.connect_with(app, cache, credentials).await
+    }
+
     async fn connect_with(
         &self,
         app: AppHandle,

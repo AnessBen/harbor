@@ -68,7 +68,8 @@ function MusicRecentContextsRow({
         return;
       }
       if (playlist) recordMusicPlaylistPlayback(playlist);
-      else if (context.seed) recordMusicSimilarPlayback(context.seed, queue);
+      else if (context.seed)
+        recordMusicSimilarPlayback(context.seed, queue, { id: context.id, name: context.name });
       openSourcePicker(queue[0], queue);
     } catch {
       if (current === request.current) setNote("error");
@@ -87,7 +88,7 @@ function MusicRecentContextsRow({
     if (!context.seed) return;
     setNote("loading");
     setBusy(`${context.kind}:${context.id}`);
-    void reopenMusicMix(context.seed)
+    void reopenMusicMix(context)
       .then(() => { if (current === request.current) setNote(null); })
       .catch(() => { if (current === request.current) setNote("error"); })
       .finally(() => { if (current === request.current) setBusy(null); });

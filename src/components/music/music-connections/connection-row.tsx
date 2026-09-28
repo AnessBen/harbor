@@ -172,7 +172,13 @@ export function MusicConnectionRow({
             <strong className="truncate text-[14px] font-semibold text-ink" title={connection.name}>
               {connection.name}
             </strong>
-            <span className="text-[11px] text-ink-muted">{t(STATUS_LABEL[connection.status])}</span>
+            <span className="text-[11px] text-ink-muted">
+              {t(
+                connection.anonymous && connection.status === "connected"
+                  ? "music.connections.statusAvailable"
+                  : STATUS_LABEL[connection.status],
+              )}
+            </span>
           </span>
           {(account ?? connection.detail) && (
             <span className="mt-1 block break-words text-[13px] leading-5 text-ink-muted">
@@ -301,6 +307,7 @@ function RowAction({
 }) {
   const t = useT();
   if (connection.status === "unavailable") return <span />;
+  if (connection.anonymous) return <span />;
   if (connection.status === "connected") {
     return (
       <button

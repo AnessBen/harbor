@@ -13,12 +13,14 @@ export function MusicSimilarPage({
   tracks,
   state = "ready",
   label,
+  contextId,
   onBack,
 }: {
   seed: MusicTrack;
   tracks: MusicTrack[];
   state?: "loading" | "ready" | "error";
   label?: string;
+  contextId?: string;
   onBack: () => void;
 }) {
   const t = useT();
@@ -35,7 +37,11 @@ export function MusicSimilarPage({
   }, [tracks]);
 
   const start = (track: MusicTrack) => {
-    recordMusicSimilarPlayback(seed, tracks);
+    recordMusicSimilarPlayback(
+      seed,
+      tracks,
+      label ? { id: contextId ?? label, name: label } : undefined,
+    );
     void playMusic(track, tracks).catch(() => {});
   };
   const playAll = () => start(tracks[0]);

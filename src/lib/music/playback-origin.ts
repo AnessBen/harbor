@@ -1,5 +1,9 @@
 import { useSyncExternalStore } from "react";
-import { musicContextArtwork, recordMusicRecentContext } from "./recent-context";
+import {
+  musicContextArtwork,
+  recordMusicRecentContext,
+  rememberMusicContextTracks,
+} from "./recent-context";
 import { queueTrackKey } from "./queue-order";
 import type { MusicCatalogItem, MusicTrack } from "./types";
 
@@ -100,15 +104,19 @@ export function musicTitleTarget(from: MusicPlaybackOrigin): MusicTitleTarget {
 export function recordMusicSimilarPlayback(
   seed: MusicTrack,
   mix: readonly MusicTrack[] = [],
+  identity?: { id: string; name: string },
 ): void {
-  const from: MusicPlaybackOrigin = { kind: "similar", id: seed.id, name: seed.title, seed };
+  const id = identity?.id ?? seed.id;
+  const name = identity?.name ?? seed.title;
+  const from: MusicPlaybackOrigin = { kind: "similar", id, name, seed };
   registerMusicQueueOrigin(mix, from);
   setMusicPlaybackOrigin(from);
+  rememberMusicContextTracks("similar", id, mix);
   recordMusicRecentContext(
     {
       kind: "similar",
-      id: seed.id,
-      name: seed.title,
+      id,
+      name,
       artwork: musicContextArtwork([seed, ...mix]),
       seed,
     },

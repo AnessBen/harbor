@@ -1,7 +1,7 @@
 import { MusicTrackRowsSkeleton } from "./music-skeletons";
 import { HoverTooltip } from "@/components/hover-tooltip";
 import { isMusicLiked } from "@/lib/music/liked";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import {
   FileDown,
   PlaylistVariation,
@@ -26,6 +26,9 @@ import { useMusicSourcePicker } from "./music-source-picker";
 import { useT } from "@/lib/i18n";
 import { LoaderCircle } from "@/components/icons/music-icons";
 import { nowPlayingMatches } from "@/lib/music/now-playing-key";
+import "./music-like-burst.css";
+
+const ROW_LIKE_SPOKES = [0, 45, 90, 135, 180, 225, 270, 315];
 import { addTrackToMusicPlaylist, createMusicPlaylist } from "@/lib/music/library";
 import { recordMusicPlaylistPlayback } from "@/lib/music/playback-origin";
 import { useMusicNowPlaying } from "@/lib/music/use-now-playing";
@@ -165,6 +168,7 @@ function LibraryTrack({
     openSourcePicker(item, queue);
   };
   const [open, setOpen] = useState(false);
+  const [burst, setBurst] = useState(0);
   const close = () => {
     if (menu.current?.contains(document.activeElement)) anchor.current?.focus();
     setOpen(false);
@@ -269,13 +273,35 @@ function LibraryTrack({
       <button
         type="button"
         className="music-library-track-save"
+        data-like-burst
+        data-burst={burst || undefined}
         data-saved={liked || undefined}
         aria-pressed={liked}
         aria-label={t(liked ? "music.unsaveTrack" : "music.saveTrack")}
         title={t(liked ? "music.unsaveTrack" : "music.saveTrack")}
-        onClick={() => toggleMusicLiked(track)}
+        onClick={() => {
+          if (!liked) setBurst((count) => count + 1);
+          toggleMusicLiked(track);
+        }}
       >
         <Heart size={16} fill={liked ? "currentColor" : "none"} aria-hidden="true" />
+        {burst > 0 && liked && (
+          <span key={burst} className="dock-like-burst" aria-hidden="true">
+            <span className="dock-like-ring" />
+            {ROW_LIKE_SPOKES.map((rotate, index) => (
+              <span
+                key={index}
+                className="dock-like-dot"
+                style={
+                  {
+                    "--rotate": `${rotate}deg`,
+                    "--translate-y": index % 2 ? "-14px" : "-18px",
+                  } as CSSProperties
+                }
+              />
+            ))}
+          </span>
+        )}
       </button>
       <span className="music-library-track-duration">{track.durationLabel}</span>
       <button

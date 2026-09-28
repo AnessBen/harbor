@@ -1,8 +1,9 @@
 import { Fragment, useState } from "react";
+import { ChevronDown, Play } from "lucide-react";
 import nytLogo from "@/assets/awards/nyt-logo.svg";
 import { tmdbPersonIdByName, tmdbPersonIdCached } from "@/lib/providers/tmdb";
 import { curatedList } from "@/lib/curated/registry";
-import { rankInItems } from "@/lib/curated/types";
+import { rankInItems, type CuratedCompanion } from "@/lib/curated/types";
 import { useSettings } from "@/lib/settings";
 import { useView } from "@/lib/view";
 import { type AwardEntry, type AwardType } from "@/lib/providers/wikidata";
@@ -89,6 +90,12 @@ export function AwardsBlock({
             curator={nytList.curator}
             title={nytList.title}
             year={nytList.publishedYear}
+            companion={
+              nytList.companion &&
+              (nytList.companion.forRank == null || nytList.companion.forRank === nytRank)
+                ? nytList.companion
+                : undefined
+            }
           />
         )}
       </div>
@@ -101,13 +108,16 @@ function NytAccolade({
   curator,
   title,
   year,
+  companion,
 }: {
   rank: number;
   curator: string;
   title: string;
   year?: number;
+  companion?: CuratedCompanion;
 }) {
   const t = useT();
+  const [open, setOpen] = useState(false);
   return (
     <section className="grid gap-7 lg:grid-cols-[240px_1fr] lg:gap-14">
       <header className="flex flex-row items-center gap-5 lg:flex-col lg:items-start lg:gap-5">
@@ -144,6 +154,37 @@ function NytAccolade({
             <span className="min-w-0 flex-1 font-medium leading-tight text-ink">{t(title)}</span>
           </li>
         </ul>
+        {companion && (
+          <div className="flex min-w-0 flex-col gap-4">
+            <button
+              type="button"
+              aria-expanded={open}
+              onClick={() => setOpen((value) => !value)}
+              className="inline-flex min-h-11 w-fit items-center gap-2 rounded-full border border-edge px-4 text-[13px] font-medium text-ink transition-colors hover:bg-elevated"
+            >
+              <Play size={15} aria-hidden="true" />
+              {t(companion.title)}
+              <ChevronDown
+                size={15}
+                aria-hidden="true"
+                className={`transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+              />
+            </button>
+            {open && (
+              <div className="relative w-full max-w-[720px] overflow-hidden rounded-xl bg-black">
+                <div className="pt-[56.25%]" />
+                <iframe
+                  src={`https://www.youtube-nocookie.com/embed/${companion.youtubeId}?rel=0&modestbranding=1&iv_load_policy=3&playsinline=1`}
+                  title={t(companion.title)}
+                  allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+                  allowFullScreen
+                  referrerPolicy="strict-origin-when-cross-origin"
+                  className="absolute inset-0 h-full w-full border-0"
+                />
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </section>
   );

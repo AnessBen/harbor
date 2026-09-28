@@ -25,12 +25,17 @@ export function selectableSources(
   candidates: MusicSourceCandidate[],
   track: MusicTrack,
 ): MusicSourceCandidate[] {
+  // Candidates arrive best-scoring first, so the first row for a service is the one to keep.
+  // The track already playing is dropped before a service is claimed, or it would take the one
+  // slot its service gets and hide every alternative behind it.
   const seen = new Set<string>();
   return candidates.filter((candidate) => {
     if (candidate.health === "offline") return false;
-    const key = `${candidate.connectorId}:${candidate.track.id}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return candidate.connectorId !== track.connectorId || candidate.track.id !== track.id;
+    if (candidate.connectorId === track.connectorId && candidate.track.id === track.id) {
+      return false;
+    }
+    if (seen.has(candidate.connectorId)) return false;
+    seen.add(candidate.connectorId);
+    return true;
   });
 }

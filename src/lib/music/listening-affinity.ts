@@ -1,15 +1,38 @@
 import { musicTrackIdentity } from "./track-identity";
 import { artistCreditParts } from "./search-artists";
-import { readMusicPreference, writeMusicPreference } from "./preferences";
+import { readMusicPreference } from "./preferences";
+import { cachedLocalJson, readLocalJson, writeLocalJson } from "./local-store";
 import type { MusicPlayerState, MusicTrack } from "./types";
 export type ListeningAffinity = Record<string, { plays: number; at: number }>;
-export function readListeningAffinity(profile: string): ListeningAffinity {
+const AFFINITY_LIMIT = 20_000;
+
+function affinityStore(profile: string): string {
+  return `affinity-${profile.replace(/[^a-z0-9._-]/gi, "_")}`;
+}
+
+function sane(value: unknown): ListeningAffinity {
+  if (!value || typeof value !== "object") return {};
+  return Object.fromEntries(Object.entries(value).filter((entry): entry is [string, { plays: number; at: number }] => {
+    const row = entry[1] as { plays?: unknown; at?: unknown } | null;
+    return !!row && typeof row.plays === "number" && Number.isFinite(row.plays) && row.plays > 0 && typeof row.at === "number" && Number.isFinite(row.at);
+  }).slice(0, AFFINITY_LIMIT));
+}
+
+export async function hydrateListeningAffinity(profile: string): Promise<void> {
+  const stored = await readLocalJson<ListeningAffinity>(affinityStore(profile));
+  let legacy: ListeningAffinity = {};
   try {
-    const value = JSON.parse(readMusicPreference(`harbor.music.affinity.${profile}.v1`) ?? "{}");
-    return Object.fromEntries(Object.entries(value).filter((entry): entry is [string, { plays: number; at: number }] => {
-      const row = entry[1] as { plays?: unknown; at?: unknown } | null;
-      return !!row && typeof row.plays === "number" && Number.isFinite(row.plays) && row.plays > 0 && typeof row.at === "number" && Number.isFinite(row.at);
-    }).slice(0, 250));
+    legacy = sane(JSON.parse(readMusicPreference(`harbor.music.affinity.${profile}.v1`) ?? "{}"));
+  } catch {}
+  if (!stored && !Object.keys(legacy).length) return;
+  writeLocalJson(affinityStore(profile), { ...sane(stored), ...legacy });
+}
+
+export function readListeningAffinity(profile: string): ListeningAffinity {
+  const onDisk = cachedLocalJson<ListeningAffinity>(affinityStore(profile));
+  if (onDisk) return sane(onDisk);
+  try {
+    return sane(JSON.parse(readMusicPreference(`harbor.music.affinity.${profile}.v1`) ?? "{}"));
   } catch { return {}; }
 }
 export function createListeningObserver(record: (track: MusicTrack, profile: string) => void, clock = Date.now) {
@@ -33,8 +56,8 @@ export function createListeningObserver(record: (track: MusicTrack, profile: str
 export const observeMusicListening = createListeningObserver((track, profile) => {
   const rows = readListeningAffinity(profile), key = musicTrackIdentity(track);
   rows[key] = { plays: Math.min(10_000, (rows[key]?.plays ?? 0) + 1), at: Date.now() };
-  const bounded = Object.fromEntries(Object.entries(rows).sort((a,b) => b[1].at - a[1].at).slice(0,250));
-  writeMusicPreference(`harbor.music.affinity.${profile}.v1`, JSON.stringify(bounded));
+  const bounded = Object.fromEntries(Object.entries(rows).sort((a,b) => b[1].at - a[1].at).slice(0, AFFINITY_LIMIT));
+  writeLocalJson(affinityStore(profile), bounded);
 });
 export function musicExploreSeeds(recent: readonly MusicTrack[], liked: readonly MusicTrack[], affinity: ListeningAffinity, now = Date.now()): MusicTrack[] {
   const likedKeys = new Set(liked.map(musicTrackIdentity));
