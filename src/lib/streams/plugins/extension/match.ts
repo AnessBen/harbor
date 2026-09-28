@@ -75,10 +75,21 @@ export function yearRejects(media: BridgeMedia, req: StreamPluginRequest): boole
   return Math.abs(media.year - req.year) > 1;
 }
 
+/** One episode of a season, by number.
+ *
+ * A provider that numbers some episodes leaves others unnumbered, and CloudStream shows those
+ * under "No Season" -- they are a group of their own, not a second copy of every season. Letting
+ * them answer a request for a specific season is what put a bonus episode's streams beside the
+ * real one. Asking without a season still accepts them, which is how a provider that numbers
+ * nothing at all is reached. */
 function numbered(episodes: BridgeEpisode[], season: number | null, episode: number): BridgeEpisode[] {
-  return episodes.filter(
-    (e) => e.episode === episode && (season == null || e.season == null || e.season === season),
-  );
+  return episodes.filter((e) => e.episode === episode && (season == null || e.season === season));
+}
+
+/** The episodes a provider left unnumbered, which CloudStream shows under "No Season". They are a
+ * season of their own, and the one to take when the season asked for has no such episode. */
+function noSeason(episodes: BridgeEpisode[], episode: number): BridgeEpisode[] {
+  return episodes.filter((e) => e.episode === episode && e.season == null);
 }
 
 export function pickEpisodes(media: BridgeMedia, req: StreamPluginRequest): string[] {
@@ -88,13 +99,26 @@ export function pickEpisodes(media: BridgeMedia, req: StreamPluginRequest): stri
   }
   const wanted = req.episode;
   const absolute = req.absoluteEpisode;
+  // Some numbers address an episode by position rather than by its own numbering: an absolute
+  // number always does, and a "No Season" row does because the list gives it one. The provider
+  // numbered those episodes not at all, so nothing can match them by number and this is the only
+  // way they can ever play. Both sides walk the unnumbered episodes in the order the provider gave
+  // them, so a position means the same episode here as the row the person clicked.
+  const positional = absolute != null || req.season == null || req.season === 0;
   let found: BridgeEpisode[] = [];
   if (wanted != null) found = numbered(episodes, req.season, wanted);
-  if (!found.length && wanted != null) found = numbered(episodes, null, wanted);
+  if (!found.length && wanted != null) found = noSeason(episodes, wanted);
+  // A season the provider never used is still worth matching by number alone, so a provider whose
+  // numbering does not line up is not lost. Not while the number is addressing the No Season group
+  // though: there it would hand back some numbered season's episode, which is the wrong episode
+  // wearing the right number.
+  if (!found.length && wanted != null && !positional) found = numbered(episodes, null, wanted);
   if (!found.length && absolute != null) found = numbered(episodes, null, absolute);
-  if (!found.length && absolute != null && episodes.every((e) => e.episode == null)) {
-    const byIndex = episodes[absolute - 1];
-    if (byIndex) found = [byIndex];
+  const byPosition = positional ? (absolute ?? wanted) : null;
+  if (!found.length && byPosition != null) {
+    const unnumbered = episodes.filter((e) => e.season == null || e.episode == null);
+    const at = unnumbered[byPosition - 1];
+    if (at) found = [at];
   }
   const out: string[] = [];
   for (const e of found) {
