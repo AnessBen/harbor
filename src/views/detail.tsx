@@ -37,6 +37,7 @@ import {
   type Meta,
 } from "@/lib/cinemeta";
 import { addonBasesForOrigin, fetchAddonMeta, gatherCatalogAddons } from "@/lib/addons";
+import { useCapstanMeta } from "@/lib/streams/plugins/extension/detail-hook";
 import { resolveMeta } from "@/lib/meta-resource";
 import { useMdblistScores } from "@/lib/providers/mdblist";
 import { lastPlayedEpisode, readResumeEntry, saveResumeMs } from "@/lib/resume";
@@ -477,6 +478,7 @@ export function DetailView({
     };
   }, [detail?.imdbId, meta.id]);
   const addonNative = liveContext || isAddonNativeMeta(meta);
+  const capstanMeta = useCapstanMeta(meta);
   const trailerCandidate = detail?.trailerCandidates?.[0] ?? meta.trailerStreams?.[0]?.ytId ?? null;
 
   useScrollUpTrailer(
@@ -518,6 +520,14 @@ export function DetailView({
       cancelled = true;
     };
   }, [meta.id, meta.type, addonNative]);
+
+  // A plugin's own rows reach this page as a poster with no addon meta behind them, so the
+  // provider's bridge answer is the only source for this item's year and episode list. The id is
+  // rechecked because a previous item's answer is still in state for one render after a move.
+  useEffect(() => {
+    if (!capstanMeta || capstanMeta.id !== meta.id) return;
+    setCinemetaFull(capstanMeta);
+  }, [capstanMeta, meta.id]);
 
   useEffect(() => {
     if (idAnime || detectedKitsu != null || addonNative) return;
@@ -986,7 +996,7 @@ export function DetailView({
   );
   const logo =
     pinnedLogo || seasonArt?.logo || stableLogo || (isAnime && !loading ? meta.logo : undefined);
-  const year = detail?.year ?? meta.releaseInfo;
+  const year = detail?.year ?? meta.releaseInfo ?? cinemetaFull?.releaseInfo;
   const releaseYearNum = parseAwardYear(year);
   const imdbRatingValue =
     harborImdbRating ??
@@ -1097,7 +1107,7 @@ export function DetailView({
     logo,
     background: backdrop,
     releaseDate: detail?.releaseDate ?? meta.releaseDate,
-    releaseInfo: detail?.year ?? meta.releaseInfo,
+    releaseInfo: detail?.year ?? meta.releaseInfo ?? cinemetaFull?.releaseInfo,
     behaviorHints: meta.behaviorHints ?? cinemetaFull?.behaviorHints,
     videos: meta.videos ?? cinemetaFull?.videos,
   };
@@ -1500,6 +1510,7 @@ export function DetailView({
           {year}
         </Pill>
       )}
+      {meta.pluginQuality && <Pill>{meta.pluginQuality}</Pill>}
       {inLocalLibrary && (
         <HoverTooltip label={t("In your local library")} side="top" align="center" arrow>
           <Pill>

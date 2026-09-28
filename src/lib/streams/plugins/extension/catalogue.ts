@@ -1,5 +1,6 @@
 import type { Meta, MetaType } from "@/lib/cinemeta";
 import { PLUGIN_ADDON_PREFIX } from "../addon";
+import { capstanId } from "./detail";
 import type { InstalledStreamPlugin, PluginCatalogue } from "../types";
 import type { BridgeProvider, BridgeSearchItem } from "./bridge";
 import { bridgeCatalogue, bridgeCataloguePage, bridgeProviders } from "./bridge";
@@ -117,10 +118,11 @@ function metaFor(cat: PluginCatalogue, item: BridgeSearchItem): Meta | null {
   const url = text(item.url);
   if (!name || !url) return null;
   return {
-    id: `capstan:${encodeURIComponent(cat.providerId)}:${encodeURIComponent(url)}`,
+    id: capstanId(cat.providerId, url),
     type: metaType(item.type, cat.type),
     name,
     poster: image(item.posterUrl),
+    pluginQuality: text(item.quality).slice(0, 40) || undefined,
     addonOrigin: { id: cat.pluginId, name: cat.pluginName, logo: cat.pluginIcon },
   };
 }

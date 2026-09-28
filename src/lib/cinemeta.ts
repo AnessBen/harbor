@@ -31,6 +31,9 @@ export type Meta = {
   providerBadge?: { name: string; logo: string; tint: string };
   sourceRank?: number;
   tmdbScore?: number;
+  /** Resolution a plugin's own catalogue row claimed. A plugin row arrives as a poster with no
+   * addon meta behind it, so this is the only field its quality can be carried in. */
+  pluginQuality?: string;
   runtime?: string;
   genres?: string[];
   trailers?: Array<{ source: string; type?: string }>;
