@@ -1,5 +1,4 @@
 import type { Addon } from "@/lib/addons";
-import { adultContentHidden } from "@/lib/addons-store/adult-filter";
 import { dwarn } from "@/lib/debug";
 import type { StreamRequest } from "../addons";
 import type { Stream } from "../types";
@@ -7,6 +6,7 @@ import { toStreams } from "./adapter";
 import { repoKey } from "./manifest";
 import { PRELUDE_VERSION } from "./provider-compat/prelude";
 import { buildPluginRequest } from "./request";
+import { runnableStreamPlugins } from "./runnable";
 import { recordSkip, runStreamPlugin } from "./runtime";
 import { settingsFingerprint } from "./source";
 import { installedStreamPluginsSync } from "./store";
@@ -25,18 +25,7 @@ export function isPluginAddon(addon: Pick<Addon, "transportUrl">): boolean {
   return addon.transportUrl.startsWith(PLUGIN_ADDON_PREFIX);
 }
 
-export function runnableStreamPlugins(): InstalledStreamPlugin[] {
-  const hideAdult = adultContentHidden();
-  return installedStreamPluginsSync().filter(
-    (p) =>
-      p.enabled &&
-      !p.repoDisabled &&
-      !p.incompatible &&
-      !p.autoPaused &&
-      p.listed &&
-      !(p.nsfw && hideAdult),
-  );
-}
+export { runnableStreamPlugins };
 
 function union(lists: string[][]): string[] {
   return [...new Set(lists.flat())];

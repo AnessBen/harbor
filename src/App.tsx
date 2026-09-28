@@ -142,6 +142,7 @@ import type { MetaType } from "@/lib/cinemeta";
 import { useDiscordPresence } from "@/lib/discord/use-discord-presence";
 import { useWatchShare } from "@/lib/social/watch-presence";
 import { Home } from "@/views/home";
+import { usePluginCataloguesAvailable } from "@/lib/streams/plugins/available";
 import { MusicDock } from "@/components/music/music-dock";
 import { ParentalProvider } from "@/lib/parental";
 import { TraktProvider } from "@/lib/trakt/provider";
@@ -175,6 +176,7 @@ const importDetail = () => import("@/views/detail");
 const importAddons = () => import("@/views/addons");
 const importDiscover = () => import("@/views/discover");
 const importCatalogs = () => import("@/views/catalogs");
+const importPlugins = () => import("@/views/plugins");
 const importAward = () => import("@/views/award");
 const importAnimeAward = () => import("@/views/anime-award");
 const importCuratedList = () => import("@/views/curated-list");
@@ -210,6 +212,7 @@ const DetailView = lazy(() => importDetail().then((m) => ({ default: m.DetailVie
 const AddonsView = lazy(() => importAddons().then((m) => ({ default: m.AddonsView })));
 const Discover = lazy(() => importDiscover().then((m) => ({ default: m.Discover })));
 const Catalogs = lazy(() => importCatalogs().then((m) => ({ default: m.Catalogs })));
+const PluginsView = lazy(() => importPlugins().then((m) => ({ default: m.Plugins })));
 const AwardView = lazy(() => importAward().then((m) => ({ default: m.AwardView })));
 const AnimeAwardView = lazy(() => importAnimeAward().then((m) => ({ default: m.AnimeAwardView })));
 const CuratedListView = lazy(() =>
@@ -306,6 +309,7 @@ function useViewPreloader(tmdbKey: string) {
       void importService();
       void importOnboarding();
       void importCatalogs();
+      void importPlugins();
       void importLibrary();
       void importCommunityCollections();
       void importDownloads();
@@ -1369,6 +1373,11 @@ function Shell({ onReady }: { onReady?: () => void }) {
   useEffect(() => {
     if (!sportsEnabled && (topKind === "sports" || topKind === "match-detail")) setView("live");
   }, [sportsEnabled, topKind, setView]);
+  const pluginCatalogues = usePluginCataloguesAvailable();
+  const pluginsTop = topKind === "plugins" && pluginCatalogues;
+  useEffect(() => {
+    if (!pluginCatalogues && topKind === "plugins") setView("home");
+  }, [pluginCatalogues, topKind, setView]);
   const liveTop = topKind === "live";
   const matchDetailTop = topKind === "match-detail";
   const vodTop = topKind === "vod";
@@ -1428,6 +1437,7 @@ function Shell({ onReady }: { onReady?: () => void }) {
   const discoverAlive = useIdleEvict(discoverTop);
   const musicAlive = useIdleEvict(musicTop);
   const catalogsAlive = useIdleEvict(catalogsTop);
+  const pluginsAlive = useIdleEvict(pluginsTop);
   const addonsAlive = useIdleEvict(addonsTop);
   const calendarAlive = useIdleEvict(calendarTop);
   const wrappedAlive = useIdleEvict(wrappedTop);
@@ -1566,6 +1576,13 @@ function Shell({ onReady }: { onReady?: () => void }) {
             <div {...layerProps(catalogsTop)}>
               <Suspense fallback={null}>
                 <Catalogs active={catalogsTop} />
+              </Suspense>
+            </div>
+          )}
+          {pluginsAlive && (
+            <div {...layerProps(pluginsTop)}>
+              <Suspense fallback={null}>
+                <PluginsView active={pluginsTop} />
               </Suspense>
             </div>
           )}

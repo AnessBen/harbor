@@ -1,5 +1,5 @@
 import type { Meta, MetaType } from "@/lib/cinemeta";
-import { runnableStreamPlugins } from "./addon";
+import { pluginCatalogueSources } from "./runnable";
 import { extensionsSupported, warmBridge } from "./extension/bridge";
 import {
   extensionCatalogueMetas,
@@ -20,11 +20,6 @@ let cache: PluginCatalogue[] = [];
 let checkedAt = 0;
 let print = "";
 let inflight: Promise<PluginCatalogue[]> | null = null;
-
-function nativePlugins(): InstalledStreamPlugin[] {
-  if (!extensionsSupported()) return [];
-  return runnableStreamPlugins().filter((p) => p.format === "android-extension");
-}
 
 function fingerprint(plugins: InstalledStreamPlugin[]): string {
   return plugins.map((p) => `${p.id}@${p.hash}`).join("|");
@@ -105,7 +100,7 @@ async function look(): Promise<PluginCatalogue[]> {
   if (!checkedAt && !installedStreamPluginsSync().length) {
     await loadInstalledStreamPlugins().catch(() => []);
   }
-  const plugins = nativePlugins();
+  const plugins = pluginCatalogueSources();
   const next = fingerprint(plugins);
   if (next === print && checkedAt && Date.now() - checkedAt < TTL_MS) return cache;
   const found = plugins.length ? await collect(plugins) : [];

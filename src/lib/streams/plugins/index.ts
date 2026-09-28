@@ -52,9 +52,9 @@ export {
   pluginListKey,
   pluginsForAddon,
   runPluginAddon,
-  runnableStreamPlugins,
   setStreamPluginConfig,
 } from "./addon";
+export { pluginCatalogueSources, runnableStreamPlugins } from "./runnable";
 export { splitRepoLinks } from "./manifest";
 export {
   extensionCataloguePage,

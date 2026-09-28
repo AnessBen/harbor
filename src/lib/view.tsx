@@ -36,6 +36,7 @@ export type View =
   | "anime"
   | "discover"
   | "catalogs"
+  | "plugins"
   | "addons"
   | "calendar"
   | "movies"
@@ -164,6 +165,7 @@ export type Frame =
   | { kind: "anime" }
   | { kind: "discover" }
   | { kind: "catalogs" }
+  | { kind: "plugins" }
   | { kind: "addons" }
   | { kind: "addon-detail"; id: string }
   | { kind: "calendar" }
@@ -239,6 +241,7 @@ export type SettingsSection =
   | "language"
   | "player"
   | "streamFilters"
+  | "plugins"
   | "licenses"
   | "advanced";
 
@@ -383,6 +386,8 @@ function frameKey(f: Frame): string {
       return "discover";
     case "catalogs":
       return "catalogs";
+    case "plugins":
+      return "plugins";
     case "addons":
       return "addons";
     case "addon-detail":
@@ -544,6 +549,7 @@ export function ViewProvider({ children }: { children: ReactNode }) {
       if (f.kind === "addons" || f.kind === "addon-detail") return "addons";
       if (f.kind === "discover" || f.kind === "queue") return "discover";
       if (f.kind === "catalogs") return "catalogs";
+      if (f.kind === "plugins") return "plugins";
       if (f.kind === "calendar") return "calendar";
       if (f.kind === "wrapped") return "wrapped";
       if (f.kind === "movies") return "movies";
@@ -769,6 +775,11 @@ export function ViewProvider({ children }: { children: ReactNode }) {
           scrollMem.current.clear();
           rowScrollMem.current.clear();
           return [{ kind: "catalogs" }];
+        }
+        if (v === "plugins") {
+          scrollMem.current.clear();
+          rowScrollMem.current.clear();
+          return [{ kind: "plugins" }];
         }
         if (v === "addons") {
           scrollMem.current.clear();
