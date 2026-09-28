@@ -1,4 +1,6 @@
 import { type FormEvent, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import { useMusicSourcePicker } from "./music-source-picker";
+import { recordMusicPlaylistPlayback } from "@/lib/music/playback-origin";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { FileUp, FolderOpen, LoaderCircle, Plus, Search, X } from "@/components/icons/music-icons";
 import { Dropdown } from "@/components/dropdown";
@@ -87,6 +89,7 @@ export function MusicLibrary({
 }) {
   const t = useT();
   const { openConnections } = useMusicConnections();
+  const { openSourcePicker } = useMusicSourcePicker();
   const player = useMusicPlayback();
   const [library, setLibrary] = useState(EMPTY_LIBRARY);
   const [selectedId, setSelectedId] = useState<string | null>(initialPlaylistId ?? null);
@@ -341,6 +344,10 @@ export function MusicLibrary({
     kind: "track",
   }));
   const recentMenu = useMusicItemMenu({ onOpen: (item) => onOpen(item, recentItems) });
+  const playRecent = (track: MusicTrack) => {
+    recordMusicPlaylistPlayback(null);
+    openSourcePicker(track, player.recents);
+  };
   const trackView = view === "saved" || view === "recent" || (!!selected && view === "playlists");
 
   return (
@@ -387,6 +394,7 @@ export function MusicLibrary({
                 key={item.id}
                 item={item}
                 onOpen={() => onOpen(item, recentItems)}
+                onPlay={() => playRecent(player.recents[index])}
                 onMenu={recentMenu.openFor(item, index)}
               />
             ))}

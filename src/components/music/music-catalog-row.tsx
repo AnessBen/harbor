@@ -385,7 +385,13 @@ export function MusicCatalogRow({
         playing={playingItemId === item.id || (playback.pending?.id === item.id && playback.pending?.connectorId === item.connectorId)}
         onOpen={onOpen && (() => onOpen(item, index))}
         onMenu={(event) => openMenu(item, index, event)}
-        overlay={liveItemId === item.id ? <MusicNowPlayingMark /> : undefined}
+        overlay={(() => {
+          const pending =
+            playback.pending?.id === item.id &&
+            playback.pending?.connectorId === item.connectorId;
+          if (!pending && liveItemId !== item.id) return undefined;
+          return <MusicNowPlayingMark loading={pending} />;
+        })()}
       />
     ),
   );

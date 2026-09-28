@@ -105,9 +105,19 @@ export function planDailyMixes(
       used.add(other);
     }
     if (group.length < MIN_ARTISTS) {
-      for (const [other] of ranked) {
+      // Pad from artists that actually sit near someone already in the group, never from
+      // whatever merely scored highest: two artists being played a lot is not a reason to put
+      // them in one mix, and that is how unrelated genres ended up sharing a Daily Mix.
+      const related = new Map<string, number>();
+      for (const member of group) {
+        for (const [other, weight] of near.get(member) ?? new Map<string, number>()) {
+          if (used.has(other) || !artists.has(other)) continue;
+          related.set(other, (related.get(other) ?? 0) + weight);
+        }
+      }
+      const byTie = [...related].sort((left, right) => right[1] - left[1]);
+      for (const [other] of byTie) {
         if (group.length >= MIN_ARTISTS) break;
-        if (used.has(other)) continue;
         group.push(other);
         used.add(other);
       }
