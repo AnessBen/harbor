@@ -202,7 +202,7 @@ export function CinemetaEpisodeRow({
     name: ep.name || ep.title || undefined,
     videoId: ep.id || undefined,
     still: ep.thumbnail || undefined,
-    overview: undefined,
+    overview: ep.overview ?? ep.description,
   };
   return (
     <div
@@ -252,6 +252,11 @@ export function CinemetaEpisodeRow({
               .filter(Boolean)
               .join("  ·  ")}
           </p>
+          {(ep.overview ?? ep.description) && (
+            <p className="line-clamp-2 text-[13.5px] leading-relaxed text-ink-muted">
+              {ep.overview ?? ep.description}
+            </p>
+          )}
         </div>
       </button>
       <EpisodeDownloadButton meta={meta} episode={playEpisode} />

@@ -945,16 +945,20 @@ export function DetailView({
     id: meta.id,
     type: meta.type,
     name: title || meta.name,
-    poster: meta.poster ?? detail?.poster,
+    poster: meta.poster ?? cinemetaFull?.poster ?? detail?.poster,
   };
   const overview =
     seasonArt?.description ||
-    (detail?.overview ?? (meta.id.startsWith("tmdb:") ? "" : meta.description) ?? "");
+    (detail?.overview ??
+      (meta.id.startsWith("tmdb:") ? "" : (meta.description ?? cinemetaFull?.description)) ??
+      "");
   const tagline = detail?.tagline ?? "";
   const pinnedLogo = useTitleLogo(meta.id);
   const animeArt = isAnime ? peekAnimeArt(meta.id) : undefined;
   const stableBackdrop = useStableAsset(
-    isAnime ? [animeArt?.bg, enrichedBg] : [animeArt?.bg, meta.background, detail?.backdrop],
+    isAnime
+      ? [animeArt?.bg, enrichedBg]
+      : [animeArt?.bg, meta.background, cinemetaFull?.background, detail?.backdrop],
     meta.id,
   );
   const primaryBackdrop =
@@ -1010,7 +1014,7 @@ export function DetailView({
   );
   const rating = isAnime ? malRating : (imdbRatingValue ?? detail?.rating ?? meta.imdbRating);
   const runtime = detail?.runtime;
-  const genres = detail?.genres ?? meta.genres ?? [];
+  const genres = detail?.genres ?? meta.genres ?? cinemetaFull?.genres ?? [];
   const tmdbRecommendations = detail?.recommendations ?? NO_METAS;
   const similar = detail?.similar ?? NO_METAS;
   const relatedSeedId = detail?.imdbId ?? (meta.id.startsWith("tt") ? meta.id : null);

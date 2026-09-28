@@ -34,24 +34,49 @@ function yearOf(media: BridgeMedia): string | undefined {
   return typeof media.year === "number" && media.year > 0 ? String(media.year) : undefined;
 }
 
+/** The provider picks the unit: a CloudStream episode date is millis for most sources and seconds
+ * for a few. Epoch seconds only pass 1e11 in the year 5138, and epoch millis passed it in 1973, so
+ * the two cannot be confused. */
+function airDateIso(value: number | null | undefined): string | undefined {
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) return undefined;
+  const date = new Date(value > 1e11 ? value : value * 1000);
+  return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
+}
+
 /** Episodes keep the provider's own numbering, because playback re-finds them by season and
  * episode number rather than by anything an id could carry. */
 function videosOf(media: BridgeMedia): Meta["videos"] {
   const episodes = Array.isArray(media.episodes) ? media.episodes : [];
-  const out = episodes.map((ep) => ({
-    season: ep.season ?? undefined,
-    episode: ep.episode ?? undefined,
-    name: ep.name ?? undefined,
-    title: ep.name ?? undefined,
-  }));
+  const out = episodes.map((ep) => {
+    const description = ep.description ?? undefined;
+    return {
+      season: ep.season ?? undefined,
+      episode: ep.episode ?? undefined,
+      name: ep.name ?? undefined,
+      title: ep.name ?? undefined,
+      overview: description,
+      description,
+      thumbnail: ep.posterUrl ?? undefined,
+      released: airDateIso(ep.airDate),
+    };
+  });
   return out.length ? out : undefined;
 }
 
 /** What a provider knows about one of its own items, in the shape the detail page already reads.
- * The bridge reports a year and an episode list and nothing else -- no synopsis, genres, cast or
- * artwork -- so those stay empty rather than being invented. */
+ * The bridge carries no cast or trailer list, so those stay empty rather than being invented. */
 export function capstanMetaFrom(id: string, type: MetaType, media: BridgeMedia): Meta {
-  return { id, type, name: media.name, releaseInfo: yearOf(media), videos: videosOf(media) };
+  return {
+    id,
+    type,
+    name: media.name,
+    poster: media.posterUrl ?? undefined,
+    background: media.backgroundPosterUrl ?? undefined,
+    description: media.plot ?? undefined,
+    releaseInfo: yearOf(media),
+    genres: media.tags?.length ? media.tags : undefined,
+    videos: videosOf(media),
+  };
 }
 
 export async function loadCapstanMeta(id: string, type: MetaType): Promise<Meta | null> {
