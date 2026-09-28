@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Puzzle } from "lucide-react";
+import { Puzzle, Search, X } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import {
   listBrowseCatalogs,
@@ -7,10 +7,14 @@ import {
   type BrowseCatalog,
 } from "@/lib/catalog-browse";
 import { isExtensionCatalogueBase } from "@/lib/streams/plugins";
+import { searchPlugins, type PluginSearchGroup } from "@/lib/streams/plugins/extension/search";
 import { useView } from "@/lib/view";
 import { useT } from "@/lib/i18n";
 import { useContentDrag } from "@/lib/window-drag";
+import { FeedShelf } from "@/components/feed-shelf";
 import { CatalogShelf } from "./catalogs/catalog-shelf";
+
+const SEARCH_DEBOUNCE_MS = 350;
 
 /** Only the rows a plugin stood up itself. A plugin also registers a stream addon, but that addon
  * declares no catalogs, so every browsable row arrives as an extension catalogue base. */
@@ -25,7 +29,10 @@ export function Plugins({ active = true }: { active?: boolean }) {
   const contentDrag = useContentDrag();
   const [catalogs, setCatalogs] = useState<BrowseCatalog[]>([]);
   const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<PluginSearchGroup[] | null>(null);
   const genRef = useRef(0);
+  const searchGen = useRef(0);
   void active;
 
   const load = useCallback(() => {
@@ -58,6 +65,32 @@ export function Plugins({ active = true }: { active?: boolean }) {
     grouped.set(cat.addonName, list);
   }
 
+  const wanted = query.trim();
+
+  useEffect(() => {
+    const gen = ++searchGen.current;
+    if (!wanted) {
+      setResults(null);
+      return;
+    }
+    // Typing must not start a search per keystroke, and a slower search must not land after a
+    // faster one and answer for what was typed two words ago.
+    const timer = setTimeout(() => {
+      void searchPlugins(wanted)
+        .then((found) => {
+          if (gen === searchGen.current) setResults(found);
+        })
+        .catch(() => {
+          if (gen === searchGen.current) setResults([]);
+        });
+    }, SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [wanted]);
+
+  useEffect(() => () => void (searchGen.current += 1), []);
+
+  const searchingShelf = { id: "plugin-search", title: t("Results for {q}", { q: wanted }) };
+
   return (
     <main className="flex-1 overflow-y-auto px-12 pb-24 pt-28">
       <div {...contentDrag} className="flex flex-col gap-8">
@@ -70,7 +103,52 @@ export function Plugins({ active = true }: { active?: boolean }) {
           </p>
         </header>
 
-        {loading ? (
+        {!loading && catalogs.length > 0 && (
+          <div data-plugins-search className="relative h-11 w-full max-w-[420px]">
+            <Search
+              size={16}
+              className="absolute start-3.5 top-1/2 -translate-y-1/2 text-ink-subtle"
+            />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={t("Search the plugins for a title")}
+              spellCheck={false}
+              className="h-full w-full rounded-full border border-edge-soft bg-elevated/40 ps-10 pe-9 text-[14px] text-ink outline-none transition-colors placeholder:text-ink-subtle focus:border-edge"
+            />
+            {query && (
+              <button
+                onClick={() => setQuery("")}
+                aria-label={t("Clear")}
+                className="absolute end-2.5 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-ink-subtle transition-colors hover:bg-canvas/60 hover:text-ink"
+              >
+                <X size={15} />
+              </button>
+            )}
+          </div>
+        )}
+
+        {wanted ? (
+          results === null ? (
+            <FeedShelf shelf={searchingShelf} items={null} />
+          ) : results.length === 0 ? (
+            <p className="rounded-2xl border border-dashed border-edge-soft bg-canvas/30 px-6 py-12 text-center text-[13.5px] text-ink-muted">
+              {t("No plugin has anything for that title.")}
+            </p>
+          ) : (
+            results.map((group) => (
+              <FeedShelf
+                key={group.pluginId}
+                shelf={{
+                  id: `plugin-search:${group.pluginId}`,
+                  title: group.pluginName,
+                  kicker: t("{n} results", { n: group.metas.length }),
+                }}
+                items={group.metas}
+              />
+            ))
+          )
+        ) : loading ? (
           <ShelfSkeletons />
         ) : catalogs.length === 0 ? (
           <EmptyState onOpenPlugins={() => openSettings("plugins")} />

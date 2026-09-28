@@ -27,8 +27,31 @@ function overlap(a: string[], b: string[]): number {
   return a.filter((t) => set.has(t)).length / a.length;
 }
 
-function typeScore(itemType: string | null | undefined, reqType: "movie" | "series"): number {
-  const t = (itemType ?? "").toLowerCase();
+/** How well a provider's name answers a query, highest first.
+ *
+ * The order a provider answers its own search in is its business -- newest first, or by its own idea
+ * of relevance -- so a title the person typed in full can arrive below looser matches of the same
+ * words. This is what lifts the one that was asked for to the front.
+ *
+ * The comparison is by token, which is what makes it indifferent to the furniture in a name: an
+ * apostrophe, a year, a season range and a list of release notes all normalise away, so "India's Got
+ * Latent" and "India Got Latent Season 2" score alike while "India" alone scores far below both. */
+export function relevanceScore(name: string, query: string): number {
+  const want = tokens(query);
+  if (!want.length) return 0;
+  const got = tokens(name);
+  if (!got.length) return 0;
+  const held = new Set(got);
+  const ratio = want.filter((token) => held.has(token)).length / want.length;
+  let score = Math.round(ratio * 1000);
+  // A name that is exactly the title is the title; one that carries a page of release notes as well
+  // is a looser answer to the same words, and belongs below the one that is not padded out.
+  const extra = Math.max(0, got.length - want.length);
+  if (ratio === 1) score += extra === 0 ? 500 : Math.max(50, 250 - extra * 4);
+  return score;
+}
+
+function typeScore(itemType: string | null | undefined, reqType: "movie" | "series"): number {  const t = (itemType ?? "").toLowerCase();
   if (!t) return 0;
   const wantSeries = reqType === "series";
   if (wantSeries && SERIES_TYPES.has(t)) return 20;

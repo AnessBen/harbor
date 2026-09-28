@@ -4123,7 +4123,8 @@ html:not([data-input-modality="pointer"])
     :where(
       [data-profile-picker][role="dialog"][tabindex="-1"],
       .hset-title[tabindex="-1"],
-      [data-search-overlay] input
+      [data-search-overlay] input,
+      [data-plugins-search] input
     )
   ) {
   outline: 2px solid var(--color-accent) !important;

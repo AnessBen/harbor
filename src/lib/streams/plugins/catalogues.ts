@@ -56,7 +56,7 @@ export function extensionCataloguesSync(): PluginCatalogue[] {
   return cache;
 }
 
-function budget(plugin: InstalledStreamPlugin, ceiling: number): number {
+export function budget(plugin: InstalledStreamPlugin, ceiling: number): number {
   return plugin.timeoutMs ? Math.min(plugin.timeoutMs, ceiling) : ceiling;
 }
 
@@ -72,7 +72,7 @@ function within<T>(work: Promise<T>, ms: number, what: string): Promise<T> {
 /** Shares the one plugin gate and the plugin's own log, and deliberately leaves the health record
  * alone: that ledger answers how a search for a title went, and a browse would overwrite it with a
  * count for a row nobody asked about, which the picker reads back as an outage. */
-async function gated<T>(
+export async function gated<T>(
   plugin: InstalledStreamPlugin,
   what: string,
   ms: number,

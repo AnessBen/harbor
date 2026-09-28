@@ -36,7 +36,7 @@ export function isExtensionCatalogueBase(base: string): boolean {
 
 /** Providers are not filtered by their declared home page flag: the layer stands a row up for a
  * provider that answers the call without declaring one, and that row is its only entry point. */
-function providersOf(plugin: InstalledStreamPlugin, all: BridgeProvider[]): BridgeProvider[] {
+export function providersOf(plugin: InstalledStreamPlugin, all: BridgeProvider[]): BridgeProvider[] {
   const named = new Set(plugin.native?.providerIds ?? []);
   const extensionId = plugin.native?.extensionId ?? plugin.entryId;
   return all
@@ -108,7 +108,7 @@ export function listingTitle(name: string): string {
   return head.length >= 2 ? head : raw;
 }
 
-function metaFor(cat: PluginCatalogue, item: BridgeSearchItem): Meta | null {
+export function metaFor(cat: PluginCatalogue, item: BridgeSearchItem): Meta | null {
   const name = listingTitle(text(item.name)).slice(0, 300);
   const url = text(item.url);
   if (!name || !url) return null;
