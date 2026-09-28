@@ -54,6 +54,8 @@ export type Meta = {
     overview?: string;
     description?: string;
     thumbnail?: string;
+    /** Episode length in minutes, when the source states one. */
+    runtime?: number;
     streams?: Array<Record<string, unknown>>;
   }>;
 };
