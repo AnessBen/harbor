@@ -1,0 +1,15 @@
+.music-track-title {
+  container: music-track-title / inline-size;
+}
+
+@container music-track-title (max-width: 260px) {
+  .music-track-title [data-music-label]:not([data-music-label="explicit"]) {
+    display: none;
+  }
+}
+
+@container music-track-title (max-width: 168px) {
+  .music-track-title [data-music-kind] {
+    display: none;
+  }
+}

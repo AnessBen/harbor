@@ -12,6 +12,7 @@ import { MusicArtistLink } from "./music-artist-link";
 import { MusicTrackLabels } from "./music-track-labels";
 import { MusicTrackPlaylistChip } from "./music-playlist-chip";
 import "./music-like-burst.css";
+import "./music-track-row.css";
 
 const ROW_LIKE_SPOKES = [0, 45, 90, 135, 180, 225, 270, 315];
 
@@ -152,7 +153,7 @@ export function MusicTrackRow({
             </span>
           )}
         </button>
-        <span className="flex min-w-0 flex-col ps-3">
+        <span className="music-track-title flex min-w-0 flex-1 flex-col ps-3">
           <span className="flex min-w-0 items-center gap-[5px]">
             <button
               type="button"
