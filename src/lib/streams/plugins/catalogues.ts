@@ -1,6 +1,6 @@
 import type { Meta, MetaType } from "@/lib/cinemeta";
 import { pluginCatalogueSources } from "./runnable";
-import { extensionsSupported, warmBridge } from "./extension/bridge";
+import { bridgeProviders, extensionsSupported, warmBridge } from "./extension/bridge";
 import {
   extensionCatalogueMetas,
   listExtensionCatalogues,
@@ -12,6 +12,9 @@ import { installedStreamPluginsSync, loadInstalledStreamPlugins, streamPluginByI
 import type { InstalledStreamPlugin, PluginCatalogue } from "./types";
 
 const TTL_MS = 5 * 60_000;
+/** How soon a look that could not answer is asked again. Long enough not to spin while the bridge
+ * starts, short enough that a browse surface already on screen fills in without being reopened. */
+const RETRY_MS = 5_000;
 const LIST_TIMEOUT_MS = 25_000;
 const PAGE_TIMEOUT_MS = 20_000;
 
@@ -19,7 +22,11 @@ const subs = new Set<() => void>();
 let cache: PluginCatalogue[] = [];
 let checkedAt = 0;
 let print = "";
+/** Whether the last look answered, as opposed to merely failing to. Only an answer is worth
+ * remembering, and only an answer stops the retry. */
+let answered = false;
 let inflight: Promise<PluginCatalogue[]> | null = null;
+let retryTimer: ReturnType<typeof setTimeout> | null = null;
 
 function fingerprint(plugins: InstalledStreamPlugin[]): string {
   return plugins.map((p) => `${p.id}@${p.hash}`).join("|");
@@ -37,6 +44,11 @@ export function subscribeExtensionCatalogues(cb: () => void): () => void {
   subs.add(cb);
   return () => {
     subs.delete(cb);
+    // Nothing is watching the rows any more, so there is nothing left to retry for.
+    if (!subs.size && retryTimer) {
+      clearTimeout(retryTimer);
+      retryTimer = null;
+    }
   };
 }
 
@@ -80,8 +92,15 @@ async function gated<T>(
   }
 }
 
-async function collect(plugins: InstalledStreamPlugin[]): Promise<PluginCatalogue[]> {
+async function collect(
+  plugins: InstalledStreamPlugin[],
+): Promise<{ rows: PluginCatalogue[]; answered: boolean }> {
   await warmBridge();
+  // A bridge that lists no providers has not finished loading its extensions. An extension that
+  // genuinely offers no rows is rare; a bridge that is merely late is not, and telling them apart
+  // here is what keeps a slow start from being remembered as "this plugin offers nothing".
+  const providers = await bridgeProviders().catch(() => null);
+  if (!providers?.length) return { rows: [], answered: false };
   const settled = await Promise.allSettled(
     plugins.map((plugin) =>
       gated(plugin, "catalogue rows", budget(plugin, LIST_TIMEOUT_MS), () =>
@@ -89,9 +108,27 @@ async function collect(plugins: InstalledStreamPlugin[]): Promise<PluginCatalogu
       ),
     ),
   );
-  const out: PluginCatalogue[] = [];
-  for (const r of settled) if (r.status === "fulfilled") out.push(...r.value);
-  return out;
+  const rows: PluginCatalogue[] = [];
+  let failed = 0;
+  for (const r of settled) {
+    if (r.status === "fulfilled") rows.push(...r.value);
+    else failed += 1;
+  }
+  return { rows, answered: failed === 0 };
+}
+
+/** Asks again, but only while something is watching and only after a look that could not answer,
+ * so a provider that genuinely offers nothing is never polled. */
+function scheduleRetry(): void {
+  if (retryTimer || !subs.size) return;
+  retryTimer = setTimeout(() => {
+    retryTimer = null;
+    if (!subs.size) return;
+    // Cleared so this retry cannot be swallowed by the short-circuit it is racing: a look started
+    // in the meantime would have moved the marker inside the window.
+    checkedAt = 0;
+    void refreshExtensionCatalogues();
+  }, RETRY_MS);
 }
 
 async function look(): Promise<PluginCatalogue[]> {
@@ -102,13 +139,24 @@ async function look(): Promise<PluginCatalogue[]> {
   }
   const plugins = pluginCatalogueSources();
   const next = fingerprint(plugins);
-  if (next === print && checkedAt && Date.now() - checkedAt < TTL_MS) return cache;
-  const found = plugins.length ? await collect(plugins) : [];
-  const changed = keys(found) !== keys(cache);
-  cache = found;
+  const fresh = answered ? TTL_MS : RETRY_MS;
+  if (next === print && checkedAt && Date.now() - checkedAt < fresh) {
+    // Inside a failed look's window with an answer still missing: whoever just asked is waiting on
+    // rows that are not in yet, so keep the retry alive rather than letting the ask go unanswered.
+    if (!answered) scheduleRetry();
+    return cache;
+  }
+  const collected = plugins.length ? await collect(plugins) : { rows: [], answered: true };
+  const changed = keys(collected.rows) !== keys(cache);
+  cache = collected.rows;
   print = next;
   checkedAt = Date.now();
+  answered = collected.answered;
   if (changed) notify();
+  // A surface already on screen read the empty cache this look just replaced. When a failed look
+  // fails again the row set does not change, so without this nothing would ever ask again and the
+  // tab would stay empty until it was left and reopened.
+  if (!answered) scheduleRetry();
   return cache;
 }
 

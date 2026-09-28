@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Puzzle } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import {
@@ -25,35 +25,31 @@ export function Plugins({ active = true }: { active?: boolean }) {
   const contentDrag = useContentDrag();
   const [catalogs, setCatalogs] = useState<BrowseCatalog[]>([]);
   const [loading, setLoading] = useState(true);
+  const genRef = useRef(0);
   void active;
 
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    void listBrowseCatalogs(authKey).then((list) => {
-      if (cancelled) return;
+  const load = useCallback(() => {
+    const gen = ++genRef.current;
+    return listBrowseCatalogs(authKey).then((list) => {
+      // Two loads run at once on mount: this one and the one a runtime report triggers. Reading
+      // the addons is the slow half, so the older call can land last and blank a filled list.
+      if (gen !== genRef.current) return;
       setCatalogs(pluginCatalogs(list));
       setLoading(false);
     });
-    return () => {
-      cancelled = true;
-    };
   }, [authKey]);
 
-  // A plugin's rows come from its runtime, which starts after the addons answer, so the list is
-  // refreshed when the runtime reports a change rather than only on mount.
   useEffect(() => {
-    let cancelled = false;
-    const stop = subscribeBrowseCatalogs(() => {
-      void listBrowseCatalogs(authKey).then((list) => {
-        if (!cancelled) setCatalogs(pluginCatalogs(list));
-      });
-    });
+    // Subscribed before the first load, because a look that can answer synchronously would
+    // otherwise report before anything was listening and the report would be lost.
+    const stop = subscribeBrowseCatalogs(() => void load());
+    setLoading(true);
+    void load();
     return () => {
-      cancelled = true;
+      genRef.current += 1;
       stop();
     };
-  }, [authKey]);
+  }, [load]);
 
   const grouped = new Map<string, BrowseCatalog[]>();
   for (const cat of catalogs) {
