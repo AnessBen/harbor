@@ -102,33 +102,10 @@ async function fromProvider(
   hooks: ExtensionHooks,
 ): Promise<PluginStream[]> {
   const key = `${provider.id}|${identityKey(req)}`;
-  const urls: string[] = [];
   const named = namedPage(req, provider.id);
   const remembered = pageMemo.get(key);
-  if (remembered) {
-    urls.push(remembered);
-  } else {
-    hooks.call();
-    const found = await limit(
-      bridgeSearch(provider.id, req.title, false),
-      deadline,
-      signal,
-      `${provider.name} search`,
-    );
-    for (const c of rankCandidates(found.items, req, MAX_CANDIDATES)) urls.push(c.url);
-    if (!urls.length) {
-      if (found.note) outage(provider, found.note, hooks);
-      else
-        hooks.log("warn", `${provider.name}: ${found.items.length} results, none matched ${req.title}`);
-      // The row's own page is the last thing left to open, and it is worth opening: the search
-      // found nothing, so nothing else has named a page for this title.
-      if (!named) return [];
-      hooks.log("info", `${provider.name}: opening the page this row was listed from`);
-      urls.push(named);
-    }
-  }
-  for (const url of urls) {
-    if (spent(deadline, signal)) break;
+
+  const attempt = async (url: string): Promise<PluginStream[]> => {
     try {
       hooks.call();
       const loaded = await limit(
@@ -141,16 +118,16 @@ async function fromProvider(
       if (!media) {
         if (loaded.note) outage(provider, loaded.note, hooks);
         else hooks.log("warn", `${provider.name}: nothing on the page for ${url}`);
-        continue;
+        return [];
       }
       if (yearRejects(media, req)) {
         hooks.log("warn", `${provider.name}: ${media.name} is ${media.year}, wanted ${req.year}`);
-        continue;
+        return [];
       }
       const datas = pickEpisodes(media, req);
       if (!datas.length) {
         hooks.log("warn", `${provider.name}: ${media.name} has no S${req.season}E${req.episode}`);
-        continue;
+        return [];
       }
       const out: PluginStream[] = [];
       for (const data of datas) {
@@ -172,15 +149,55 @@ async function fromProvider(
         for (const s of made) if (s.url) hooks.seen(s.url);
         out.push(...made);
       }
-      if (out.length) {
-        // The memo answers for a title; a row's own page answers for one row of it, so keeping it
-        // under the title would hand a later row this row's page.
-        if (url !== named) remember(key, url);
-        return out;
-      }
+      return out;
     } catch (e) {
       if (signal.aborted) throw e;
       hooks.log("warn", `${provider.name}: ${reason(e)}`);
+      return [];
+    }
+  };
+
+  // The row's own page comes first, and outranks the memo. It is the page the item was listed
+  // from, so the episodes it carries are the episodes the list showed -- and a row the provider
+  // numbered nothing gets its address from its position in that list, so any other page makes the
+  // number name a different episode. Searching by title lands on whatever page the search ranks
+  // first, whose numbering need not line up with the list at all.
+  const pages: string[] = [];
+  if (named) pages.push(named);
+  else if (remembered) pages.push(remembered);
+  for (const url of pages) {
+    if (spent(deadline, signal)) break;
+    const out = await attempt(url);
+    if (out.length) {
+      // A row's own page answers for one row, so it is not kept under the title's key.
+      if (url !== named) remember(key, url);
+      return out;
+    }
+  }
+
+  // Nothing came of the page the row named, so fall back to finding one by title.
+  const urls: string[] = [];
+  hooks.call();
+  const found = await limit(
+    bridgeSearch(provider.id, req.title, false),
+    deadline,
+    signal,
+    `${provider.name} search`,
+  );
+  for (const c of rankCandidates(found.items, req, MAX_CANDIDATES)) urls.push(c.url);
+  if (!urls.length) {
+    if (found.note) outage(provider, found.note, hooks);
+    else
+      hooks.log("warn", `${provider.name}: ${found.items.length} results, none matched ${req.title}`);
+    if (remembered) pageMemo.delete(key);
+    return [];
+  }
+  for (const url of urls) {
+    if (spent(deadline, signal)) break;
+    const out = await attempt(url);
+    if (out.length) {
+      remember(key, url);
+      return out;
     }
   }
   if (remembered) pageMemo.delete(key);
