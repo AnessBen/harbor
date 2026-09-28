@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Puzzle, Search, X } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import {
@@ -13,6 +13,8 @@ import { useT } from "@/lib/i18n";
 import { useContentDrag } from "@/lib/window-drag";
 import { FeedShelf } from "@/components/feed-shelf";
 import { CatalogShelf } from "./catalogs/catalog-shelf";
+import { PluginPicker, ALL_PLUGINS } from "./plugins/plugin-picker";
+import { PluginHero } from "./plugins/plugin-hero";
 
 const SEARCH_DEBOUNCE_MS = 350;
 
@@ -30,6 +32,7 @@ export function Plugins({ active = true }: { active?: boolean }) {
   const [catalogs, setCatalogs] = useState<BrowseCatalog[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
+  const [pluginFilter, setPluginFilter] = useState(ALL_PLUGINS);
   const [results, setResults] = useState<PluginSearchGroup[] | null>(null);
   const genRef = useRef(0);
   const searchGen = useRef(0);
@@ -67,6 +70,20 @@ export function Plugins({ active = true }: { active?: boolean }) {
 
   const wanted = query.trim();
 
+  // The picker and the hero read the same selection, so a chosen plugin's rows are what the tab
+  // lists and what the hero is made of.
+  const pickerPlugins = [...grouped.entries()].map(([name, list]) => ({
+    name,
+    icon: list[0]?.addonLogo,
+  }));
+  const shownGroups = pluginFilter
+    ? [...grouped.entries()].filter(([name]) => name === pluginFilter)
+    : [...grouped.entries()];
+  const heroCatalogs = useMemo(
+    () => shownGroups.flatMap(([, list]) => list),
+    [catalogs, pluginFilter],
+  );
+
   useEffect(() => {
     const gen = ++searchGen.current;
     if (!wanted) {
@@ -94,14 +111,19 @@ export function Plugins({ active = true }: { active?: boolean }) {
   return (
     <main className="flex-1 overflow-y-auto px-12 pb-24 pt-28">
       <div {...contentDrag} className="flex flex-col gap-8">
-        <header className="flex flex-col gap-1.5">
-          <h1 className="font-display text-[30px] font-medium tracking-tight text-ink">
-            {t("Plugins")}
-          </h1>
-          <p className="text-[14px] text-ink-muted">
-            {t("Poster rails that the installed plugins put up themselves.")}
-          </p>
+        <header className="flex items-center justify-end gap-6">
+          {!loading && catalogs.length > 0 && (
+            <PluginPicker
+              plugins={pickerPlugins}
+              value={pluginFilter}
+              onChange={setPluginFilter}
+            />
+          )}
         </header>
+
+        {!loading && catalogs.length > 0 && !wanted && (
+          <PluginHero catalogs={heroCatalogs} showOrigin={pluginFilter === ALL_PLUGINS} />
+        )}
 
         {!loading && catalogs.length > 0 && (
           <div data-plugins-search className="relative h-11 w-full max-w-[420px]">
@@ -153,7 +175,7 @@ export function Plugins({ active = true }: { active?: boolean }) {
         ) : catalogs.length === 0 ? (
           <EmptyState onOpenPlugins={() => openSettings("plugins")} />
         ) : (
-          [...grouped.entries()].map(([pluginName, list]) => (
+          shownGroups.map(([pluginName, list]) => (
             <section key={pluginName} className="flex flex-col gap-4">
               <div className="flex items-center gap-2.5">
                 {list[0]?.addonLogo ? (

@@ -4131,6 +4131,15 @@ html:not([data-input-modality="pointer"])
   outline-offset: 2px;
 }
 
+/* A plugin's row gives its items a poster, and its own page may name a backdrop; either way that
+   artwork is around 16:9, while a window this wide makes the hero a far harder shape. Covering
+   such a frame centres the crop, which is what cuts a subject off across the eyes. CloudStream
+   anchors the same mismatch to the top instead -- the one thing its PercentageCropImageView
+   exists to control -- so the band the artwork was framed around stays in view. */
+[data-plugins-hero] .harbor-hero-stage > img.object-cover {
+  object-position: 50% 0%;
+}
+
 /* Opaque-surface overrides for translucent "glass" facet (aurora + any user glass theme).
    Derived from each theme's own --color-canvas via color-mix so they adapt per theme.
    Canvas/bokeh page background is intentionally left untouched. Opaque themes
