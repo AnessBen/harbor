@@ -1,6 +1,7 @@
-import type { Meta, MetaType } from "@/lib/cinemeta";
+import type { Meta } from "@/lib/cinemeta";
 import { PLUGIN_ADDON_PREFIX } from "../addon";
 import { capstanId } from "./detail";
+import { metaType, providerMetaType } from "./meta-type";
 import type { InstalledStreamPlugin, PluginCatalogue } from "../types";
 import type { BridgeProvider, BridgeSearchItem } from "./bridge";
 import { bridgeCatalogue, bridgeCataloguePage, bridgeProviders } from "./bridge";
@@ -10,34 +11,6 @@ const MAX_ROWS_PER_PROVIDER = 12;
 const MAX_ROWS_PER_PLUGIN = 24;
 const MAX_ITEMS = 60;
 const EXHAUSTED_MAX = 200;
-
-/** A provider says what it carries, not what each row carries, so the provider's answer is a row's
- * opening guess and any item that names its own kind overrides it. */
-const META_TYPES: Readonly<Record<string, MetaType>> = {
-  movie: "movie",
-  documentary: "movie",
-  nsfw: "movie",
-  tvseries: "series",
-  cartoon: "series",
-  asiandrama: "series",
-  anime: "anime",
-  animemovie: "anime",
-  ova: "anime",
-  live: "tv",
-};
-
-function metaType(raw: unknown, fallback: MetaType): MetaType {
-  if (typeof raw !== "string") return fallback;
-  return META_TYPES[raw.toLowerCase().replace(/[^a-z]/g, "")] ?? fallback;
-}
-
-function providerMetaType(types: string[]): MetaType {
-  for (const ty of types) {
-    const hit = metaType(ty, "other");
-    if (hit !== "other") return hit;
-  }
-  return "movie";
-}
 
 /** The catalogue's identity folded into one url shaped string, because that is the field every
  * browse surface already persists for a catalogue and reads back to fetch it again. */
