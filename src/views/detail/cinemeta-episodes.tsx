@@ -22,19 +22,15 @@ import { EpisodeGridCard } from "./episode-grid-card";
 import type { GridEpisode, Progress } from "./episode-grid-types";
 import { EpisodeLayoutToggle } from "./episode-layout-toggle";
 import { isUpcomingDate } from "./helpers";
+import {
+  episodeNumber,
+  episodeSeason,
+  groupEpisodes,
+  NO_SEASON,
+  type CinemetaVideo,
+} from "./episode-groups";
 
 type Translator = (key: string, vars?: Record<string, string | number>) => string;
-
-type CinemetaVideo = NonNullable<Meta["videos"]>[number];
-
-/** A provider that numbers no episodes still has an order, and every layout has to agree on it. */
-export function episodeSeason(ep: CinemetaVideo): number {
-  return ep.season ?? 0;
-}
-
-export function episodeNumber(ep: CinemetaVideo, index: number): number {
-  return ep.episode ?? ep.number ?? (ep.season == null ? index + 1 : 1);
-}
 
 export function CinemetaEpisodes({
   meta,
@@ -61,32 +57,7 @@ export function CinemetaEpisodes({
     e.preventDefault();
     setWatchedMenu({ x: e.clientX, y: e.clientY, season, episode, watched });
   };
-  const grouped = useMemo(() => {
-    const map = new Map<number, CinemetaVideo[]>();
-    const flat: CinemetaVideo[] = [];
-    for (const v of videos) {
-      if (v.season == null || (v.episode ?? v.number) == null) {
-        flat.push(v);
-        continue;
-      }
-      const arr = map.get(v.season) ?? [];
-      arr.push(v);
-      map.set(v.season, arr);
-    }
-    const numbered = Array.from(map.entries())
-      .sort(([a], [b]) => a - b)
-      .map(([s, eps]) => ({
-        seasonNumber: s,
-        episodes: eps
-          .slice()
-          .sort((a, b) => (a.episode ?? a.number ?? 0) - (b.episode ?? b.number ?? 0)),
-      }));
-    if (flat.length > 0 && numbered.length === 0) {
-      flat.sort((a, b) => (a.released ?? "").localeCompare(b.released ?? ""));
-      return [{ seasonNumber: -1, episodes: flat }];
-    }
-    return numbered;
-  }, [videos]);
+  const grouped = useMemo(() => groupEpisodes(videos), [videos]);
   const combinedWatched = useMemo(() => {
     const watched = new Set(stremioWatched ?? []);
     const manual = manualEpisodeKeys(meta.id);
@@ -486,7 +457,7 @@ function SeasonDropdown({
 
 function seasonLabel(t: Translator, n: number): string {
   if (n === 0) return t("Specials");
-  if (n === -1) return t("Videos");
+  if (n === NO_SEASON) return t("No Season");
   return t("Season {n}", { n });
 }
 
