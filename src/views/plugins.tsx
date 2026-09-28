@@ -6,7 +6,7 @@ import {
   subscribeBrowseCatalogs,
   type BrowseCatalog,
 } from "@/lib/catalog-browse";
-import { isExtensionCatalogueBase } from "@/lib/streams/plugins";
+import { isExtensionCatalogueBase, subscribeStreamPlugins } from "@/lib/streams/plugins";
 import { searchPlugins, type PluginSearchGroup } from "@/lib/streams/plugins/extension/search";
 import { useView } from "@/lib/view";
 import { useT } from "@/lib/i18n";
@@ -17,6 +17,9 @@ import { PluginPicker, ALL_PLUGINS } from "./plugins/plugin-picker";
 import { PluginHero } from "./plugins/plugin-hero";
 
 const SEARCH_DEBOUNCE_MS = 350;
+
+/** The plugin the tab was last left on, kept the way the other views keep a small choice. */
+const PLUGIN_FILTER_KEY = "harbor.plugins.filter";
 
 /** Only the rows a plugin stood up itself. A plugin also registers a stream addon, but that addon
  * declares no catalogs, so every browsable row arrives as an extension catalogue base. */
@@ -32,7 +35,9 @@ export function Plugins({ active = true }: { active?: boolean }) {
   const [catalogs, setCatalogs] = useState<BrowseCatalog[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
-  const [pluginFilter, setPluginFilter] = useState(ALL_PLUGINS);
+  const [pluginFilter, setPluginFilter] = useState(
+    () => localStorage.getItem(PLUGIN_FILTER_KEY) ?? ALL_PLUGINS,
+  );
   const [results, setResults] = useState<PluginSearchGroup[] | null>(null);
   const genRef = useRef(0);
   const searchGen = useRef(0);
@@ -52,12 +57,19 @@ export function Plugins({ active = true }: { active?: boolean }) {
   useEffect(() => {
     // Subscribed before the first load, because a look that can answer synchronously would
     // otherwise report before anything was listening and the report would be lost.
+    //
+    // Both sources, because a plugin appearing or going is a change to the installed set, and the
+    // catalogue look is told about the set rather than listening to it: it answers on its own
+    // schedule, so without this the tab keeps showing the rails of whichever plugins were installed
+    // when it was last opened.
     const stop = subscribeBrowseCatalogs(() => void load());
+    const stopPlugins = subscribeStreamPlugins(() => void load());
     setLoading(true);
     void load();
     return () => {
       genRef.current += 1;
       stop();
+      stopPlugins();
     };
   }, [load]);
 
@@ -69,6 +81,18 @@ export function Plugins({ active = true }: { active?: boolean }) {
   }
 
   const wanted = query.trim();
+
+  useEffect(() => {
+    localStorage.setItem(PLUGIN_FILTER_KEY, pluginFilter);
+  }, [pluginFilter]);
+
+  // A remembered plugin can be uninstalled between visits, and a name no row answers to would
+  // leave the tab showing nothing at all. Only checked once the plugins are known, so an empty
+  // first render cannot wipe the choice.
+  useEffect(() => {
+    if (loading || !pluginFilter || !catalogs.length) return;
+    if (!catalogs.some((c) => c.addonName === pluginFilter)) setPluginFilter(ALL_PLUGINS);
+  }, [catalogs, loading, pluginFilter]);
 
   // The picker and the hero read the same selection, so a chosen plugin's rows are what the tab
   // lists and what the hero is made of.
