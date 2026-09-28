@@ -44,6 +44,21 @@ export type AddonProgress = {
   settledAddonIds: string[];
 };
 
+/** The id a plugin is asked with. A plugin's own catalogue rows address it by an id its manifest
+ * cannot declare for itself, so the id the catalogue handed the request is taken first; only then
+ * is the repository's declared prefixes consulted. */
+export function pluginQueryId(
+  addon: Addon,
+  req: StreamRequest,
+  forcedId: string | undefined,
+): string | undefined {
+  if (forcedId) return forcedId;
+  return (
+    pickIds(addon, req.type, req.ids, req.animeIdUnverified === true)[0] ??
+    pickIdByDeclaredTypes(addon, req.ids)?.id
+  );
+}
+
 export async function fetchAddonStreams(
   addons: Addon[],
   req: StreamRequest,
@@ -61,8 +76,11 @@ export async function fetchAddonStreams(
     const addon = addons[i];
     const priority = ranks ? ranks(i, addon) : i;
     if (isPluginAddon(addon)) {
-      const pluginIds = pickIds(addon, req.type, req.ids, req.animeIdUnverified === true);
-      const pluginId = pluginIds[0] ?? pickIdByDeclaredTypes(addon, req.ids)?.id;
+      const pluginId = pluginQueryId(
+        addon,
+        req,
+        forcedBases.get(addon.transportUrl.replace(/\/manifest\.json$/, "")),
+      );
       if (!pluginId) {
         skipped.push(`${addon.manifest.name}(no-matching-id)`);
         continue;

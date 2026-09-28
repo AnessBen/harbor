@@ -11,6 +11,7 @@ import { recordSkip, runStreamPlugin } from "./runtime";
 import { settingsFingerprint } from "./source";
 import { installedStreamPluginsSync } from "./store";
 import type { InstalledStreamPlugin } from "./types";
+import { CAPSTAN_ID_PREFIX } from "./extension/detail";
 
 export const PLUGIN_ADDON_PREFIX = "harbor-plugin://";
 const REPO_ADDON_PREFIX = `${PLUGIN_ADDON_PREFIX}repo/`;
@@ -27,20 +28,28 @@ export function isPluginAddon(addon: Pick<Addon, "transportUrl">): boolean {
 
 export { runnableStreamPlugins };
 
+/** The ids a plugin answers to: whatever its repository declared, plus the ids its own catalogue
+ * rows are addressed by. A repository cannot declare those for itself, because they are built from
+ * the plugin's id at the moment a row is listed. */
+export function pluginIdPrefixes(declared: string[]): string[] {
+  return [...new Set([...declared, CAPSTAN_ID_PREFIX])];
+}
+
 function union(lists: string[][]): string[] {
   return [...new Set(lists.flat())];
 }
 
 function pluginAddon(p: InstalledStreamPlugin): Addon {
+  const idPrefixes = pluginIdPrefixes(p.idPrefixes);
   return {
     manifest: {
       id: p.id,
       name: p.name,
       logo: p.icon,
       description: p.description,
-      resources: [{ name: "stream", types: p.types, idPrefixes: p.idPrefixes }],
+      resources: [{ name: "stream", types: p.types, idPrefixes }],
       types: p.types,
-      idPrefixes: p.idPrefixes,
+      idPrefixes,
       behaviorHints: p.nsfw ? { adult: true } : undefined,
     },
     transportUrl: `${PLUGIN_ADDON_PREFIX}${p.id}`,
@@ -50,7 +59,7 @@ function pluginAddon(p: InstalledStreamPlugin): Addon {
 function repoAddon(repoUrl: string, plugins: InstalledStreamPlugin[]): Addon {
   const key = repoKey(repoUrl);
   const types = union(plugins.map((p) => p.types));
-  const idPrefixes = union(plugins.map((p) => p.idPrefixes));
+  const idPrefixes = pluginIdPrefixes(union(plugins.map((p) => p.idPrefixes)));
   return {
     manifest: {
       id: `plugin-repo:${key}`,
