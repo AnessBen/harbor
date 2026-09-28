@@ -7,7 +7,6 @@ import { useT } from "@/lib/i18n";
 import type { MusicTrack } from "@/lib/music/types";
 import { toggleMusicLiked, toggleMusicPlayback } from "@/lib/music/player";
 import { useMusicTrackLiked } from "@/lib/music/use-track-liked";
-import { MusicQualityBadge } from "./music-quality-badge";
 import { MusicMediaBadge } from "./music-media-badge";
 import { MusicArtistLink } from "./music-artist-link";
 import { MusicTrackLabels } from "./music-track-labels";
@@ -158,7 +157,7 @@ export function MusicTrackRow({
             <button
               type="button"
               onClick={onOpen ?? onPlay}
-              className="truncate text-start text-[13px] font-semibold text-ink"
+              className="min-w-0 flex-1 truncate text-start text-[13px] font-semibold text-ink"
               title={track.title}
             >
               {track.title}
@@ -166,7 +165,6 @@ export function MusicTrackRow({
             {badge && <MusicCardBadgeChip badge={badge} />}
             <MusicMediaBadge kind={track.mediaKind} compact />
             <MusicTrackLabels track={track} />
-            <MusicQualityBadge track={track} />
           </span>
           <span className="flex min-w-0 items-center gap-2">
             <MusicArtistLink
