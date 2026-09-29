@@ -113,9 +113,9 @@ type Notice = { kind: "busy" | "info" | "error"; text: string };
 
 export function MusicView({ active }: { active: boolean; shellBackAvailable?: boolean }) {
   return (
-    <MusicConnectionsProvider>
-      <MusicSourcePickerProvider>
-        <MusicPlaylistPickerProvider>
+    <MusicConnectionsProvider active={active}>
+      <MusicSourcePickerProvider active={active}>
+        <MusicPlaylistPickerProvider active={active}>
           <MusicViewContent active={active} />
         </MusicPlaylistPickerProvider>
       </MusicSourcePickerProvider>
@@ -223,6 +223,7 @@ function MusicViewContent({ active }: { active: boolean }) {
     tracks: MusicTrack[];
     state: "loading" | "ready" | "error";
     label?: string;
+    contextId?: string;
   } | null>(null);
   const similarRun = useRef(0);
   const watchFromVideos = useRef(false);
@@ -838,6 +839,7 @@ function MusicViewContent({ active }: { active: boolean }) {
             tracks: request.queue,
             state: "ready",
             label: request.label,
+            contextId: request.contextId,
           });
           return;
         }
@@ -1135,6 +1137,7 @@ function MusicViewContent({ active }: { active: boolean }) {
                 tracks={similar.tracks}
                 state={similar.state}
                 label={similar.label}
+                contextId={similar.contextId}
                 onBack={closeSimilar}
               />
             ) : detail ? (

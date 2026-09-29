@@ -1,8 +1,7 @@
 import { artistCreditParts } from "./search-artists";
 import { musicTrackIdentity } from "./track-identity";
-import { loadPlaylistLikeThis } from "./radio";
 import type { ListeningAffinity } from "./listening-affinity";
-import type { MusicTrack } from "./types";
+import type { MusicPlaylist, MusicTrack } from "./types";
 
 export type DailyMix = {
   id: string;
@@ -41,14 +40,17 @@ function trackScore(
   return plays + (liked.has(key) ? 2 : 0) + 1 / (1 + index / 8);
 }
 
+const PLAYLIST_TIE = 4;
+
 export function planDailyMixes(
   recents: readonly MusicTrack[],
   liked: readonly MusicTrack[],
   affinity: ListeningAffinity,
   now = Date.now(),
+  sources: { extra?: readonly MusicTrack[]; playlists?: readonly MusicPlaylist[] } = {},
 ): DailyMix[] {
   const likedKeys = new Set(liked.map(musicTrackIdentity));
-  const pool = [...recents, ...liked].filter(
+  const pool = [...recents, ...liked, ...(sources.extra ?? [])].filter(
     (track) => track.mediaKind !== "video" && track.artist.trim() && track.title.trim(),
   );
 
@@ -70,30 +72,56 @@ export function planDailyMixes(
     }
   });
 
-  const order = recents.map(mixArtistKey).filter(Boolean);
   const near = new Map<string, Map<string, number>>();
+  const tie = (left: string, right: string, weight: number) => {
+    if (!left || !right || left === right) return;
+    for (const [from, to] of [
+      [left, right],
+      [right, left],
+    ]) {
+      const row = near.get(from) ?? new Map<string, number>();
+      row.set(to, (row.get(to) ?? 0) + weight);
+      near.set(from, row);
+    }
+  };
+
+  for (const playlist of sources.playlists ?? []) {
+    const names = [...new Set(playlist.tracks.map(mixArtistKey).filter(Boolean))];
+    for (let a = 0; a < names.length; a += 1) {
+      for (let b = a + 1; b < names.length; b += 1) tie(names[a], names[b], PLAYLIST_TIE);
+    }
+  }
+
+  const order = recents.map(mixArtistKey).filter(Boolean);
   for (let at = 0; at < order.length; at += 1) {
     for (let step = 1; step <= NEIGHBOUR_WINDOW && at + step < order.length; step += 1) {
-      const left = order[at];
-      const right = order[at + step];
-      if (left === right) continue;
-      for (const [from, to] of [
-        [left, right],
-        [right, left],
-      ]) {
-        const row = near.get(from) ?? new Map<string, number>();
-        row.set(to, (row.get(to) ?? 0) + 1);
-        near.set(from, row);
-      }
+      tie(order[at], order[at + step], 1);
     }
   }
 
   const ranked = [...artists.entries()].sort((left, right) => right[1].score - left[1].score);
   const used = new Set<string>();
   const mixes: DailyMix[] = [];
-  for (const [key] of ranked) {
-    if (mixes.length >= MAX_MIXES) break;
-    if (used.has(key)) continue;
+  // A mix has to hold together on its own AND be worth having next to the others. Seeding
+  // straight down the score order gives every mix the same scene whenever one scene dominates
+  // listening, so the next seed is taken from an artist with no tie to anything already used:
+  // that lands each mix in a different corner of what you actually play.
+  const nextSeed = (): string | null => {
+    let fallback: string | null = null;
+    for (const [key] of ranked) {
+      if (used.has(key)) continue;
+      if (fallback === null) fallback = key;
+      let tie = 0;
+      for (const [other, weight] of near.get(key) ?? new Map<string, number>()) {
+        if (used.has(other)) tie += weight;
+      }
+      if (tie === 0) return key;
+    }
+    return fallback;
+  };
+  while (mixes.length < MAX_MIXES) {
+    const key = nextSeed();
+    if (key === null) break;
     const group = [key];
     used.add(key);
     const neighbours = [...(near.get(key) ?? new Map<string, number>())]
@@ -105,9 +133,19 @@ export function planDailyMixes(
       used.add(other);
     }
     if (group.length < MIN_ARTISTS) {
-      for (const [other] of ranked) {
+      // Pad from artists that actually sit near someone already in the group, never from
+      // whatever merely scored highest: two artists being played a lot is not a reason to put
+      // them in one mix, and that is how unrelated genres ended up sharing a Daily Mix.
+      const related = new Map<string, number>();
+      for (const member of group) {
+        for (const [other, weight] of near.get(member) ?? new Map<string, number>()) {
+          if (used.has(other) || !artists.has(other)) continue;
+          related.set(other, (related.get(other) ?? 0) + weight);
+        }
+      }
+      const byTie = [...related].sort((left, right) => right[1] - left[1]);
+      for (const [other] of byTie) {
         if (group.length >= MIN_ARTISTS) break;
-        if (used.has(other)) continue;
         group.push(other);
         used.add(other);
       }
@@ -132,9 +170,29 @@ export function planDailyMixes(
   return mixes;
 }
 
-export function loadDailyMixTracks(
+export async function loadDailyMixTracks(
   mix: DailyMix,
   skip: readonly MusicTrack[] = [],
 ): Promise<MusicTrack[]> {
-  return loadPlaylistLikeThis(mix.seeds, MIX_SIZE, skip);
+  const { loadPlaylistLikeThis } = await import("./radio");
+  return loadPlaylistLikeThis(mix.seeds, MIX_SIZE, skip).catch((cause) => {
+    const heard = new Set(skip.map(musicTrackIdentity));
+    const byArtist = new Map<string, MusicTrack[]>();
+    for (const track of mix.seeds) {
+      const identity = musicTrackIdentity(track);
+      if (heard.has(identity)) continue;
+      heard.add(identity);
+      const key = mixArtistKey(track);
+      const lane = byArtist.get(key) ?? [];
+      lane.push({ ...track, mediaKind: "audio" });
+      byArtist.set(key, lane);
+    }
+    const lanes = [...byArtist.values()];
+    const out: MusicTrack[] = [];
+    for (let at = 0; lanes.some((lane) => lane[at]); at += 1) {
+      for (const lane of lanes) if (lane[at]) out.push(lane[at]);
+    }
+    if (!out.length) throw cause;
+    return out;
+  });
 }

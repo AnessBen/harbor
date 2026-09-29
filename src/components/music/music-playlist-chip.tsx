@@ -79,7 +79,7 @@ export function MusicTrackMixChip({
         event.stopPropagation();
         if (busy) return;
         setBusy(true);
-        void reopenMusicMix(seed)
+        void reopenMusicMix(context)
           .catch(() => {})
           .finally(() => setBusy(false));
       }}

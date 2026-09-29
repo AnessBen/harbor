@@ -1,4 +1,5 @@
 import mediaStart from "./zh/media-start";
+import spooktober from "./zh/spooktober";
 import listenTogether from "./zh/listen-together";
 import music from "./zh/music";
 import sportsConsent from "./zh/sports-consent";
@@ -33,6 +34,7 @@ import nytTv from "./zh/nyt-tv";
 
 const zh: Record<string, string> = {
   ...mediaStart,
+  ...spooktober,
   ...videoCast,
   ...music,
   ...ebookSources,

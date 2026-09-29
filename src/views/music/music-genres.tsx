@@ -17,6 +17,7 @@ import { MusicEventDiscovery } from "./music-event-discovery";
 import { MusicGenreArtists } from "./music-genre-artists";
 import { MusicGenreScenes } from "./music-genre-scenes";
 import { MusicGenreVideos } from "./music-genre-videos";
+import { MusicGenreChannels } from "./music-genre-channels";
 import "./music-discovery.css";
 
 export type MusicGenreEntry = MusicDiscoveryGenre;
@@ -92,6 +93,7 @@ export function MusicGenres({ onOpen, genre, onGenre, onBillboard, onTastes, onW
     {genre ? <>
       {!!chart.artists.length && <MusicGenreArtists key={genre.id} genreId={genre.id} artists={chart.artists} onOpen={onOpen}/>}
       {!loading && <MusicGenreVideos key={`videos:${genre.id}`} genre={genre} artists={chart.artists} active={active} onWatch={onWatch}/>}
+      {!loading && <MusicGenreChannels key={`channels:${genre.id}`} genre={genre} active={active} onWatch={onWatch}/>}
       {!!chart.albums?.length && <MusicCatalogRow row={{ id: `genre:${genre.id}:albums`, title: "music.explore.sceneAlbums", titleLiteral: false, layout: "covers", source: "deezer", items: chart.albums.slice(0,16) }} playable onOpen={item => onOpen(item, chart.albums ?? [])}/>}
       {!!chart.playlists.length && <MusicCatalogRow row={{ id: `genre:${genre.id}:playlists`, title: "music.search.playlists", titleLiteral: false, layout: "covers", source: "deezer", items: chart.playlists }} playable onOpen={item => onOpen(item, chart.playlists)}/>}
     </> : <>

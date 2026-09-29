@@ -279,7 +279,7 @@ export function MusicHomeHero({
                 onContextMenu={itemMenu.openFor(item, firstVisible + index)}
               >
                 {item.kind === "track" && nowPlayingMatches(now, item) && (
-                  <MusicNowPlayingMark />
+                  <MusicNowPlayingMark loading={now.phase === "resolving"} />
                 )}
                 <button
                   type="button"

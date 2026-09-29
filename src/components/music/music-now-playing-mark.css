@@ -39,3 +39,9 @@
     height: 60%;
   }
 }
+.music-live-mark[data-loading] {
+  color: var(--color-accent);
+}
+.music-live-mark[data-loading] svg {
+  display: block;
+}

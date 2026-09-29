@@ -1,4 +1,5 @@
 import { useMemo, useSyncExternalStore } from "react";
+import { hydrateJsonStore, readJsonStore, writeLocalJson } from "./local-store";
 import { musicArtistKey } from "./liked-artists";
 import type { MusicArtistRef, MusicTrack } from "./types";
 
@@ -26,27 +27,28 @@ export function artistMatchKey(name: string): string {
     .trim();
 }
 
+const STORE = "artist-blocks";
+
 function load(): MusicArtistBlock[] {
-  try {
-    const raw = localStorage.getItem(KEY);
-    const parsed = raw ? JSON.parse(raw) : null;
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter(
-      (entry): entry is MusicArtistBlock =>
-        !!entry && typeof entry.key === "string" && typeof entry.match === "string",
-    );
-  } catch {
-    return [];
-  }
+  const parsed = readJsonStore<unknown>(STORE, KEY, null);
+  if (!Array.isArray(parsed)) return [];
+  return parsed.filter(
+    (entry): entry is MusicArtistBlock =>
+      !!entry && typeof entry.key === "string" && typeof entry.match === "string",
+  );
+}
+
+export async function hydrateArtistBlockStore(): Promise<void> {
+  await hydrateJsonStore(STORE, KEY);
+  blocks = load();
+  for (const listener of listeners) listener();
 }
 
 let blocks: MusicArtistBlock[] = load();
 
 function commit(next: MusicArtistBlock[]): void {
   blocks = next.filter((entry) => entry.play || entry.show);
-  try {
-    localStorage.setItem(KEY, JSON.stringify(blocks));
-  } catch {}
+  writeLocalJson(STORE, blocks);
   for (const listener of listeners) listener();
 }
 

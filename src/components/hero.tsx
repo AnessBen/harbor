@@ -353,15 +353,15 @@ export const Hero = memo(function Hero({
                 </span>
               </div>
               {rank.sources && rank.sources.length > 0 && (
-                <div className="pointer-events-none absolute left-0 top-full z-30 mt-2 w-max min-w-[232px] translate-y-1 rounded-md bg-elevated p-2.5 opacity-0 shadow-[0_10px_30px_-12px_rgba(0,0,0,0.6)] ring-1 ring-edge transition-[opacity,transform] duration-150 ease-out group-hover/rank:translate-y-0 group-hover/rank:opacity-100 motion-reduce:transition-none">
-                  <div className="px-1 pb-2 text-[10.5px] font-semibold uppercase tracking-[0.18em] text-ink-subtle">
+                <div className="pointer-events-none absolute start-0 top-full z-30 mt-2.5 w-[248px] max-w-[calc(100vw-48px)] translate-y-1 rounded-xl bg-elevated px-3.5 py-3 opacity-0 shadow-[0_6px_18px_-10px_rgba(0,0,0,0.45)] transition-[opacity,transform] duration-150 ease-out before:absolute before:-top-1 before:start-5 before:h-2 before:w-2 before:rotate-45 before:rounded-tl-[2px] before:bg-elevated group-hover/rank:translate-y-0 group-hover/rank:opacity-100 motion-reduce:transition-none">
+                  <div className="pb-2 text-[12px] font-semibold leading-4 text-ink-muted">
                     {t("Consensus ranking")}
                   </div>
-                  <div className="flex flex-col gap-1">
+                  <div className="flex flex-col gap-0.5">
                     {rank.sources.map((s) => (
                       <div
                         key={s.label}
-                        className="flex items-center justify-between gap-6 px-1 py-1.5"
+                        className="flex items-center justify-between gap-4 py-1.5"
                       >
                         <span className="inline-flex items-center gap-2 text-[12.5px] font-medium text-ink">
                           {SOURCE_ICON[s.label] && (
@@ -382,9 +382,6 @@ export const Hero = memo(function Hero({
                         </span>
                       </div>
                     ))}
-                  </div>
-                  <div className="px-1 pt-2.5 text-[11px] leading-snug text-ink-subtle">
-                    {t("Blended across TMDB, Trakt, Simkl and Cinemeta.")}
                   </div>
                 </div>
               )}

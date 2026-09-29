@@ -1,5 +1,4 @@
 import {
-  Fragment,
   startTransition,
   useCallback,
   useEffect,
@@ -521,6 +520,7 @@ export function Discover({ active = true }: { active?: boolean }) {
       default:
         return (
           <Rail
+            key={item.key}
             active={active}
             railId={item.key}
             allRails={dailyRows}
@@ -638,7 +638,7 @@ export function Discover({ active = true }: { active?: boolean }) {
                 const hidden = pageRows.custom.hidden.includes(item.key);
                 const idx = orderKeys.indexOf(item.key);
                 return (
-                  <div key={item.key}>
+                  <div key={item.key} data-scroll-anchor={`discover:${item.key}`}>
                     <RowControls
                       name={item.key in pageRows.custom.renamed ? item.title : t(item.title)}
                       hidden={hidden}
@@ -665,7 +665,15 @@ export function Discover({ active = true }: { active?: boolean }) {
                   </div>
                 );
               })
-            : visibleRails.map((item) => <Fragment key={item.key}>{renderRow(item)}</Fragment>)}
+            : visibleRails.map((item) => {
+              const row = renderRow(item);
+              if (!isSpecialRow(item.key)) return row;
+              return row ? (
+                <div key={item.key} data-scroll-anchor={`discover:${item.key}`} className="empty:hidden">
+                  {row}
+                </div>
+              ) : null;
+            })}
         </div>
       </ScrollRootContext.Provider>
       <BackToTop scrollRef={scrollRef} />

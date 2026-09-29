@@ -704,7 +704,7 @@ export function Row({
   const trackPad = dockEnabled ? "pb-8 pt-14 -mb-8 -mt-14" : "py-5 -my-5 px-2 -mx-2 scroll-px-2";
 
   return (
-    <div className={`flex min-w-0 flex-col gap-5 ps-[9px] ${className}`}>
+    <div className={`harbor-row-shell flex min-w-0 flex-col gap-5 ps-[9px] ${className}`}>
       {(title || onViewAll || headerRight) && (
         <div
           className="relative z-20 flex items-baseline justify-between gap-4 pe-1"

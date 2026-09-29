@@ -1,4 +1,5 @@
 import mediaStart from "./vi/media-start";
+import spooktober from "./vi/spooktober";
 import listenTogether from "./vi/listen-together";
 import music from "./vi/music";
 import sportsConsent from "./vi/sports-consent";
@@ -51,6 +52,7 @@ import nytTv from "./vi/nyt-tv";
 
 const vi: Record<string, string> = {
   ...mediaStart,
+  ...spooktober,
   ...videoCast,
   ...music,
   ...ebookSources,

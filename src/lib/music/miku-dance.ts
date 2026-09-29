@@ -15,18 +15,31 @@ type DanceRepertoire = {
 };
 
 export const MIKU_DANCE = {
-  columns: 9, rows: [17, 17, 25], frameWidths: [288, 288, 384], reachFrames: 41, loopFrames: [64, 64, 76], exitFrames: 41,
+  columns: 9, rows: [19, 19, 25], frameWidths: [288, 288, 384], reachFrames: 41, loopFrames: [64, 64, 76], exitFrames: 41,
   prepareMs: 240, enterMs: 1100, leaveMs: 1000, recoverMs: 320,
   loopBeats: [2, 4, 8], minimumEnergy: 0.5,
   firstWaitMs: 8000, breaksMs: [16000, 20000, 18000], minimumTrackBeats: 16,
   minimumDanceBeats: 8, maximumDanceMs: 60000, defaultPeriodMs: 500,
   stopLoopMs: 900, lowerMs: 680, entryRestFrame: 24, exitRestFrame: 19,
   phaseRecoveryMs: 700, maximumPhaseCorrection: 0.12,
-  stopExits: [null, null, { everyBeats: 2, frameOffsets: [117, 158, 178, 198], frames: 20 }] as readonly (DanceStops | null)[],
+  minimumDanceFit: .72, continuingDanceFit: .55,
+  stopExits: [{ everyBeats: 1, frameOffsets: [105, 146], frames: 20 }, { everyBeats: 2, frameOffsets: [105, 146], frames: 20 }, { everyBeats: 2, frameOffsets: [117, 158, 178, 198], frames: 20 }] as readonly (DanceStops | null)[],
+} as const;
+
+// Classic MMD keeps its previously approved open-palm headset pose set.
+// Its first two dances have one authored arms-down exit per complete loop.
+export const MIKU_CLASSIC_MMD_DANCE = {
+  ...MIKU_DANCE,
+  rows: [17, 17, 25],
+  stopExits: [
+    { everyBeats: 2, frameOffsets: [105], frames: 20 },
+    { everyBeats: 4, frameOffsets: [105], frames: 20 },
+    MIKU_DANCE.stopExits[2],
+  ] as readonly (DanceStops | null)[],
 } as const;
 
 type Stage = "listening" | "preparing" | "entering" | "dancing" | "leaving" | "recovering" | "lowering" | "disengaging";
-type Pulse = { beat: number; locked: boolean; excitement: number; period?: number | null; highlight?: boolean };
+type Pulse = { beat: number; locked: boolean; excitement: number; period?: number | null; highlight?: boolean; danceFit?: number };
 const clamp = (n: number) => Math.max(0, Math.min(1, n));
 const ease = (n: number) => { const t = clamp(n); return t * t * t * (t * (t * 6 - 15) + 10); };
 
@@ -112,7 +125,11 @@ export function createMikuDance(initial: number | ReturnType<typeof createMikuDa
       }
       previous = beat;
       const driving = active && pulse.locked;
-      const highlight = pulse.highlight === true;
+      // A strong section can be excellent for nodding yet unsuitable for the
+      // playful loops. Audio callers always provide the measured rhythmic fit.
+      const fitThreshold = stage === "listening" ? MIKU_DANCE.minimumDanceFit : MIKU_DANCE.continuingDanceFit;
+      const suitable = pulse.danceFit === undefined || pulse.danceFit >= fitThreshold;
+      const highlight = pulse.highlight === true && suitable;
       if (!highlight) performedSection = false;
       let resting = false;
       const lower = (to: number) => {

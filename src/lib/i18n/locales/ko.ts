@@ -1,4 +1,5 @@
 import mediaStart from "./ko/media-start";
+import spooktober from "./ko/spooktober";
 import listenTogether from "./ko/listen-together";
 import music from "./ko/music";
 import sportsConsent from "./ko/sports-consent";
@@ -31,6 +32,7 @@ import nytTv from "./ko/nyt-tv";
 
 const ko: Record<string, string> = {
   ...mediaStart,
+  ...spooktober,
   ...videoCast,
   ...music,
   ...ebookSources,

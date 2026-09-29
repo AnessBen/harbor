@@ -114,7 +114,7 @@ export const SECTION_TABS: Partial<Record<SectionId, TabEntry[]>> = {
     { id: "rules", label: "Rules", icon: "NotificationRules" },
   ],
   relay: [
-    { id: "status", label: "Status", icon: "Activity" },
+    { id: "status", label: "Status", icon: "Relay" },
     { id: "manage", label: "Manage", icon: "RelaySettings" },
   ],
   trackers: [

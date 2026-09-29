@@ -17,6 +17,11 @@ const POLL_SEEDS: readonly CuratedListSeed[] = [
     discoverRow: true,
     brand: "nyt",
     publishedYear: 2026,
+    companion: {
+      youtubeId: "55iwZR_xCDQ",
+      title: "Why Breaking Bad topped the list",
+      forRank: 1,
+    },
   },
   {
     id: "sight-and-sound-2022",

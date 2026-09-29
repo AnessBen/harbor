@@ -106,7 +106,9 @@ fn clean_marked(title: &str) -> bool {
 
 fn explicit_marked(title: &str) -> bool {
     let lowered = title.to_lowercase();
-    lowered.contains("(explicit") || lowered.contains("[explicit") || lowered.contains("explicit version")
+    lowered.contains("(explicit")
+        || lowered.contains("[explicit")
+        || lowered.contains("explicit version")
 }
 
 fn explicitness(track: &MusicTrack) -> Option<bool> {
@@ -129,9 +131,42 @@ fn lyric_bias(target: &MusicTrack, candidate: &MusicTrack) -> i32 {
     }
 }
 
+fn tempo_version(track: &MusicTrack) -> Option<&'static str> {
+    let label = normalized(&format!(
+        "{} {}",
+        track.title,
+        track.version.as_deref().unwrap_or("")
+    ));
+    let words = label.split_whitespace().collect::<Vec<_>>();
+    if words.contains(&"nightcore") || words.windows(2).any(|pair| pair == ["night", "core"]) {
+        Some("nightcore")
+    } else if words.contains(&"spedup")
+        || words.contains(&"speedup")
+        || words
+            .windows(2)
+            .any(|pair| matches!(pair, ["sped" | "speed", "up"]))
+    {
+        Some("sped-up")
+    } else if words.contains(&"slowed") || words.contains(&"sloweddown") {
+        Some("slowed")
+    } else {
+        None
+    }
+}
+
 pub(super) fn candidate_score(target: &MusicTrack, candidate: &MusicTrack) -> Option<i32> {
+    // A close duration alone does not make a speed edit the requested recording.
+    if tempo_version(target) != tempo_version(candidate) {
+        return None;
+    }
     let title = similarity(&target.title, &candidate.title);
-    let artist = similarity(&target.artist, &candidate.artist);
+    // An upload credits the artist in its title and carries the uploader as the artist.
+    let artist = similarity(&target.artist, &candidate.artist)
+        .max(if credits_artist(&target.artist, &candidate.title) {
+            70
+        } else {
+            0
+        });
     if title < 55 || artist < 35 {
         return None;
     }
@@ -147,6 +182,26 @@ pub(super) fn candidate_score(target: &MusicTrack, candidate: &MusicTrack) -> Op
         }
     };
     Some(title + artist + duration + lyric_bias(target, candidate))
+}
+
+fn credits_artist(artist: &str, title: &str) -> bool {
+    let artist = normalized(artist);
+    let title = normalized(title);
+    if artist.is_empty() || title.is_empty() {
+        return false;
+    }
+    let tokens = title.split_whitespace().collect::<HashSet<_>>();
+    let mut named = false;
+    for token in artist.split_whitespace() {
+        if token.len() < 2 {
+            continue;
+        }
+        if !tokens.contains(token) {
+            return false;
+        }
+        named = true;
+    }
+    named
 }
 
 fn similarity(left: &str, right: &str) -> i32 {
@@ -226,6 +281,33 @@ mod tests {
     }
 
     #[test]
+    fn a_reupload_that_names_the_artist_in_its_title_is_still_the_song() {
+        let mut target = song("Runnin' Thru the 7th with My Woadies", 205, None);
+        target.artist = "$uicideboy$, Pouya".to_string();
+        let mut upload = song("$UICIDEBOY$ & Pouya - RUNNIN THRU THE 7TH WITH MY WOADIES", 205, None);
+        upload.artist = "crazytim23".to_string();
+        assert!(candidate_score(&target, &upload).is_some());
+    }
+
+    #[test]
+    fn an_uploader_that_never_names_the_artist_is_not_the_song() {
+        let mut target = song("Runnin' Thru the 7th with My Woadies", 205, None);
+        target.artist = "$uicideboy$, Pouya".to_string();
+        let mut other = song("Runnin' Thru the 7th with My Woadies", 205, None);
+        other.artist = "crazytim23".to_string();
+        assert!(candidate_score(&target, &other).is_none());
+    }
+
+    #[test]
+    fn a_short_artist_name_does_not_match_inside_a_longer_word() {
+        let mut target = song("Some Demo", 200, None);
+        target.artist = "Ye".to_string();
+        let mut other = song("Yesterday Some Demo", 200, None);
+        other.artist = "someone else".to_string();
+        assert!(candidate_score(&target, &other).is_none());
+    }
+
+    #[test]
     fn an_explicit_target_outranks_the_clean_recording_of_the_same_song() {
         let target = song("First Day Out", 254, Some(true));
         let explicit = song("First Day Out", 254, Some(true));
@@ -247,6 +329,43 @@ mod tests {
             candidate_score(&target, &clean).expect("clean match")
                 > candidate_score(&target, &explicit).expect("explicit match")
         );
+    }
+
+    #[test]
+    fn normal_recordings_do_not_match_tempo_edits_even_with_unknown_durations() {
+        let target = song("Vampire Love", 103, Some(true));
+        assert!(candidate_score(&target, &song("Vampire Love", 102, Some(true))).is_some());
+        for label in [
+            "Sped up",
+            "Sped-Up",
+            "spedup",
+            "Speed Up",
+            "Slowed + Reverb",
+            "Nightcore",
+        ] {
+            for duration in [0, 103] {
+                let edit = song(&format!("Vampire Love ({label})"), duration, Some(true));
+                assert!(candidate_score(&target, &edit).is_none(), "{label}");
+            }
+        }
+        let mut versioned = song("Vampire Love", 103, Some(true));
+        versioned.version = Some("sped up".to_string());
+        assert!(candidate_score(&target, &versioned).is_none());
+        assert!(candidate_score(&target, &song("Vampire Love", 89, Some(true))).is_none());
+    }
+
+    #[test]
+    fn an_explicitly_requested_tempo_edit_keeps_its_version() {
+        let target = song("Vampire Love (Sped Up)", 89, Some(true));
+        let edit = song("Vampire Love [sped-up]", 89, Some(true));
+        assert!(candidate_score(&target, &edit).is_some());
+        assert!(candidate_score(&target, &song("Vampire Love", 89, Some(true))).is_none());
+        assert!(
+            candidate_score(&target, &song("Vampire Love (Nightcore)", 89, Some(true))).is_none()
+        );
+        // An ordinary song title containing "slow" is not a version marker.
+        let original = song("Slow Down", 200, None);
+        assert!(candidate_score(&original, &original).is_some());
     }
 
     #[test]

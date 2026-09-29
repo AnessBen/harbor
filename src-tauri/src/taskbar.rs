@@ -49,8 +49,8 @@ static WANT_PLAYING: AtomicBool = AtomicBool::new(false);
 static WANT_LIKED: AtomicBool = AtomicBool::new(false);
 static WANT_MUTED: AtomicBool = AtomicBool::new(false);
 static APPLIED: AtomicU32 = AtomicU32::new(NEVER_APPLIED);
-static NEXT_SMALL: AtomicIsize = AtomicIsize::new(0);
-static NEXT_BIG: AtomicIsize = AtomicIsize::new(0);
+static NEXT_SMALL: AtomicIsize = AtomicIsize::new(-1);
+static NEXT_BIG: AtomicIsize = AtomicIsize::new(-1);
 static OWNED_SMALL: AtomicIsize = AtomicIsize::new(0);
 static OWNED_BIG: AtomicIsize = AtomicIsize::new(0);
 
@@ -367,9 +367,9 @@ fn icon_sizes() -> (u32, u32) {
 }
 
 pub fn set_artwork(url: Option<String>, app_icon: bool) {
-    let own_big = app_icon.then(HICON::default);
-    let Some(url) = url.filter(|value| value.starts_with("https://")) else {
-        post_art(Some(HICON::default()), own_big);
+    let wanted = url.filter(|value| value.starts_with("https://")).filter(|_| app_icon);
+    let Some(url) = wanted else {
+        post_art(Some(HICON::default()), Some(HICON::default()));
         return;
     };
     let (small_px, big_px) = icon_sizes();

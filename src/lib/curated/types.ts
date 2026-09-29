@@ -7,6 +7,12 @@ export type CuratedSource =
 
 export type ListBrand = "nyt";
 
+export type CuratedCompanion = {
+  youtubeId: string;
+  title: string;
+  forRank?: number;
+};
+
 export type CuratedListSeed = {
   id: string;
   title: string;
@@ -22,6 +28,7 @@ export type CuratedListSeed = {
   brand?: ListBrand;
   prose?: boolean;
   publishedYear?: number;
+  companion?: CuratedCompanion;
 };
 
 export type CuratedListItem = {

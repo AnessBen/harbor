@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { withTimeout } from "@/lib/progressive-rows";
 import { loadArtistFreshTracks } from "./artist-releases";
-import { readMusicPreference } from "./preferences";
+import { readMusicPreference, writeMusicPreference } from "./preferences";
 import { artistCreditParts } from "./search-artists";
 import { normalizeName, normalizeTitle } from "./search-normalize";
 import type {
@@ -159,6 +159,20 @@ const DEFAULT_PLAYBACK_SOURCE = "youtube";
 export function preferredMusicSource(): string {
   const stored = readMusicPreference(PREFERRED_SOURCE_KEY)?.trim();
   return stored || DEFAULT_PLAYBACK_SOURCE;
+}
+
+export const PLAYABLE_MUSIC_SOURCES: readonly string[] = [
+  "youtube",
+  "soundcloud",
+  "spotify",
+  "local",
+  "jellyfin",
+  "plex",
+  "subsonic",
+];
+
+export function setPreferredMusicSource(connectorId: string): void {
+  writeMusicPreference(PREFERRED_SOURCE_KEY, connectorId.trim());
 }
 
 /** Catalog rows carry listing provenance, never a bound player, so they answer with the preference. */
@@ -321,15 +335,19 @@ export function mergeMusicSearchLanes(
  * abandoned at the deadline and the others still answer. The abandoned request cannot be cancelled
  * across the bridge, it is only stopped from holding the result.
  */
+export const LANE_POOL = 40;
+export const lanePool = (limit: number) => Math.max(limit, LANE_POOL);
+
 export async function searchAcrossMusicSources(
   query: string,
   limit: number,
 ): Promise<RankedMusicSearchResults> {
+  const pool = lanePool(limit);
   const ids = await searchableMusicSources().catch(() => [] as string[]);
   if (ids.length === 0) {
     // Health is unreadable, so fall back to the Rust fan-out under one deadline for all of it.
     const results = await withTimeout(
-      invoke<MusicSearchResults>("music_search_typed", { query, limit, connector: undefined }),
+      invoke<MusicSearchResults>("music_search_typed", { query, limit: pool, connector: undefined }),
       FALLBACK_FANOUT_TIMEOUT_MS,
     );
     return {
@@ -341,7 +359,7 @@ export async function searchAcrossMusicSources(
     ids.map(async (id) => {
       try {
         const results = await withTimeout(
-          invoke<MusicSearchResults>("music_search_typed", { query, limit, connector: id }),
+          invoke<MusicSearchResults>("music_search_typed", { query, limit: pool, connector: id }),
           SEARCH_LANE_TIMEOUT_MS,
         );
         return { id, results, error: null as string | null };

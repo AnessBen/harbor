@@ -216,6 +216,7 @@ export const SETTINGS_ICON_FILE: Record<string, string> = {
   "InputDevices": "input-devices",
   "BadgeRules": "badge-rules",
   "KeyboardBehavior": "keyboard-behavior",
+  "Relay": "relay",
   "RelaySettings": "relay-settings",
   "HelpAbout": "help-about",
   "TorrentEngine": "torrent-engine",

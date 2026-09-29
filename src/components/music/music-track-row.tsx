@@ -164,8 +164,8 @@ export function MusicTrackRow({
               {track.title}
             </button>
             {badge && <MusicCardBadgeChip badge={badge} />}
-            <MusicMediaBadge kind={track.mediaKind} compact />
-            <MusicTrackLabels track={track} />
+            {!showDuration && <MusicMediaBadge kind={track.mediaKind} compact />}
+            {!showDuration && <MusicTrackLabels track={track} />}
           </span>
           <span className="flex min-w-0 items-center gap-2">
             <MusicArtistLink
@@ -178,8 +178,10 @@ export function MusicTrackRow({
         </span>
       </div>
       {showDuration && (
-        <span className="ms-4 shrink-0 text-xs tabular-nums text-ink-muted">
-          {track.durationLabel}
+        <span data-music-duration className="ms-4 inline-flex shrink-0 items-center gap-3 text-xs tabular-nums text-ink-muted">
+          <MusicTrackLabels track={track} />
+          <MusicMediaBadge kind={track.mediaKind} compact />
+          <span>{track.durationLabel}</span>
         </span>
       )}
       {saveable && (
@@ -189,7 +191,7 @@ export function MusicTrackRow({
           data-burst={burst || undefined}
           onClick={(event) => {
             event.stopPropagation();
-            if (!saved) setBurst((count) => count + 1);
+            setBurst((count) => saved ? 0 : count + 1);
             save();
           }}
           aria-pressed={saved}
@@ -199,7 +201,9 @@ export function MusicTrackRow({
         >
           <Heart size={16} fill={saved ? "currentColor" : "none"} aria-hidden="true" />
           {burst > 0 && saved && (
-            <span key={burst} className="dock-like-burst" aria-hidden="true">
+            <span key={burst} className="dock-like-burst" aria-hidden="true" onAnimationEnd={(event) => {
+              if (event.animationName === "dock-like-ring") setBurst(0);
+            }}>
               <span className="dock-like-ring" />
               {ROW_LIKE_SPOKES.map((rotate, index) => (
                 <span

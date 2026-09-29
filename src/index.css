@@ -4334,6 +4334,13 @@ html[data-theme-card="crunch"][dir="rtl"] .harbor-profile-dropdown {
 .harbor-row-track[data-far] {
   overflow-x: hidden;
 }
+/* Discover mounts ~49 rows and shows one. Skipping the rest spares Blink their style, layout
+   and paint until they are scrolled near; the auto keyword remembers each real height after
+   its first pass, so the scrollbar settles instead of guessing forever. */
+.harbor-row-shell {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 280px;
+}
 .harbor-preview-img {
   background-color: var(--color-raised);
   background-image: linear-gradient(
@@ -4679,8 +4686,9 @@ html[data-theme-card="crunch"][dir="rtl"] .harbor-profile-dropdown {
 }
 
 .hset-main:has(.hset-footer) {
-  padding-block-end: var(--harbor-dock-gap, 0px);
-  scroll-padding-block-end: calc(var(--hset-footer-h) + 16px + var(--harbor-dock-gap, 0px));
+  margin-block-end: var(--harbor-dock-gap, 0px);
+  padding-block-end: 0;
+  scroll-padding-block-end: calc(var(--hset-footer-h) + 16px);
 }
 
 .hset-main[data-hset-wide] {
@@ -5215,7 +5223,8 @@ html[data-theme-card="crunch"][dir="rtl"] .harbor-profile-dropdown {
 
 .hset-footer {
   position: sticky;
-  inset-block-end: var(--harbor-dock-gap, 0px);
+  /* The settings scrollport already ends above the music dock. */
+  inset-block-end: 0;
   z-index: 5;
   display: flex;
   align-items: center;

@@ -14,13 +14,11 @@ import {
   ListPlus,
   Play,
   Plus,
-  Save,
   UserRound,
 } from "@/components/icons/music-icons";
 import { MoreLikeThisIcon } from "@/components/icons/more-like-this-icon";
 import { AnchoredMenu } from "@/components/anchored-menu";
 import { useT } from "@/lib/i18n";
-import { downloadMusic } from "@/lib/music/downloads";
 import { saveArtwork } from "@/lib/music/artwork-save";
 import { requestMusicExplore, requestMusicPlaylist } from "@/lib/music/navigation";
 import { getMusicPlaybackOrigin, musicTitleTarget } from "@/lib/music/playback-origin";
@@ -59,16 +57,6 @@ export function useMusicTrackMenuItems(
   if (!track) return items;
   if (onPlay)
     items.push({ id: "play", label: t("music.play"), icon: <Play size={14} />, run: onPlay });
-  if (!["local", "spotify"].includes(track.connectorId ?? "")) {
-    items.push({
-      id: "download",
-      label: t("music.download.action"),
-      icon: <Save size={14} />,
-      run: () => {
-        void downloadMusic(track).catch(() => {});
-      },
-    });
-  }
   if (track.artwork) {
     items.push({
       id: "artwork",

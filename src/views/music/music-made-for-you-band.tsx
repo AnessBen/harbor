@@ -6,6 +6,7 @@ import { MusicSectionHead } from "@/components/music/music-track-grid";
 import { Row } from "@/components/row";
 import { activeProfileId } from "@/lib/active-profile-id";
 import { readListeningAffinity } from "@/lib/music/listening-affinity";
+import { cachedTastePool, loadTastePool } from "@/lib/music/taste-pool";
 import { loadDailyMixTracks, planDailyMixes, type DailyMix } from "@/lib/music/daily-mixes";
 import { requestMusicExplore } from "@/lib/music/navigation";
 import { playMusic } from "@/lib/music/player";
@@ -40,7 +41,10 @@ function MadeForYouRow({ mixes, t, title }: { mixes: DailyMix[]; t: Translate; t
       if (request.current !== generation) return;
       if (!tracks.length) throw new Error("music.radio.error");
       if (play) {
-        recordMusicSimilarPlayback(tracks[0], tracks);
+        recordMusicSimilarPlayback(tracks[0], tracks, {
+          id: mix.id,
+          name: mixName(mix, t),
+        });
         await playMusic(tracks[0], tracks);
         return;
       }
@@ -49,6 +53,7 @@ function MadeForYouRow({ mixes, t, title }: { mixes: DailyMix[]; t: Translate; t
         track: tracks[0],
         queue: tracks,
         label: mixName(mix, t),
+        contextId: mix.id,
       });
     } catch {
       if (request.current === generation) setFailed(mix.id);
@@ -116,7 +121,15 @@ function MadeForYouRow({ mixes, t, title }: { mixes: DailyMix[]; t: Translate; t
 
 export function madeForYouBand(ctx: MusicBandContext): MusicBand | null {
   const affinity = readListeningAffinity(activeProfileId());
-  const mixes = planDailyMixes(ctx.player.recents, ctx.player.likedTracks, affinity);
+  const pool = cachedTastePool();
+  void loadTastePool().catch(() => {});
+  const mixes = planDailyMixes(
+    ctx.player.recents,
+    ctx.player.likedTracks,
+    affinity,
+    Date.now(),
+    { extra: pool.tracks, playlists: pool.playlists },
+  );
   if (!mixes.length) return null;
   return {
     key: "madeForYou",

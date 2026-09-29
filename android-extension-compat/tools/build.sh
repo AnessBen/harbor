@@ -3,6 +3,7 @@
 # mutually referential, so they are one compilation unit, not a chain of them.
 set -e
 R=$(cd "$(dirname "$0")/.." && pwd)
+. "$R/tools/portable.sh"
 rm -rf "$R/out/classes" "$R/out/capstan.jar"
 mkdir -p "$R/out/classes"
 SRC=$(find "$R/src" -name '*.kt' | sort)
@@ -26,13 +27,13 @@ if [ -n "$JAVA" ]; then
   done <<JAVA_EOF
 $JAVA
 JAVA_EOF
-  CP=$(for j in "$R"/libs/*.jar; do cygpath -w "$j"; done | tr '\n' ';')
-  "$JAVA_HOME/bin/javac" -nowarn -cp "$(cygpath -w "$R/out/classes");$CP" -d "$R/out/classes" "$@"
+  CP=$(cp_join "$R"/libs/*.jar)
+  "${JBIN}javac" -nowarn -cp "$(hostpath "$R/out/classes")$CPSEP$CP" -d "$R/out/classes" "$@"
 fi
 # Service declarations travel with the classes they name, so they are merged in before the jar is
 # sealed rather than being a separate artifact the host would have to remember to ship.
 if [ -d "$R/src/resources" ]; then cp -r "$R/src/resources/." "$R/out/classes/"; fi
-(cd "$R/out/classes" && "$JAVA_HOME/bin/jar" cf "$(cygpath -w "$R/out/capstan.jar")" .)
+(cd "$R/out/classes" && "${JBIN}jar" cf "$(hostpath "$R/out/capstan.jar")" .)
 # The top level tests compile against the finished jar, not alongside it, because they are a
 # consumer of the layer and must not be able to reach anything the jar does not publish.
 TEST=$(ls "$R"/test/*.kt 2>/dev/null | sort)
@@ -45,7 +46,7 @@ if [ -n "$TEST" ]; then
   done <<TEST_EOF
 $TEST
 TEST_EOF
-  KC_CLASSPATH="$(cygpath -w "$R/out/capstan.jar");$(for j in "$R"/libs/*.jar; do cygpath -w "$j"; done | tr '\n' ';')" \
+  KC_CLASSPATH="$(hostpath "$R/out/capstan.jar")$CPSEP$(cp_join "$R"/libs/*.jar)" \
     sh "$R/tools/kc.sh" "$@" -d "$R/out/test-classes"
 fi
 echo "BUILD ok  $(find "$R/out/classes" -name '*.class' | wc -l) classes"

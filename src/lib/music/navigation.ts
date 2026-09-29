@@ -1,4 +1,5 @@
 import type { MusicTrack, MusicAlbumRef, MusicArtistRef } from "./types";
+import { requestSpooktoberPlaylist } from "../spooktober-navigation";
 
 export type MusicExploreRequest = {
   kind: "home" | "artist" | "album" | "videos" | "watch" | "similar";
@@ -7,6 +8,7 @@ export type MusicExploreRequest = {
   album?: MusicAlbumRef;
   artist?: MusicArtistRef;
   label?: string;
+  contextId?: string;
 };
 export const MUSIC_EXPLORE_EVENT = "harbor:music-explore";
 let pending: MusicExploreRequest | null = null;
@@ -61,6 +63,7 @@ export const MUSIC_PLAYLIST_EVENT = "harbor:music-playlist";
 let pendingPlaylist: { id: string; trackId?: string } | null = null;
 /** Open a playlist at a track, for the dock title when playback began in one. */
 export function requestMusicPlaylist(id: string, trackId?: string) {
+  if (requestSpooktoberPlaylist(id, trackId)) return;
   pendingPlaylist = { id, trackId };
   window.dispatchEvent(new Event(MUSIC_PLAYLIST_EVENT));
 }
