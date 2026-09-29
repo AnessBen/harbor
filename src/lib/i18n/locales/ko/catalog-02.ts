@@ -743,8 +743,7 @@ const catalog02: Record<string, string> = {
   "Connect your Trakt account": "Trakt 계정 연결",
   "Connect your Trakt account to scrobble playback, sync your watchlist, and pull personalized recommendations.":
     "Trakt 계정을 연결하여 재생 기록을 전송하고, 관심 목록을 동기화하며, 맞춤 추천을 가져옵니다.",
-  "Connect your Trakt account to see comments and reviews.":
-    "댓글과 리뷰를 보려면 Trakt 계정을 연결하세요.",
+  "Connect your Trakt account to leave comments and reviews.": "댓글과 리뷰를 남기려면 Trakt 계정을 연결하세요.",
   "Connect your provider.": "제공업체를 연결하세요.",
   "Connect {name} in Settings first": "먼저 설정에서 {name}에 연결하세요",
   Connected: "연결됨",

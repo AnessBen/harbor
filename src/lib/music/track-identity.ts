@@ -2,9 +2,24 @@ import { normalizeName } from "./search-normalize";
 import { artistCreditParts } from "./search-artists";
 import type { MusicTrack } from "./types";
 
-export function musicTrackIdentity(track: Pick<MusicTrack, "id" | "connectorId" | "title" | "artist">): string {
-  const title = normalizeName(track.title ?? "");
-  const lead = normalizeName(artistCreditParts(track.artist ?? "")[0] ?? track.artist ?? "");
+/** An upload names itself "Artist - Song"; provenance says who the recording is really by. */
+export function musicTrackCredit(
+  track: Pick<MusicTrack, "title" | "artist"> & { collectionOrigin?: { title?: string; artist?: string } },
+): { title: string; artist: string } {
+  return {
+    title: track.collectionOrigin?.title?.trim() || track.title || "",
+    artist: track.collectionOrigin?.artist?.trim() || track.artist || "",
+  };
+}
+
+export function musicTrackIdentity(
+  track: Pick<MusicTrack, "id" | "connectorId" | "title" | "artist"> & {
+    collectionOrigin?: { title?: string; artist?: string };
+  },
+): string {
+  const credit = musicTrackCredit(track);
+  const title = normalizeName(credit.title);
+  const lead = normalizeName(artistCreditParts(credit.artist)[0] ?? credit.artist);
   if (!title || !lead) return `${track.connectorId ?? ""}:${track.id}`;
   return `${title}::${lead}`;
 }

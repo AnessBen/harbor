@@ -722,7 +722,7 @@ export function TraktComments({ resolution }: { resolution: IdResolution | null 
               />
             </button>
             <p className="text-[14px] text-ink-muted">
-              {t("Connect your Trakt account to see comments and reviews.")}
+              {t("Connect your Trakt account to leave comments and reviews.")}
             </p>
           </div>
         )}

@@ -13,9 +13,12 @@ export function adoptRequestedIdentity(selected: MusicTrack, original: MusicTrac
     album: original.album ?? selected.album,
     artwork: original.artwork || selected.artwork,
     explicit: original.explicit ?? selected.explicit,
-    collectionOrigin: original.collectionOrigin ?? {
-      id: original.id,
-      connectorId: original.connectorId,
+    collectionOrigin: {
+      id: original.collectionOrigin?.id ?? original.id,
+      connectorId: original.collectionOrigin?.connectorId ?? original.connectorId,
+      title: original.collectionOrigin?.title ?? original.title ?? undefined,
+      artist: original.collectionOrigin?.artist ?? original.artist ?? undefined,
+      artwork: original.collectionOrigin?.artwork ?? original.artwork ?? undefined,
     },
   };
 }

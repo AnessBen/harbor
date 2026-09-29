@@ -6,6 +6,7 @@ import { publishedSideContext } from "./card-context.ts";
 export function toSide(c: Record<string, unknown> | undefined, group?: string): SportsSide {
   const team = (c?.team ?? {}) as Record<string, unknown>;
   const athlete = (c?.athlete ?? {}) as Record<string, unknown>;
+  const roster = (c?.roster ?? {}) as Record<string, unknown>;
   const isAthlete = c?.type === "athlete";
 
   let scoreValue = publishedScore(c?.score);
@@ -44,6 +45,38 @@ export function toSide(c: Record<string, unknown> | undefined, group?: string): 
       logo: logoUrl,
       score: scoreValue,
       winner: c?.winner === true,
+    };
+  }
+  // A doubles pair arrives as type:"team" with NO team object, carrying a roster instead. Without
+  // this branch the side comes back unnamed and the blank-name guard below discards a real match.
+  const pairName = typeof roster.displayName === "string" ? roster.displayName.trim() : "";
+  if (pairName) {
+    const squad = Array.isArray(roster.athletes) ? (roster.athletes as Record<string, unknown>[]) : [];
+    const members = squad
+      .map((entry) => {
+        const person = ((entry?.athlete ?? entry) ?? {}) as Record<string, unknown>;
+        const flag = person.flag;
+        return {
+          id: String(person.id ?? ""),
+          name:
+            ((person.displayName as string) ?? (person.fullName as string) ?? "").trim(),
+          flag:
+            typeof flag === "object" && flag !== null
+              ? (((flag as Record<string, unknown>).href as string) ?? "")
+              : "",
+        };
+      })
+      .filter((member) => member.name);
+    return {
+      ...publishedSideContext(c),
+      ...publishedScoreDetail(c, group),
+      id: String(c?.id ?? ""),
+      name: pairName,
+      abbr: typeof roster.shortDisplayName === "string" ? roster.shortDisplayName : "",
+      logo: members[0]?.flag ?? "",
+      score: scoreValue,
+      winner: c?.winner === true,
+      ...(members.length > 0 ? { members } : {}),
     };
   }
   return {

@@ -11,7 +11,14 @@ export type MusicTrack = {
   explicit?: boolean;
   version?: string;
   /** Original collection entry retained when the source chooser selects a provider. */
-  collectionOrigin?: { id: string; connectorId?: string };
+  /** Where the recording was asked for: the credit survives whichever source supplies audio. */
+  collectionOrigin?: {
+    id: string;
+    connectorId?: string;
+    title?: string;
+    artist?: string;
+    artwork?: string;
+  };
   mediaKind?: "audio" | "video";
   connectorId?: string;
   sourceId?: string;

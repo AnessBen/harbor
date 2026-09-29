@@ -12,6 +12,9 @@ export type SportsSide = {
   record?: string;
   /** Published top25 poll ranking; absent for unranked competitors. */
   rank?: number;
+  /** A doubles pair or relay squad. ESPN ships these as ONE competitor carrying a roster rather
+   *  than a team, so a side is 1..N people and the pair label is pre-formatted upstream. */
+  members?: { id: string; name: string; flag: string }[];
 };
 
 export type EventContext = {

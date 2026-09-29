@@ -89,6 +89,8 @@ import { tracksOf, type MusicBand, type MusicBandContext } from "./music/music-b
 import { catalogBands } from "./music/music-catalog-bands";
 import { splitHomeRows } from "./music/music-home-rows";
 import { madeForYouBand } from "./music/music-made-for-you-band";
+import { jumpBackInBand } from "./music/music-jump-back-in";
+import { newReleaseCtaBand } from "./music/music-new-release-ctas";
 import { personalBands } from "./music/music-personal-bands";
 import { spotifyBands } from "./music/music-spotify-band";
 import { MusicTopPlaylists } from "./music/music-top-playlists";
@@ -105,6 +107,7 @@ type SearchState = {
   results: MusicSearchResults | null;
   error: string;
   mode?: "search" | "genre" | "label";
+  labelId?: string;
   /** Retries the work that produced this state, so a climbed search does not retry as a flat one. */
   retry?: () => void;
 };
@@ -334,12 +337,12 @@ function MusicViewContent({ active }: { active: boolean }) {
     if (!searchOrigin.current) detailTrail.current = [];
     resolveGeneration.current += 1;
     setSimilar(null);
-    setSearch({ query: name, connector: null, results: null, error: "", mode: "genre" });
+    setSearch({ labelId: id, query: name, connector: null, results: null, error: "", mode: "label" });
     setSearching(true);
     loadMusicLabel(id)
       .then((results) => {
         if (searchGeneration.current !== generation) return;
-        setSearch({ query: name, connector: null, results, error: "", mode: "genre" });
+        setSearch({ labelId: id, query: name, connector: null, results, error: "", mode: "label" });
       })
       .catch((cause) => {
         if (searchGeneration.current !== generation) return;
@@ -348,7 +351,7 @@ function MusicViewContent({ active }: { active: boolean }) {
           connector: null,
           results: null,
           error: errorText(cause),
-          mode: "genre",
+          mode: "label",
         });
       })
       .finally(() => {
@@ -961,6 +964,8 @@ function MusicViewContent({ active }: { active: boolean }) {
   const spotifyRows = spotifyBands(context);
   const catalog = catalogBands(context);
   const bands: MusicBand[] = [];
+  const jumpBackIn = jumpBackInBand(context);
+  if (jumpBackIn) bands.push(jumpBackIn);
   if (tasteRows.loading && !tasteRows.rows.length)
     bands.push({
       key: "music:taste-loading",
@@ -993,6 +998,7 @@ function MusicViewContent({ active }: { active: boolean }) {
       render: () => <MusicSectionError onRetry={tasteRows.retry} />,
     });
   bands.push(...spotifyRows);
+  if (data.library?.playlists.length) bands.push(personal.playlists);
   const madeForYou = madeForYouBand(context);
   if (madeForYou) bands.push(madeForYou);
   if (personal.recents) bands.push(personal.recents);
@@ -1011,6 +1017,8 @@ function MusicViewContent({ active }: { active: boolean }) {
       <MusicBillboardCharts title={title} onOpen={openItem} onBrowse={openBillboard} />
     ),
   });
+  const newReleaseCtas = newReleaseCtaBand(context);
+  if (newReleaseCtas) bands.push(newReleaseCtas);
   bands.push({
     key: "music:videos",
     title: t("music.now.videos"),
@@ -1040,7 +1048,6 @@ function MusicViewContent({ active }: { active: boolean }) {
     ),
   });
   bands.push(...catalog.extras);
-  if (data.library?.playlists.length) bands.push(personal.playlists);
   const scrobble = scrobbleShelf(context, catalog.scrobble);
   if (scrobble && data.lastfm?.connected) bands.push(scrobble);
 
@@ -1165,6 +1172,7 @@ function MusicViewContent({ active }: { active: boolean }) {
             ) : search ? (
               <MusicSearchPanel
                 variant={search.mode ?? "search"}
+                labelId={search.labelId}
                 query={search.query}
                 results={search.results}
                 error={search.error}

@@ -248,8 +248,7 @@ const extra: Record<string, string> = {
     "Подключите debrid-сервис (Real-Debrid, TorBox, AllDebrid), чтобы смотреть в HD сразу и без ожидания.",
   "Connect MyAnimeList": "Подключить MyAnimeList",
   "Connect your MyAnimeList account": "Подключите аккаунт MyAnimeList",
-  "Connect your Trakt account to see comments and reviews.":
-    "Подключите аккаунт Trakt, чтобы видеть комментарии и отзывы.",
+  "Connect your Trakt account to leave comments and reviews.": "Подключите аккаунт Trakt, чтобы оставлять комментарии и отзывы.",
   "Connected as {username}": "Подключено как {username}",
   "Connected as @{user}": "Подключено как @{user}",
   "Connected as @{username}": "Подключено как @{username}",

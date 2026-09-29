@@ -431,6 +431,7 @@ const settingsRefinements: Record<string, string> = {
   "The saved {name} will be removed and its changes will stop applying.": "저장된 {name}이(가) 제거되고 해당 변경 사항이 더 이상 적용되지 않습니다.",
   "The server responded in {ms} ms.": "서버가 {ms}밀리초 만에 응답했습니다.",
   "The six largest local settings entries, including preferences and lookup data.": "환경설정과 조회 데이터를 포함하여 용량이 가장 큰 로컬 설정 항목 6개입니다.",
+  "{count} entries": "{count}개 항목",
   "The volume pop-up is hidden.": "음량 팝업이 숨겨져 있습니다.",
   "Theme, the player's own layout, artwork, and what Harbor shows on a card.": "테마, 플레이어 레이아웃, 이미지, 카드에 표시할 내용입니다.",
   "This account has been suspended. Reach out to support if you think that's wrong.": "이 계정은 이용이 정지되었습니다. 잘못된 조치라고 생각하면 지원팀에 문의하세요.",

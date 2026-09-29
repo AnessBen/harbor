@@ -13,7 +13,7 @@ import { SportIcon } from "./sport-icon";
 import { scheduleEvents } from "@/lib/sports/fight-card";
 import { LeagueLogo } from "./league-logo";
 import { FightCard } from "./fight-card";
-import { useDragScroll } from "@/lib/use-drag-scroll";
+import { PillRail } from "./pill-rail";
 
 export function HubSchedule({
   games,
@@ -34,8 +34,6 @@ export function HubSchedule({
 }) {
   const t = useT();
   const locale = useUiLanguage();
-  const sportRail = useDragScroll<HTMLDivElement>();
-  const leagueRail = useDragScroll<HTMLDivElement>();
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [collapsed, setCollapsed] = useState<string[]>([]);
@@ -78,13 +76,7 @@ export function HubSchedule({
           {t("{n} matches", { n: scheduleEvents(games).length })}
         </span>
       </div>
-      <div
-        ref={sportRail.ref}
-        {...sportRail.handlers}
-        className="sh-match-sport-pills"
-        role="group"
-        aria-label={t("Filter by sport")}
-      >
+      <PillRail className="sh-match-sport-pills" label={t("Filter by sport")}>
         <button
           aria-pressed={activeSport === "all"}
           onClick={() => {
@@ -115,15 +107,9 @@ export function HubSchedule({
             </small>
           </button>
         ))}
-      </div>
+      </PillRail>
       {leagues.length > 1 && (
-        <div
-          ref={leagueRail.ref}
-          {...leagueRail.handlers}
-          className="sh-match-league-pills"
-          role="group"
-          aria-label={t("League")}
-        >
+        <PillRail className="sh-match-league-pills" label={t("League")}>
           <button aria-pressed={activeLeague === "all"} onClick={() => setLeagueFilter("all")}>
             {t("All leagues")}
           </button>
@@ -140,7 +126,7 @@ export function HubSchedule({
               </button>
             );
           })}
-        </div>
+        </PillRail>
       )}
       <div className="sh-board-toolbar">
         <div className="sh-board-filters">

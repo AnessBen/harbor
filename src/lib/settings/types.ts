@@ -497,6 +497,8 @@ export type Settings = {
   defaultProfileId: string;
   sportsLeagues: string[];
   sportsShowOdds: boolean;
+  /** Scores and schedules need no provider; streams do. Off until asked for. */
+  sportsWithoutProvider: boolean;
   hideSpoilers: boolean;
   spoilerHideThumbnails: boolean;
   spoilerHideTitles: boolean;

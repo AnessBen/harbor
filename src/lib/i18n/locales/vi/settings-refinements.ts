@@ -431,6 +431,7 @@ const settingsRefinements: Record<string, string> = {
   "The saved {name} will be removed and its changes will stop applying.": "{name} đã lưu sẽ bị xóa và các thay đổi của nó sẽ ngừng áp dụng.",
   "The server responded in {ms} ms.": "Máy chủ đã phản hồi sau {ms} mili giây.",
   "The six largest local settings entries, including preferences and lookup data.": "Sáu mục cài đặt cục bộ lớn nhất, gồm tùy chọn và dữ liệu tra cứu.",
+  "{count} entries": "{count} mục",
   "The volume pop-up is hidden.": "Bảng âm lượng đang ẩn.",
   "Theme, the player's own layout, artwork, and what Harbor shows on a card.": "Chủ đề, bố cục trình phát, hình ảnh và nội dung Harbor hiển thị trên thẻ.",
   "This account has been suspended. Reach out to support if you think that's wrong.": "Tài khoản này đã bị đình chỉ. Hãy liên hệ bộ phận hỗ trợ nếu bạn cho rằng có nhầm lẫn.",

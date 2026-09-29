@@ -7,6 +7,9 @@
   color: var(--color-ink);
   container-type: inline-size;
   scroll-padding-top: 100px;
+  /* The music dock floats over this scroller, so the last card needs room to clear it. */
+  padding-bottom: var(--harbor-dock-gap, 0px);
+  scroll-padding-bottom: var(--harbor-dock-gap, 0px);
 }
 .sh-masthead {
   padding: 104px 40px 24px;
@@ -1093,19 +1096,42 @@
   }
 }
 /* The hero is a photographic stage; page controls retain the active Harbor theme. */
+/* A soft ceiling so the picture never meets the tab divider as a straight edge. */
 .sh-carousel {
-  margin: 0 32px 0;
-  border-radius: 14px;
+  position: relative;
+}
+.sh-carousel:before {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  inset-block-start: 0;
+  block-size: 92px;
+  z-index: 2;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--color-canvas) 86%, transparent) 0%,
+    color-mix(in srgb, var(--color-canvas) 54%, transparent) 30%,
+    color-mix(in srgb, var(--color-canvas) 26%, transparent) 56%,
+    color-mix(in srgb, var(--color-canvas) 8%, transparent) 80%,
+    transparent 100%
+  );
+}
+
+/* Full bleed and themed, so the hero reads as the page rather than a card on it. */
+.sh-carousel {
+  margin: 0;
+  border-radius: 0;
   overflow: hidden;
-  background: #141619;
-  color: #fff;
+  background: var(--color-canvas);
+  color: var(--color-ink);
 }
 .sh-carousel .sh-hero {
   margin: 0;
   border-radius: 0;
   min-height: 510px;
-  background: #111517;
-  color: #fff;
+  background: var(--color-canvas);
+  color: var(--color-ink);
   grid-template-columns: 1.1fr 1fr;
 }
 .sh-hero-backdrop {
@@ -1117,23 +1143,44 @@
   object-position: 70% center;
   z-index: -2;
 }
+
+/* Fading the picture itself, not a coloured layer over it, so the edge dissolves
+   into whatever the page is actually painted with. */
+.sh-carousel .sh-hero-backdrop {
+  --sh-hero-fade: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.06) 0,
+    rgba(0, 0, 0, 0.3) 5%,
+    rgba(0, 0, 0, 0.66) 11%,
+    rgba(0, 0, 0, 0.9) 16%,
+    #000 21%,
+    #000 62%,
+    rgba(0, 0, 0, 0.5) 87%,
+    transparent 100%
+  );
+  -webkit-mask-image: var(--sh-hero-fade);
+  mask-image: var(--sh-hero-fade);
+}
 .sh-hero.has-backdrop:before {
   content: "";
   position: absolute;
   inset: 0;
   background: linear-gradient(
     90deg,
-    rgba(5, 8, 12, 0.92),
-    rgba(5, 8, 12, 0.35) 60%,
-    rgba(5, 8, 12, 0.08)
+    color-mix(in srgb, var(--color-canvas) 94%, transparent),
+    color-mix(in srgb, var(--color-canvas) 42%, transparent) 60%,
+    color-mix(in srgb, var(--color-canvas) 10%, transparent)
   );
   z-index: -1;
 }
+/* The mask on the picture does the blending; this only lifts the focal side. */
 .sh-carousel .sh-hero:after {
-  background:
-    radial-gradient(ellipse at 78% 35%, #4b4f55a6, transparent 68%),
-    linear-gradient(0deg, #080c10, transparent 35%);
-  opacity: 0.6;
+  background: radial-gradient(
+    ellipse at 78% 35%,
+    color-mix(in srgb, var(--color-ink) 9%, transparent),
+    transparent 68%
+  );
+  opacity: 1;
 }
 .sh-carousel .sh-hero-copy {
   padding: 44px 0 46px 40px;
@@ -1196,8 +1243,8 @@
   display: flex;
   align-items: stretch;
   min-height: 78px;
-  background: #1b1e22;
-  border-top: 1px solid #ffffff12;
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-edge-soft);
 }
 .sh-carousel-picks {
   display: flex;
@@ -1216,12 +1263,12 @@
   padding: 15px 20px;
   text-align: start;
   flex: 1;
-  color: #9fa5af;
-  border-inline-end: 1px solid #ffffff0b;
+  color: var(--color-ink-muted);
+  border-inline-end: 1px solid var(--color-edge-soft);
 }
 .sh-carousel-picks > button[aria-pressed="true"] {
-  color: #fff;
-  background: #ffffff08;
+  color: var(--color-ink);
+  background: var(--color-elevated);
 }
 .sh-carousel-picks > button[aria-pressed="true"]:before {
   content: "";
@@ -1262,7 +1309,7 @@
   gap: 6px;
   align-items: center;
   padding: 12px 16px;
-  border-inline-start: 1px solid #ffffff12;
+  border-inline-start: 1px solid var(--color-edge-soft);
 }
 .sh-carousel-controls > span {
   font-size: 11px;
@@ -1831,6 +1878,10 @@
   padding: 94px 32px 42px;
   container-type: inline-size;
 }
+.sh-pill-rail {
+  position: relative;
+  min-width: 0;
+}
 .sh-match-sport-pills,
 .sh-match-league-pills {
   display: flex;
@@ -1838,7 +1889,27 @@
   overflow-x: auto;
   padding: 3px 2px 12px;
   margin-bottom: 8px;
-  scrollbar-width: thin;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  overscroll-behavior-x: contain;
+}
+.sh-match-sport-pills::-webkit-scrollbar,
+.sh-match-league-pills::-webkit-scrollbar {
+  display: none;
+}
+/* Only the edge that still has pills behind it fades, so a rail scrolled to its end looks finished
+   rather than permanently cut off. */
+.sh-match-sport-pills:not([data-start]),
+.sh-match-league-pills:not([data-start]) {
+  mask-image: linear-gradient(to right, transparent 0, #000 28px, #000 100%);
+}
+.sh-match-sport-pills:not([data-end]),
+.sh-match-league-pills:not([data-end]) {
+  mask-image: linear-gradient(to left, transparent 0, #000 28px, #000 100%);
+}
+.sh-match-sport-pills:not([data-start]):not([data-end]),
+.sh-match-league-pills:not([data-start]):not([data-end]) {
+  mask-image: linear-gradient(to right, transparent 0, #000 28px, #000 calc(100% - 28px), transparent 100%);
 }
 .sh-match-sport-pills button,
 .sh-match-league-pills button {
@@ -3213,5 +3284,29 @@
 @container (max-width: 700px) {
   .sh-carousel {
     --sh-hero-height: 500px;
+  }
+}
+
+/* The selected day is told by weight and one travelling rule, not a boxed outline. */
+.sports-day {
+  transition:
+    background-color 180ms ease-out,
+    color 180ms ease-out;
+}
+.sports-day-num {
+  transition:
+    font-size 220ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    color 180ms ease-out;
+}
+.sports-day-marker {
+  transition:
+    transform 320ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    width 320ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .sports-day,
+  .sports-day-num,
+  .sports-day-marker {
+    transition: none;
   }
 }

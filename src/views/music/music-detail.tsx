@@ -1,3 +1,4 @@
+import { recordMusicDestination } from "@/lib/music/recent-destinations";
 import { MusicVideoDiscovery } from "@/components/music/music-video-discovery";
 import { MusicArtistFilmography } from "@/components/music/music-artist-filmography";
 import { MusicTrackCredits } from "@/components/music/music-listening-details";
@@ -84,7 +85,7 @@ export type MusicDetailState = {
 export function MusicDetail({
   detail,
   onBack,
-  onPlay,
+  onPlay: playTrack,
   onOpen,
   onRetry,
   onLoadMore,
@@ -145,6 +146,21 @@ export function MusicDetail({
   const title = item.kind === "album" || item.kind === "track" ? item.title : item.name;
   const source = musicSourceLink(item);
   const artwork = Array.isArray(item.artwork) ? item.artwork[0] : item.artwork;
+  // Only a page the listener actually played from earns a place in Jump back in; merely opening
+  // it is browsing, not listening.
+  const onPlay = (track: MusicTrack, queue: MusicTrack[]) => {
+    if (item.kind === "artist" || item.kind === "album" || item.kind === "track") {
+      recordMusicDestination({
+        kind: item.kind,
+        id: item.id,
+        connectorId: item.connectorId ?? undefined,
+        name: item.kind === "artist" ? item.name : item.title,
+        artist: item.kind === "artist" ? undefined : item.artist,
+        artwork: (Array.isArray(item.artwork) ? item.artwork[0] : item.artwork) ?? "",
+      });
+    }
+    playTrack(track, queue);
+  };
   const heroArt = artwork || artistImage;
   const heroTint = useMusicArtworkColor(heroArt ?? undefined, true);
   useEffect(() => {

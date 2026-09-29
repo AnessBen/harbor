@@ -1802,8 +1802,7 @@ const catalogAC: Record<string, string> = {
   "Connect your Trakt account": "अपना Trakt अकाउंट कनेक्ट करें",
   "Connect your Trakt account to scrobble playback, sync your watchlist, and pull personalized recommendations.":
     "प्लेबैक स्क्रॉबल करने, अपनी वॉचलिस्ट सिंक करने और आपके मुताबिक सुझाव पाने के लिए अपना Trakt अकाउंट कनेक्ट करें।",
-  "Connect your Trakt account to see comments and reviews.":
-    "टिप्पणियाँ और समीक्षाएँ देखने के लिए अपना Trakt अकाउंट कनेक्ट करें।",
+  "Connect your Trakt account to leave comments and reviews.": "टिप्पणियाँ और समीक्षाएँ लिखने के लिए अपना Trakt खाता कनेक्ट करें।",
   "Connect your provider.": "अपना प्रोवाइडर कनेक्ट करें।",
   "Connect {name} in Settings first": "पहले सेटिंग्स में {name} को कनेक्ट करें",
   Connected: "कनेक्टेड",

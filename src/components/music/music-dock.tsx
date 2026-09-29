@@ -317,9 +317,12 @@ export function MusicDock() {
       const fallback = collapsed ? TAB_HEIGHT : DOCK_HEIGHT;
       const publish = (height: number) => {
         root.style.setProperty("--harbor-music-dock", `${Math.max(0, Math.round(height))}px`);
+        // Minimised, the tab floats over the page instead of shortening it.
         root.style.setProperty(
           "--harbor-dock-gap",
-          `calc(var(--harbor-music-dock, 0px) + var(--harbor-viewport-bottom, 0px))`,
+          collapsed
+            ? "var(--harbor-viewport-bottom, 0px)"
+            : `calc(var(--harbor-music-dock, 0px) + var(--harbor-viewport-bottom, 0px))`,
         );
       };
       publish(fallback);

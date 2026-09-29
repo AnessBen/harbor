@@ -431,6 +431,7 @@ const settingsRefinements: Record<string, string> = {
   "The saved {name} will be removed and its changes will stop applying.": "已保存的{name}将被移除，其更改将不再生效。",
   "The server responded in {ms} ms.": "服务器在 {ms} 毫秒内响应。",
   "The six largest local settings entries, including preferences and lookup data.": "六项占用空间最大的本地设置条目，包括偏好和查询数据。",
+  "{count} entries": "{count} 条",
   "The volume pop-up is hidden.": "音量弹出框已隐藏。",
   "Theme, the player's own layout, artwork, and what Harbor shows on a card.": "主题、播放器布局、图片，以及卡片上显示的内容。",
   "This account has been suspended. Reach out to support if you think that's wrong.": "此账号已被暂停使用。如果你认为有误，请联系支持团队。",

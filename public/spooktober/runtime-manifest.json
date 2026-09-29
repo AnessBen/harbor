@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "entrypoint": "native-entry.js",
   "fileCount": 128,
-  "totalBytes": 4557360,
+  "totalBytes": 4557358,
   "files": [
     {
       "path": "alt-collections.json",
@@ -12,7 +12,7 @@
     {
       "path": "app.js",
       "bytes": 29158,
-      "sha256": "32ecc0ace1985153520dbda82d4e822c202a8e0cae66e860d80900a7114713b2"
+      "sha256": "23bdd90437ffb122daf9f753361da6519e6aa40ca32cf1250cfa54d0f1a9a9b1"
     },
     {
       "path": "assets/art/cat-candy.svg",
@@ -492,7 +492,7 @@
     {
       "path": "index.html",
       "bytes": 160439,
-      "sha256": "83019b4e54a5e375a034d47abf946b9b75096abb5cfd7754d039b9f24cd31e26"
+      "sha256": "a76971e94fcb39ba253222214e58ee1e9036064694bcbc06fdd7b0a320e0956a"
     },
     {
       "path": "inline-surface.js",
@@ -511,8 +511,8 @@
     },
     {
       "path": "masters.js",
-      "bytes": 8064,
-      "sha256": "9e931fa596aa9364df3ded7145026fae7dcdecab8c98b93fd0d803abea4e3a47"
+      "bytes": 8063,
+      "sha256": "1a46ac5da775a59b1471a988d70c3354a7bb75db1ee14515198acfba7ad184ac"
     },
     {
       "path": "mixtapes.js",
@@ -527,7 +527,7 @@
     {
       "path": "native-entry.js",
       "bytes": 2795,
-      "sha256": "b8d4b1139ad873dc1f39e8bd66496741a4f53e40a70e4b92b934f9459bdc9bb7"
+      "sha256": "37a35d01098bec49f5b8f4fa59386b7b9bb2c76c1473d4e7d524e1089db460bb"
     },
     {
       "path": "native-environment.js",
@@ -546,8 +546,8 @@
     },
     {
       "path": "native-runtime.js",
-      "bytes": 172105,
-      "sha256": "87ac397fa0402a51b3863e77a2bb742a8e3a641430149295fbf09598f4456b14"
+      "bytes": 172104,
+      "sha256": "8dce91cf1cac42be2d67f01d7d67bc671ce4c5191d21712c1959cb0a9b558357"
     },
     {
       "path": "native-styles.css",

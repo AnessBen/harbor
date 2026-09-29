@@ -431,6 +431,7 @@ const settingsRefinements: Record<string, string> = {
   "The saved {name} will be removed and its changes will stop applying.": "{name} salvato verrà rimosso e le sue modifiche non saranno più applicate.",
   "The server responded in {ms} ms.": "Il server ha risposto in {ms} ms.",
   "The six largest local settings entries, including preferences and lookup data.": "Le sei voci più grandi delle impostazioni locali, incluse preferenze e dati di ricerca.",
+  "{count} entries": "{count} voci",
   "The volume pop-up is hidden.": "L’indicatore del volume è nascosto.",
   "Theme, the player's own layout, artwork, and what Harbor shows on a card.": "Tema, layout del lettore, immagini e contenuto delle schede di Harbor.",
   "This account has been suspended. Reach out to support if you think that's wrong.": "Questo account è stato sospeso. Contatta l’assistenza se pensi che sia un errore.",

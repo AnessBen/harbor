@@ -18,6 +18,7 @@ import {
   MusicTrackGridSkeleton,
 } from "@/components/music/music-track-grid";
 import { useT, useUiLanguage } from "@/lib/i18n";
+import { MusicLabelHeader } from "@/components/music/music-label-header";
 import type {
   MusicArtistRef,
   MusicCatalogItem,
@@ -38,6 +39,7 @@ export function MusicSearchPanel({
   onOpenItem,
   onPlayTrack,
   variant = "search",
+  labelId,
 }: {
   query: string;
   results: MusicSearchResults | null;
@@ -48,6 +50,7 @@ export function MusicSearchPanel({
   onOpenItem: (item: MusicCatalogItem, siblings: MusicCatalogItem[]) => void;
   onPlayTrack: (track: MusicTrack, queue: MusicTrack[]) => void;
   variant?: "search" | "genre" | "label";
+  labelId?: string;
 }) {
   const t = useT();
   const language = useUiLanguage();
@@ -185,6 +188,7 @@ export function MusicSearchPanel({
           </button>
         </div>
       </div>
+      {variant === "label" && labelId && <MusicLabelHeader labelId={labelId} name={query} />}
       <div className="flex flex-wrap gap-2" aria-label={t("music.searchResults")}>
         {[
           ["all", "music.filter.all", total, Search],

@@ -28,6 +28,7 @@ import {
   gamesInSportsSelection,
 } from "@/lib/sports/personalization";
 import { SportsAccessGate } from "./sports/access-gate";
+import { SportsNoProviderNote } from "./sports/no-provider-note";
 import { SportsPersonalizeHint } from "./sports/personalize-hint";
 
 const LIVE_SCOREBOARDS = liveScoreboardKeys(HUB_LEAGUES);
@@ -49,6 +50,7 @@ const EventDialog = lazy(() =>
 export function SportsView({ active = false }: { active?: boolean }) {
   return (
     <SportsAccessGate active={active}>
+      <SportsNoProviderNote />
       <SportsHubView active={active} />
     </SportsAccessGate>
   );

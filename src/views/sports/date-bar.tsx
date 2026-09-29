@@ -1,5 +1,5 @@
 import { useDragScroll } from "@/lib/use-drag-scroll";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useT, useUiLanguage } from "@/lib/i18n";
 
 const DAYS_BACK = 7;
@@ -43,6 +43,8 @@ export function SportsDateBar({
   const lang = useUiLanguage();
   const locale = lang;
   const activeRef = useRef<HTMLButtonElement>(null);
+  const rowRef = useRef<HTMLDivElement>(null);
+  const [marker, setMarker] = useState<{ x: number; w: number } | null>(null);
   const { ref, handlers } = useDragScroll<HTMLDivElement>();
 
   useEffect(() => {
@@ -53,13 +55,30 @@ export function SportsDateBar({
         button.offsetLeft - rail.offsetLeft - (rail.clientWidth - button.clientWidth) / 2;
   }, [selected]);
 
+  useEffect(() => {
+    const button = activeRef.current;
+    if (!button || !rowRef.current) return;
+    const place = () => setMarker({ x: button.offsetLeft, w: button.offsetWidth });
+    place();
+    const observer = new ResizeObserver(place);
+    observer.observe(button);
+    return () => observer.disconnect();
+  }, [selected, days]);
+
   return (
     <div
       ref={ref}
       {...handlers}
       className="cursor-grab select-none overflow-x-auto px-6 pb-3.5 pt-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
     >
-      <div className="flex w-max min-w-full items-center justify-center gap-1">
+      <div ref={rowRef} className="relative flex w-max min-w-full items-center justify-center gap-1">
+        {marker && (
+          <span
+            aria-hidden="true"
+            className="sports-day-marker pointer-events-none absolute bottom-0 h-[2px] rounded-full bg-accent"
+            style={{ transform: `translateX(${marker.x}px)`, width: marker.w }}
+          />
+        )}
         {days.map((day) => {
           const active = day.key === selected;
           const isToday = day.key === today;
@@ -67,11 +86,7 @@ export function SportsDateBar({
           const weekday = isToday
             ? t("Today")
             : day.date.toLocaleDateString(locale, { weekday: "short" });
-          const shell = active
-            ? "bg-elevated ring-1 ring-accent/50"
-            : isToday
-              ? "ring-1 ring-edge hover:bg-surface"
-              : "hover:bg-surface";
+          const shell = active ? "bg-elevated/70" : "hover:bg-surface/70";
 
           return (
             <button
@@ -85,18 +100,22 @@ export function SportsDateBar({
                 month: "long",
                 day: "numeric",
               })}
-              className={`flex h-11 w-14 shrink-0 flex-col items-center justify-center rounded-lg transition-colors duration-150 ${shell}`}
+              className={`sports-day flex h-14 w-14 shrink-0 flex-col items-center justify-center gap-0.5 rounded-lg ${shell}`}
             >
               <span
-                className={`text-[11px] font-semibold uppercase tracking-[0.08em] ${
-                  active ? "text-ink" : "text-ink-subtle"
+                className={`text-[10.5px] font-semibold uppercase tracking-[0.1em] ${
+                  active ? "text-accent" : isToday ? "text-ink-muted" : "text-ink-subtle"
                 }`}
               >
                 {weekday}
               </span>
               <span
-                className={`text-[16px] font-bold tabular-nums leading-none ${
-                  active || isToday ? "text-ink" : "text-ink-muted"
+                className={`sports-day-num tabular-nums leading-none ${
+                  active
+                    ? "text-[21px] font-bold text-ink"
+                    : isToday
+                      ? "text-[16px] font-bold text-ink"
+                      : "text-[16px] font-semibold text-ink-muted"
                 }`}
               >
                 {day.date.getDate()}

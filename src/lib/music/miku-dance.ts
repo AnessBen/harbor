@@ -26,17 +26,8 @@ export const MIKU_DANCE = {
   stopExits: [{ everyBeats: 1, frameOffsets: [105, 146], frames: 20 }, { everyBeats: 2, frameOffsets: [105, 146], frames: 20 }, { everyBeats: 2, frameOffsets: [117, 158, 178, 198], frames: 20 }] as readonly (DanceStops | null)[],
 } as const;
 
-// Classic MMD keeps its previously approved open-palm headset pose set.
-// Its first two dances have one authored arms-down exit per complete loop.
-export const MIKU_CLASSIC_MMD_DANCE = {
-  ...MIKU_DANCE,
-  rows: [17, 17, 25],
-  stopExits: [
-    { everyBeats: 2, frameOffsets: [105], frames: 20 },
-    { everyBeats: 4, frameOffsets: [105], frames: 20 },
-    MIKU_DANCE.stopExits[2],
-  ] as readonly (DanceStops | null)[],
-} as const;
+// The approved Classic MMD hands use the shared complete dance atlas layout.
+export const MIKU_CLASSIC_MMD_DANCE = MIKU_DANCE;
 
 type Stage = "listening" | "preparing" | "entering" | "dancing" | "leaving" | "recovering" | "lowering" | "disengaging";
 type Pulse = { beat: number; locked: boolean; excitement: number; period?: number | null; highlight?: boolean; danceFit?: number };

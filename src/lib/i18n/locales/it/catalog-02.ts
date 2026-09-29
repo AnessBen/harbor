@@ -707,8 +707,7 @@ const catalog02: Record<string, string> = {
   "Connect your Trakt account": "Collega il tuo account Trakt",
   "Connect your Trakt account to scrobble playback, sync your watchlist, and pull personalized recommendations.":
     "Collega il tuo account Trakt per registrare automaticamente le riproduzioni, sincronizzare la tua Lista e ottenere consigli personalizzati.",
-  "Connect your Trakt account to see comments and reviews.":
-    "Collega il tuo account Trakt per vedere commenti e recensioni.",
+  "Connect your Trakt account to leave comments and reviews.": "Collega il tuo account Trakt per lasciare commenti e recensioni.",
   "Connect your provider.": "Collega il tuo provider.",
   "Connect {name} in Settings first": "Prima collega {name} nelle Impostazioni",
   Connected: "Collegato",

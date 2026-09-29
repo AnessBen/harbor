@@ -3401,6 +3401,25 @@ const SETTINGS_OPTIONS: SettingsOption[] = [
   },
 
   {
+    label: "Show Sports",
+    section: "basics",
+    anchorTitle: "Sports",
+    keywords: ["sports", "scores", "football", "soccer", "nba", "nfl", "show sports", "sports tab"],
+  },
+  {
+    label: "Show Sports without a TV provider",
+    section: "basics",
+    anchorTitle: "Sports",
+    keywords: [
+      "sports without provider",
+      "sports no provider",
+      "sports without live tv",
+      "scores only",
+      "sports no iptv",
+      "enable sports",
+    ],
+  },
+  {
     label: "Sign in to Stremio",
     section: "basics",
     keywords: ["sign in", "login", "stremio account", "sync", "manage account", "email", "log in"],

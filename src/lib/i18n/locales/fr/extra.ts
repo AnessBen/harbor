@@ -181,8 +181,7 @@ const extra: Record<string, string> = {
     "Connectez un service de débridage (Real-Debrid, TorBox, AllDebrid) pour profiter instantanément de la HD, sans attendre.",
   "Connect MyAnimeList": "Connecter MyAnimeList",
   "Connect your MyAnimeList account": "Connecter votre compte MyAnimeList",
-  "Connect your Trakt account to see comments and reviews.":
-    "Connectez votre compte Trakt pour voir les commentaires et les critiques.",
+  "Connect your Trakt account to leave comments and reviews.": "Connectez votre compte Trakt pour laisser des commentaires et des critiques.",
   "Connected as @{username}": "Connecté en tant que @{username}",
   "Connected as @{user}": "Connecté en tant que @{user}",
   "Connected as {username}": "Connecté en tant que {username}",

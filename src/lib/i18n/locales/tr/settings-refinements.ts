@@ -431,6 +431,7 @@ const settingsRefinements: Record<string, string> = {
   "The saved {name} will be removed and its changes will stop applying.": "Kaydedilen {name} kaldırılacak ve değişiklikleri artık uygulanmayacak.",
   "The server responded in {ms} ms.": "Sunucu {ms} ms içinde yanıt verdi.",
   "The six largest local settings entries, including preferences and lookup data.": "Tercihler ve arama verileri dahil en büyük altı yerel ayar kaydı.",
+  "{count} entries": "{count} kayıt",
   "The volume pop-up is hidden.": "Ses düzeyi açılır göstergesi gizli.",
   "Theme, the player's own layout, artwork, and what Harbor shows on a card.": "Tema, oynatıcının düzeni, görseller ve Harbor'ın kartlarda gösterdikleri.",
   "This account has been suspended. Reach out to support if you think that's wrong.": "Bu hesap askıya alınmış. Bunun bir hata olduğunu düşünüyorsanız destek ekibiyle iletişime geçin.",

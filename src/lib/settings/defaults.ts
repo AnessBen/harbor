@@ -409,6 +409,7 @@ export const DEFAULT: Settings = {
   defaultProfileId: "",
   sportsLeagues: [],
   sportsShowOdds: false,
+  sportsWithoutProvider: false,
   hideSpoilers: false,
   spoilerHideThumbnails: true,
   spoilerHideTitles: true,

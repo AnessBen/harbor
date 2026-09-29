@@ -1,6 +1,7 @@
 import { type FormEvent, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useMusicSourcePicker } from "./music-source-picker";
 import { recordMusicPlaylistPlayback } from "@/lib/music/playback-origin";
+import { recordMusicDestination } from "@/lib/music/recent-destinations";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { FileUp, FolderOpen, LoaderCircle, Plus, Search, X } from "@/components/icons/music-icons";
 import { Dropdown } from "@/components/dropdown";
@@ -103,6 +104,15 @@ export function MusicLibrary({
   const [view, setView] = useState<LibraryView>(() =>
     (VIEWS as string[]).includes(initialView ?? "") ? (initialView as LibraryView) : "albums",
   );
+  useEffect(() => {
+    if (view !== "saved" || player.likedTracks.length === 0) return;
+    recordMusicDestination({
+      kind: "liked",
+      id: "saved",
+      name: t("music.saved"),
+      artwork: player.likedTracks.find((track) => track.artwork)?.artwork ?? "",
+    });
+  }, [view, player.likedTracks, t]);
   const [query, setQuery] = useState("");
   const [trackQuery, setTrackQuery] = useState("");
   const [sort, setSort] = useState("default");

@@ -853,8 +853,7 @@ const miscA: Record<string, string> = {
   "Connect your AniList account to see forum threads and comments.":
     "Forum konularını ve yorumları görmek için AniList hesabınızı bağlayın.",
   "Connect your MyAnimeList account": "MyAnimeList hesabınızı bağlayın",
-  "Connect your Trakt account to see comments and reviews.":
-    "Yorumları ve incelemeleri görmek için Trakt hesabınızı bağlayın.",
+  "Connect your Trakt account to leave comments and reviews.": "Yorum ve inceleme bırakmak için Trakt hesabını bağla.",
   "Connect {name} in Settings first": "Önce Ayarlar'dan {name} bağlantısını kurun",
   "Connected as @{username}": "@{username} olarak bağlandı",
   "Connected as @{user}": "@{user} olarak bağlandı",

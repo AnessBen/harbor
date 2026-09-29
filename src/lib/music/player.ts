@@ -35,6 +35,7 @@ import {
 } from "./session-checkpoint";
 import { beginMusicQueue, getMusicPlaybackOrigin, restoreMusicPlaybackOrigin } from "./playback-origin";
 import { hydrateMusicContextTracks, hydrateMusicRecentContexts } from "./recent-context";
+import { hydrateMusicDestinations } from "./recent-destinations";
 import { hydrateMusicSourceConsent } from "./source-consent";
 import type {
   MusicAudioQuality,
@@ -338,6 +339,7 @@ export function initializeMusic(): Promise<void> {
   void hydrateListeningAffinity(activeProfile).catch(() => {});
   void hydrateMusicContextTracks().catch(() => {});
   void hydrateMusicRecentContexts().catch(() => {});
+  void hydrateMusicDestinations().catch(() => {});
   void hydrateLikedArtistStore().catch(() => {});
   void hydrateArtistBlockStore().catch(() => {});
   void hydrateMusicSourceConsent().catch(() => {});

@@ -59,6 +59,12 @@ test("the existing ebook back-to-top clears the music dock without a redesign", 
   assert.ok(control.includes("var(--harbor-viewport-bottom"));
 });
 
+test("the sports hub scroller clears the dock so the last card is reachable", () => {
+  const css = read("src/views/sports/hub.css");
+  const block = topLevelBlock(css, ".sports-hub");
+  assert.ok(block.includes(GAP), "the sports hub scrolls under the music dock");
+});
+
 test("the shared back-to-top is flat and on theme, not an accent slab", () => {
   const btn = read("src/components/back-to-top.tsx");
   assert.ok(btn.includes("bg-elevated"));

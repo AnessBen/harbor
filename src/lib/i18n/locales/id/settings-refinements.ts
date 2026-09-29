@@ -431,6 +431,7 @@ const settingsRefinements: Record<string, string> = {
   "The saved {name} will be removed and its changes will stop applying.": "{name} yang tersimpan akan dihapus dan perubahannya tidak lagi diterapkan.",
   "The server responded in {ms} ms.": "Server merespons dalam {ms} ms.",
   "The six largest local settings entries, including preferences and lookup data.": "Enam entri pengaturan lokal terbesar, termasuk preferensi dan data pencarian.",
+  "{count} entries": "{count} entri",
   "The volume pop-up is hidden.": "Pop-up volume disembunyikan.",
   "Theme, the player's own layout, artwork, and what Harbor shows on a card.": "Tema, tata letak pemutar, gambar, dan informasi yang ditampilkan Harbor pada kartu.",
   "This account has been suspended. Reach out to support if you think that's wrong.": "Akun ini telah ditangguhkan. Hubungi dukungan jika menurut Anda ini keliru.",

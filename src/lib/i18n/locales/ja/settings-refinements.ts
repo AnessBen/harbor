@@ -431,6 +431,7 @@ const settingsRefinements: Record<string, string> = {
   "The saved {name} will be removed and its changes will stop applying.": "保存した{name}を削除し、その変更の適用を停止します。",
   "The server responded in {ms} ms.": "サーバーは {ms} ミリ秒で応答しました。",
   "The six largest local settings entries, including preferences and lookup data.": "設定や検索データを含む、容量の大きいローカル設定6項目です。",
+  "{count} entries": "{count} 件",
   "The volume pop-up is hidden.": "音量のポップアップは非表示です。",
   "Theme, the player's own layout, artwork, and what Harbor shows on a card.": "テーマ、プレーヤーのレイアウト、画像、カードの表示内容を設定します。",
   "This account has been suspended. Reach out to support if you think that's wrong.": "このアカウントは利用停止になっています。誤りだと思われる場合はサポートにお問い合わせください。",

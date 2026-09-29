@@ -12,7 +12,7 @@
 .music-dock-device {
   filter: brightness(1.6);
 }
-[data-music-dock][data-art-colors] {
+[data-music-dock][data-art-colors]:not([data-music-dock-tab]) {
   background: color-mix(in srgb, var(--music-art-accent) 8%, var(--color-canvas));
 }
 [data-art-colors] .music-dock-play {

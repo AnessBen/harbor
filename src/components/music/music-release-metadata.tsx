@@ -5,7 +5,7 @@ import { useT, useUiLanguage } from "@/lib/i18n";
 import { loadMusicReleaseMetadata, type MusicReleaseDetails } from "@/lib/music/release-metadata";
 import type { MusicCatalogItem } from "@/lib/music/types";
 import { MusicArtistLink } from "./music-artist-link";
-import { labelByName } from "@/lib/music/label-metadata";
+import { labelForRelease } from "@/lib/music/label-metadata";
 import { requestMusicGenre, requestMusicLabel } from "@/lib/music/navigation";
 
 export function MusicReleaseMetadata({ item }: { item: MusicCatalogItem }) {
@@ -95,7 +95,11 @@ export function MusicReleaseMetadata({ item }: { item: MusicCatalogItem }) {
                   type="button"
                   className="music-meta-link"
                   onClick={() => {
-                    void labelByName(recordLabel)
+                    void labelForRelease(
+                      item.kind === "album" ? item.artist : "",
+                      item.kind === "album" ? item.title : "",
+                      recordLabel,
+                    )
                       .then((found) => {
                         if (found) requestMusicLabel(found.id, found.name);
                       })
