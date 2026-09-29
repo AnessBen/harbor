@@ -142,6 +142,11 @@ export type StreamPluginRequest = {
   season: number | null;
   episode: number | null;
   absoluteEpisode: number | null;
+  /** The page the item was listed from, when it named one. Opening it is what the person was
+   * looking at; searching for the title instead can land somewhere else entirely. */
+  url?: string;
+  /** The provider that listed the item, which is the only one that can open [url]. */
+  providerId?: string;
   settings: Record<string, string | boolean>;
 };
 

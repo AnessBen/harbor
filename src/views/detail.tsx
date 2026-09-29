@@ -37,6 +37,8 @@ import {
   type Meta,
 } from "@/lib/cinemeta";
 import { addonBasesForOrigin, fetchAddonMeta, gatherCatalogAddons } from "@/lib/addons";
+import { useCapstanDetail } from "@/lib/streams/plugins/extension/detail-hook";
+import { isCapstanId, titlesAgree } from "@/lib/streams/plugins/extension/detail";
 import { resolveMeta } from "@/lib/meta-resource";
 import { useMdblistScores } from "@/lib/providers/mdblist";
 import { lastPlayedEpisode, readResumeEntry, saveResumeMs } from "@/lib/resume";
@@ -477,6 +479,8 @@ export function DetailView({
     };
   }, [detail?.imdbId, meta.id]);
   const addonNative = liveContext || isAddonNativeMeta(meta);
+  const capstanMeta = useCapstanDetail(meta);
+  const capstanCanonicalId = capstanMeta?.canonicalId ?? null;
   const trailerCandidate = detail?.trailerCandidates?.[0] ?? meta.trailerStreams?.[0]?.ytId ?? null;
 
   useScrollUpTrailer(
@@ -488,6 +492,35 @@ export function DetailView({
   const actionStage = useHeroActionOverflow(actionRowRef, [meta.id]);
   const addToListRef = useRef<HTMLButtonElement | null>(null);
   const [addToListOpen, setAddToListOpen] = useState(false);
+
+  /** The provider's own answer, in a ref so a fetch that was started before it arrived still merges
+   * against it.
+   *
+   * The four callers below each start a fetch and merge the answer when it lands, and their
+   * dependency arrays are about the fetch, not about this. Reached through a closure, a fetch
+   * started before the provider answered would hold the `null` from that render, take the
+   * replace-it branch, and drop the languages a plugin sent — which is what happened: a poster
+   * showed Hindi and the page it opened did not. */
+  const providerMetaRef = useRef<Meta | null>(null);
+  providerMetaRef.current = capstanMeta?.meta ?? null;
+
+  /** Take a fetched meta as the page's full meta, keeping what a plugin told us about the listing.
+   *
+   * The fetched meta is the source for episodes, genres and the year, and it knows nothing about
+   * the line a provider wrote: `listingExtras` is read out of that line and exists on the provider's
+   * answer alone. */
+  const keepProviderListing = useCallback((fetched: Meta) => {
+    const own = providerMetaRef.current;
+    if (!own || own.id !== fetched.id) {
+      setCinemetaFull(fetched);
+      return;
+    }
+    setCinemetaFull({
+      ...fetched,
+      listingExtras: own.listingExtras ?? fetched.listingExtras,
+      listingYear: own.listingYear ?? fetched.listingYear,
+    });
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -506,11 +539,18 @@ export function DetailView({
     seasonEntryRef.current = null;
     setSeasonArt(null);
     setCinemetaFull(meta.videos && meta.videos.length > 0 ? meta : null);
+    // A plugin's own page is read separately and lands a tick after this runs, so the reset above
+    // must not be the last word on it: for a plugin row the incoming `meta` has no videos, so this
+    // sets nothing, and the item's own answer is the only thing that can fill it. Restoring it here
+    // as well keeps the two from racing — this effect can re-run on a dependency change while the
+    // plugin's answer is already in hand, and without this the answer would be thrown away and
+    // never asked for again, because the effect that reads it does not depend on this one.
+    if (capstanMeta?.meta.id === meta.id) setCinemetaFull(capstanMeta.meta);
     if (meta.id.startsWith("tt") && !addonNative) {
       fetchCinemetaMeta(narrowMediaType(meta.type), meta.id)
         .then((full) => {
           if (cancelled || !full) return;
-          setCinemetaFull(full);
+          keepProviderListing(full);
         })
         .catch(() => {});
     }
@@ -518,6 +558,35 @@ export function DetailView({
       cancelled = true;
     };
   }, [meta.id, meta.type, addonNative]);
+
+  // A plugin's own rows reach this page as a poster with no addon meta behind them, so the
+  // provider's bridge answer is the only source for this item's year, episode list, and the
+  // languages it wrote on its listing. The id is rechecked because a previous item's answer is
+  // still in state for one render after a move.
+  //
+  // `capstanMeta` is a dependency so this re-runs when the answer arrives, and it runs again when
+  // the answer changes rather than being read once: the other effect that writes this state does
+  // not depend on the answer, so nothing else would put it back.
+  useEffect(() => {
+    if (!capstanMeta || capstanMeta.meta.id !== meta.id) return;
+    const own = capstanMeta.meta;
+    setCinemetaFull(own);
+    // A provider that posted nothing for this item -- a single "episode added" page, say -- still
+    // named the title it belongs to, and the schedule behind that id beats an empty page. The
+    // provider's own list is never overwritten when it has one.
+    const id = capstanMeta.canonicalId;
+    if (own.videos?.length || !id?.startsWith("tt")) return;
+    let cancelled = false;
+    void fetchCinemetaMeta(capstanMeta.kind === "series" ? "series" : "movie", id)
+      .then((full) => {
+        if (cancelled || !full?.videos?.length) return;
+        setCinemetaFull((prev) => (prev && prev.id === meta.id ? { ...prev, videos: full.videos } : full));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [capstanMeta, meta.id]);
 
   useEffect(() => {
     if (idAnime || detectedKitsu != null || addonNative) return;
@@ -625,7 +694,10 @@ export function DetailView({
     fetchCinemetaMeta(narrowMediaType(meta.type), imdb)
       .then((full) => {
         if (cancelled || !full) return;
-        setCinemetaFull(full);
+        // Merged rather than replaced: a fetched meta has the episodes and the rating this page
+        // wants, and has no idea what the provider wrote on its listing line. Replacing would drop
+        // the languages a plugin sent the moment the fetch landed, which is exactly what it did.
+        keepProviderListing(full);
       })
       .catch(() => {});
     return () => {
@@ -646,7 +718,7 @@ export function DetailView({
       const attempt = async (base: string) => {
         const full = await fetchAddonMeta(base, meta.type, meta.id).catch(() => null);
         if (cancelled || !full?.videos?.length) return false;
-        setCinemetaFull(full);
+        keepProviderListing(full);
         return true;
       };
       const direct = origin.base ? origin.base.replace(/\/manifest\.json$/, "") : null;
@@ -667,14 +739,24 @@ export function DetailView({
 
   useEffect(() => {
     if (meta.type !== "series") return;
+    // A plugin's own item is answered by the provider, not by a metadata service, and its id names
+    // no title one of them could resolve: `capstan:provider:url` is Cinemeta's 404, and a 404 here
+    // is not harmless. It lands, sets state, and re-runs the effects below it, and each re-run
+    // aborts whatever stream query was in flight — so a plugin that had streams to give appeared to
+    // have none twice before one query happened to finish inside a cycle.
+    //
+    // The origin check above covers an addon but not a plugin: a plugin's origin carries the base it
+    // was installed from rather than a manifest, so `addonOrigin.base` is set for an addon and this
+    // is what is left. `resolveMeta` has nothing to resolve for these ids either way.
     if (meta.addonOrigin?.base) return;
+    if (isCapstanId(meta.id)) return;
     if (/^(tt\d|tmdb:|kitsu:|mal:|anilist:|anidb:|simkl:)/.test(meta.id)) return;
     if (cinemetaFull?.videos && cinemetaFull.videos.length > 0) return;
     let cancelled = false;
     resolveMeta(authKey, narrowMediaType(meta.type), meta.id)
       .then((full) => {
         if (cancelled || !full?.videos?.length) return;
-        setCinemetaFull(full);
+        keepProviderListing(full);
       })
       .catch(() => {});
     return () => {
@@ -757,15 +839,24 @@ export function DetailView({
 
   useEffect(() => {
     let cancelled = false;
-    if (addonNative) {
+    // A plugin names an id of its own only sometimes. When it does, the same loaders that describe
+    // every other title can describe this one too; when it does not, there is nothing to resolve
+    // and the item keeps the provider's own answer alone.
+    if (addonNative && !capstanCanonicalId) {
       setLoading(false);
       return;
     }
     setLoading(true);
+    // The catalogue types a row from the first type its provider declares, which is wrong for any
+    // provider that carries both movies and series. The bridge said which it returned, so the
+    // record is asked for as that kind rather than as the guess.
+    const lookup = capstanCanonicalId
+      ? { ...meta, id: capstanCanonicalId, type: capstanMeta?.kind ?? meta.type }
+      : meta;
     const work = isAnime
       ? animeDetails(
           settingsRef.current,
-          detectedKitsu != null ? { ...meta, id: `kitsu:${detectedKitsu}` } : meta,
+          detectedKitsu != null ? { ...meta, id: `kitsu:${detectedKitsu}` } : lookup,
         ).then((res) => {
           if (cancelled) return null;
           if (!res) {
@@ -811,11 +902,18 @@ export function DetailView({
           return res.detail;
         })
       : settingsRef.current.tmdbKey
-        ? tmdbDetails(settingsRef.current.tmdbKey, meta).then((d) => d ?? cinemetaDetails(meta))
-        : cinemetaDetails(meta);
+        ? tmdbDetails(settingsRef.current.tmdbKey, lookup).then((d) => d ?? cinemetaDetails(lookup))
+        : cinemetaDetails(lookup);
     work
       .then((d) => {
         if (cancelled) return;
+        // The provider named the id, so it is the provider's claim that has to hold up: if the
+        // record it points at is not this title, the page is better off without it.
+        if (d && capstanCanonicalId && !titlesAgree(capstanMeta?.meta.name || meta.name, d.title)) {
+          setDetail(null);
+          setLoading(false);
+          return;
+        }
         setDetail((prev) => {
           if (!d) return d;
           if (
@@ -864,6 +962,7 @@ export function DetailView({
     isAnime,
     addonNative,
     detectedKitsu,
+    capstanCanonicalId,
   ]);
 
   useEffect(() => {
@@ -935,16 +1034,20 @@ export function DetailView({
     id: meta.id,
     type: meta.type,
     name: title || meta.name,
-    poster: meta.poster ?? detail?.poster,
+    poster: meta.poster ?? cinemetaFull?.poster ?? detail?.poster,
   };
   const overview =
     seasonArt?.description ||
-    (detail?.overview ?? (meta.id.startsWith("tmdb:") ? "" : meta.description) ?? "");
+    (detail?.overview ??
+      (meta.id.startsWith("tmdb:") ? "" : (meta.description ?? cinemetaFull?.description)) ??
+      "");
   const tagline = detail?.tagline ?? "";
   const pinnedLogo = useTitleLogo(meta.id);
   const animeArt = isAnime ? peekAnimeArt(meta.id) : undefined;
   const stableBackdrop = useStableAsset(
-    isAnime ? [animeArt?.bg, enrichedBg] : [animeArt?.bg, meta.background, detail?.backdrop],
+    isAnime
+      ? [animeArt?.bg, enrichedBg]
+      : [animeArt?.bg, meta.background, cinemetaFull?.background, detail?.backdrop],
     meta.id,
   );
   const primaryBackdrop =
@@ -986,7 +1089,7 @@ export function DetailView({
   );
   const logo =
     pinnedLogo || seasonArt?.logo || stableLogo || (isAnime && !loading ? meta.logo : undefined);
-  const year = detail?.year ?? meta.releaseInfo;
+  const year = detail?.year ?? meta.releaseInfo ?? cinemetaFull?.releaseInfo;
   const releaseYearNum = parseAwardYear(year);
   const imdbRatingValue =
     harborImdbRating ??
@@ -999,8 +1102,8 @@ export function DetailView({
       : undefined,
   );
   const rating = isAnime ? malRating : (imdbRatingValue ?? detail?.rating ?? meta.imdbRating);
-  const runtime = detail?.runtime;
-  const genres = detail?.genres ?? meta.genres ?? [];
+  const runtime = detail?.runtime ?? capstanMeta?.meta.runtime;
+  const genres = detail?.genres ?? meta.genres ?? cinemetaFull?.genres ?? [];
   const tmdbRecommendations = detail?.recommendations ?? NO_METAS;
   const similar = detail?.similar ?? NO_METAS;
   const relatedSeedId = detail?.imdbId ?? (meta.id.startsWith("tt") ? meta.id : null);
@@ -1072,7 +1175,17 @@ export function DetailView({
     isAnime && !awardsInDescription ? (
       <MangaAwardCorner title={title || meta.name} fallbackPoster={mangaAdaptationPoster} />
     ) : null;
-  const isSeries = detail?.kind != null ? detail.kind === "tv" : meta.type === "series";
+  const isSeries =
+    detail?.kind != null
+      ? detail.kind === "tv"
+      : capstanMeta
+        ? capstanMeta.kind === "series"
+        : meta.type === "series";
+  // A plugin's own episodes are the ones that actually stream, so a resolved record may describe
+  // the title but must not take the list away from the player. It only supplies the list when the
+  // provider offered none.
+  const providerEpisodeList = addonNative && (capstanMeta?.meta.videos?.length ?? 0) > 0;
+  const tmdbEpisodeList = !providerEpisodeList && !!detail && detail.seasons.length > 0;
   const traktResolution = useMemo((): IdResolution => {
     if (isAnime) return { ok: false, reason: "anime" };
     const imdbId = detail?.imdbId ?? (meta.id.startsWith("tt") ? meta.id : null);
@@ -1094,10 +1207,16 @@ export function DetailView({
   const playMeta: Meta = {
     ...meta,
     name: title,
+    // The stream request is typed from this, and for a native addon it is passed through whole
+    // (`episode-pipeline-input.ts:77`). The catalogue types a row from the first type its provider
+    // declares, so a provider carrying both movies and series has its series asked for as a movie
+    // -- and the episode branch is then never reached, which is a silent zero streams. The
+    // provider's own word is the one that decides.
+    type: capstanMeta ? capstanMeta.kind : meta.type,
     logo,
     background: backdrop,
     releaseDate: detail?.releaseDate ?? meta.releaseDate,
-    releaseInfo: detail?.year ?? meta.releaseInfo,
+    releaseInfo: detail?.year ?? meta.releaseInfo ?? cinemetaFull?.releaseInfo,
     behaviorHints: meta.behaviorHints ?? cinemetaFull?.behaviorHints,
     videos: meta.videos ?? cinemetaFull?.videos,
   };
@@ -1486,6 +1605,14 @@ export function DetailView({
     episode: lastPlay ? { season: lastPlay.season, episode: lastPlay.episode } : undefined,
   }));
 
+  // The plugin's own line, as the pills read it: the navigation payload's copy when there is one,
+  // otherwise the page's. Every resolution is its own pill, best first, and HDR rides with them.
+  // The `Listing details` pill is gone: it carried the raw line, and the line is a fallback the user
+  // asked not to see. Sizes live only in the tooltip now, which is the trade that removal makes.
+  const listing = meta.listingExtras ?? cinemetaFull?.listingExtras;
+  const listingResolutions = listing?.resolutions ?? [];
+  const listingQuality = listing?.quality ?? [];
+
   const heroPills = (
     <>
       {year && (
@@ -1500,6 +1627,38 @@ export function DetailView({
           {year}
         </Pill>
       )}
+      {/* What the plugin wrote on its listing line, in full.
+       *
+       * A poster can only afford a couple of badges, so a listing naming six languages and four
+       * qualities showed two of each and counted the rest. Here there is room for all of them: every
+       * language, and every quality as its own pill, best first.
+       *
+       * Read from the navigation `meta` first, which is the object the poster's own strip read and
+       * so the one known to carry these: this page never consulted it, and every merge between
+       * fetched metas was preserving a field that was already in scope and never looked at. The
+       * page's own copy is only a fallback, for the case where an item is opened by an id with no
+       * navigation payload behind it.
+       *
+       * `pluginQuality` above is the provider's own quality field, which is a different thing from
+       * what its line says, and both are worth having when they disagree. */}
+      {listing?.languages.map((language) => (
+        <Pill key={`lang:${language}`}>{language}</Pill>
+      ))}
+      {/* Every resolution the listing names, best first, then high dynamic range, then how the file
+          was made. The `Listing details` pill is gone — the user asked for the readings rather than
+          the raw line, which means the sizes and the provider's own tags now live only in the
+          poster's tooltip. */}
+      {listingResolutions.map((r) => (
+        <Pill key={`resolution:${r}`}>{r}</Pill>
+      ))}
+      {/* High dynamic range, shown whenever the plugin said the file has any: there is room for it
+          among the pills where there is none on the artwork, and it is not worth a setting of its
+          own when saying nothing simply shows nothing. */}
+      {listing?.hdr && <Pill>{listing.hdr}</Pill>}
+      {listingQuality.map((q) => (
+        <Pill key={`quality:${q}`}>{q}</Pill>
+      ))}
+      {capstanMeta?.contentRating && <Pill>{capstanMeta.contentRating}</Pill>}
       {inLocalLibrary && (
         <HoverTooltip label={t("In your local library")} side="top" align="center" arrow>
           <Pill>
@@ -1972,7 +2131,7 @@ export function DetailView({
             </FadeInUp>
           )}
 
-        {!liveContext && detail && !isAnime && isSeries && detail.seasons.length > 0 && (
+        {!liveContext && tmdbEpisodeList && !isAnime && isSeries && (
           <FadeInUp>
             <SeriesEpisodes
               meta={playMeta}
@@ -1991,7 +2150,7 @@ export function DetailView({
 
         {!liveContext &&
           !loading &&
-          (!detail || detail.seasons.length === 0) &&
+          !tmdbEpisodeList &&
           !isAnime &&
           (isSeries ||
             (addonNative &&
@@ -2093,6 +2252,26 @@ export function DetailView({
               ),
             });
           }
+          if (capstanMeta && capstanMeta.cast.length > 0 && !(detail && detail.cast.length > 0)) {
+            railSections.push({
+              key: "cast",
+              label: t("Cast"),
+              minHeight: 240,
+              node: (
+                <Row title={t("Cast · {n}", { n: capstanMeta.cast.length })} min={128}>
+                  {capstanMeta.cast.map((name, i) => (
+                    <CastCard
+                      key={`${name}-${i}`}
+                      // The provider names people and nothing else: no id to open and no photo, so
+                      // the card falls back to its own placeholder exactly as it does for an
+                      // unresolved TMDB credit.
+                      cast={{ id: 0, name, character: "", profilePath: null, order: i }}
+                    />
+                  ))}
+                </Row>
+              ),
+            });
+          }
           if (isAnime && animeCharacters.length > 0) {
             railSections.push({
               key: "animeCharacters",
@@ -2127,6 +2306,23 @@ export function DetailView({
                       reason={graphReasons.get(r.id)?.label}
                       reasonDetail={graphReasons.get(r.id)?.detail}
                     />
+                  ))}
+                </Row>
+              ),
+            });
+          }
+          if (
+            capstanMeta &&
+            capstanMeta.recommendations.length > 0 &&
+            reasonedRecommendations.length === 0
+          ) {
+            railSections.push({
+              key: "moreLikeThis",
+              label: t("More Like This"),
+              node: (
+                <Row title={t("More Like This")}>
+                  {capstanMeta.recommendations.map((r) => (
+                    <PickCard key={r.id} meta={r} />
                   ))}
                 </Row>
               ),

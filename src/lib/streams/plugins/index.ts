@@ -48,13 +48,15 @@ export {
 export {
   isPluginAddon,
   pluginAddons,
+  pluginAddonById,
   pluginCacheTokens,
+  pluginIdFromCatalogueBase,
   pluginListKey,
   pluginsForAddon,
   runPluginAddon,
-  runnableStreamPlugins,
   setStreamPluginConfig,
 } from "./addon";
+export { pluginCatalogueSources, providesOwnRows, runnableStreamPlugins } from "./runnable";
 export { splitRepoLinks } from "./manifest";
 export {
   extensionCataloguePage,

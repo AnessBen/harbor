@@ -35,7 +35,7 @@ export function Catalogs({ active = true }: { active?: boolean }) {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    void listBrowseCatalogs(authKey).then((list) => {
+    void listBrowseCatalogs(authKey, { pluginRows: settings.pluginsOutsideTab }).then((list) => {
       if (cancelled) return;
       setCatalogs(list);
       setLoading(false);
@@ -43,13 +43,13 @@ export function Catalogs({ active = true }: { active?: boolean }) {
     return () => {
       cancelled = true;
     };
-  }, [authKey]);
+  }, [authKey, settings.pluginsOutsideTab]);
 
   // A plugin's own catalogs arrive after its runtime is up, which is later than the addons.
   useEffect(() => {
     let cancelled = false;
     const stop = subscribeBrowseCatalogs(() => {
-      void listBrowseCatalogs(authKey).then((list) => {
+      void listBrowseCatalogs(authKey, { pluginRows: settings.pluginsOutsideTab }).then((list) => {
         if (!cancelled) setCatalogs(list);
       });
     });
@@ -57,7 +57,7 @@ export function Catalogs({ active = true }: { active?: boolean }) {
       cancelled = true;
       stop();
     };
-  }, [authKey]);
+  }, [authKey, settings.pluginsOutsideTab]);
 
   const pinned = settings.catalogsPinned ?? [];
   const hidden = settings.catalogsHidden ?? [];

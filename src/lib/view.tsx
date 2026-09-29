@@ -36,6 +36,7 @@ export type View =
   | "anime"
   | "discover"
   | "catalogs"
+  | "plugins"
   | "addons"
   | "calendar"
   | "movies"
@@ -164,6 +165,7 @@ export type Frame =
   | { kind: "anime" }
   | { kind: "discover" }
   | { kind: "catalogs" }
+  | { kind: "plugins" }
   | { kind: "addons" }
   | { kind: "addon-detail"; id: string }
   | { kind: "calendar" }
@@ -225,6 +227,12 @@ export type ScrollSnapshot = {
   fallback: number;
 };
 
+/** How long to wait before asking again whether a layer has been laid out, and how many times.
+ * A view that is on screen is laid out within a frame or two; anything longer means it is parked
+ * and genuinely has no height, so the asking stops rather than running forever. */
+const RESTORE_RETRY_MS = 60;
+const RESTORE_RETRIES = 20;
+
 export type SettingsSection =
   | "webhooks"
   | "account"
@@ -239,6 +247,7 @@ export type SettingsSection =
   | "language"
   | "player"
   | "streamFilters"
+  | "plugins"
   | "licenses"
   | "advanced";
 
@@ -383,6 +392,8 @@ function frameKey(f: Frame): string {
       return "discover";
     case "catalogs":
       return "catalogs";
+    case "plugins":
+      return "plugins";
     case "addons":
       return "addons";
     case "addon-detail":
@@ -544,6 +555,7 @@ export function ViewProvider({ children }: { children: ReactNode }) {
       if (f.kind === "addons" || f.kind === "addon-detail") return "addons";
       if (f.kind === "discover" || f.kind === "queue") return "discover";
       if (f.kind === "catalogs") return "catalogs";
+      if (f.kind === "plugins") return "plugins";
       if (f.kind === "calendar") return "calendar";
       if (f.kind === "wrapped") return "wrapped";
       if (f.kind === "movies") return "movies";
@@ -769,6 +781,11 @@ export function ViewProvider({ children }: { children: ReactNode }) {
           scrollMem.current.clear();
           rowScrollMem.current.clear();
           return [{ kind: "catalogs" }];
+        }
+        if (v === "plugins") {
+          scrollMem.current.clear();
+          rowScrollMem.current.clear();
+          return [{ kind: "plugins" }];
         }
         if (v === "addons") {
           scrollMem.current.clear();
@@ -1557,6 +1574,15 @@ export function useScrollMemory(
     let pendingSnap: ScrollSnapshot | null = null;
     let parked = el.clientHeight === 0;
     let everVisible = !parked;
+    let retries = 0;
+    let retryId: number | null = null;
+
+    const cancelRetry = () => {
+      if (retryId !== null) {
+        clearTimeout(retryId);
+        retryId = null;
+      }
+    };
 
     const initialSnap = recallScroll(key);
     const wantsHide =
@@ -1596,14 +1622,30 @@ export function useScrollMemory(
       if (!snap) {
         restoring = false;
         cancelSettle();
+        cancelRetry();
         reveal();
         return;
       }
-      if (el.clientHeight === 0) return;
+      if (el.clientHeight === 0) {
+        /* The layer is parked, or it has just been shown and has not been laid out yet. Giving up
+         * here is what loses the position: the effect runs in the same commit that lifts the park,
+         * so the element can still report no height, and the resize observer does not fire for a
+         * size that never changed — so nothing came back to try again and the view stayed at the
+         * top. Asking again is bounded, so a view that is genuinely empty stops asking. */
+        if (retryId === null && retries < RESTORE_RETRIES) {
+          retries += 1;
+          retryId = window.setTimeout(() => {
+            retryId = null;
+            tryRestore(clamp);
+          }, RESTORE_RETRY_MS);
+        }
+        return;
+      }
       const target = targetForSnap(el, snap);
       if (target === null) {
         restoring = false;
         cancelSettle();
+        cancelRetry();
         reveal();
         return;
       }
@@ -1612,6 +1654,7 @@ export function useScrollMemory(
       el.scrollTop = Math.min(target, max);
       restoring = false;
       cancelSettle();
+      cancelRetry();
       reveal();
     };
 
@@ -1688,6 +1731,7 @@ export function useScrollMemory(
       else if (el.clientHeight === 0) flushParked();
       cancelSave();
       cancelSettle();
+      cancelRetry();
       if (revealId !== null) clearTimeout(revealId);
       reveal();
       ro.disconnect();

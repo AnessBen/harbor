@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 import { useSportsEnabled } from "@/lib/sports/enabled";
+import { usePluginCataloguesAvailable } from "@/lib/streams/plugins/available";
 import { SportsNavIcon } from "@/components/icons/sports-nav-icon";
-import { Popcorn } from "lucide-react";
+import { Popcorn, Puzzle } from "lucide-react";
 import { NavGlyph } from "@/components/icons/nav-glyph";
 import { NavLottie } from "@/components/icons/nav-lottie";
 import lotHome from "@/assets/lottie/nav/home.json";
@@ -55,6 +56,7 @@ export type NavItemId =
   | "home"
   | "discover"
   | "catalogs"
+  | "plugins"
   | "movies"
   | "shows"
   | "music"
@@ -112,6 +114,14 @@ const NAV_ITEMS_ALL: NavItem[] = [
     ),
     view: "catalogs",
     parentalKey: "discover",
+  },
+  {
+    id: "plugins",
+    label: "nav.plugins",
+    render: (active) => (
+      <Puzzle size={26} strokeWidth={2.2} className={active ? "" : "opacity-70"} />
+    ),
+    view: "plugins",
   },
   {
     id: "movies",
@@ -289,7 +299,11 @@ const NAV_ITEMS_ALL: NavItem[] = [
 export const NAV_ITEMS: NavItem[] = NAV_ITEMS_ALL;
 export function useAvailableNavItems(): NavItem[] {
   const sportsEnabled = useSportsEnabled();
-  return sportsEnabled ? NAV_ITEMS : NAV_ITEMS.filter((item) => item.id !== "sports");
+  const pluginCatalogs = usePluginCataloguesAvailable();
+  return NAV_ITEMS.filter(
+    (item) =>
+      (item.id !== "sports" || sportsEnabled) && (item.id !== "plugins" || pluginCatalogs),
+  );
 }
 
 export function applyNavCustomization(items: NavItem[], cfg: NavCustomization): NavItem[] {

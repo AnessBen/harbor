@@ -24,6 +24,7 @@ const en: Record<string, string> = {
   "nav.home": "Home",
   "nav.discover": "Discover",
   "nav.catalogs": "Catalogs",
+  "nav.plugins": "Plugins",
   "nav.movies": "Movies",
   "nav.shows": "Shows",
   "nav.people": "Top People",

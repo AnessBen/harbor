@@ -46,7 +46,8 @@ export type BrowseCatalog = {
  * The rows come from whatever the last look found, and a fresh look runs behind this call rather
  * than in front of it: the first one has to start a runtime and load every installed extension, and
  * the addon catalogues alongside them are not made to wait for that. */
-function extensionCatalogs(): BrowseCatalog[] {
+function extensionCatalogs(includePlugins: boolean): BrowseCatalog[] {
+  if (!includePlugins) return [];
   void refreshExtensionCatalogues();
   const rows = extensionCataloguesSync();
   const perPlugin = new Map<string, Set<string>>();
@@ -57,7 +58,9 @@ function extensionCatalogs(): BrowseCatalog[] {
   }
   return rows.map((row) => {
     const many = (perPlugin.get(row.pluginId)?.size ?? 1) > 1;
-    const name = many && row.providerName ? `${row.row} · ${row.providerName}` : row.row;
+    // A hyphen rather than a dot: the provider follows the row and the pair reads as one name
+    // rather than as two things joined by punctuation.
+    const name = many && row.providerName ? `${row.row} - ${row.providerName}` : row.row;
     return {
       key: `${row.pluginId}-${row.providerId}-${row.row}`,
       addonName: row.pluginName,
@@ -76,8 +79,13 @@ export function subscribeBrowseCatalogs(cb: () => void): () => void {
   return subscribeExtensionCatalogues(cb);
 }
 
-export async function listBrowseCatalogs(authKey: string | null): Promise<BrowseCatalog[]> {
-  const out: BrowseCatalog[] = extensionCatalogs();
+/** A caller says whether a plugin's rows belong in its list. The Plugins page is where they belong
+ * and always asks for them; every other surface asks only while the setting allows it. */
+export async function listBrowseCatalogs(
+  authKey: string | null,
+  opts: { pluginRows: boolean },
+): Promise<BrowseCatalog[]> {
+  const out: BrowseCatalog[] = extensionCatalogs(opts.pluginRows);
   const addons = await gatherCatalogAddons(authKey).catch(() => []);
   for (const addon of addons) {
     const base = addon.transportUrl.replace(/\/manifest\.json$/, "");

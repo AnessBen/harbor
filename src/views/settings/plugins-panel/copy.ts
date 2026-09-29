@@ -103,7 +103,9 @@ export function stateCopy(t: T, p: PluginView): StateCopy {
     case "auto-paused":
       return {
         desc: null,
-        warn: t("Paused after {n} failures. Turn it back on to try again.", { n: 3 }),
+        // The plugin is still switched on: the pause is Harbor standing it down. The row offers the
+        // retry, so this says what happened and leaves the action to the button beside it.
+        warn: t("Stopped after {n} failures.", { n: 3 }),
         lock: null,
       };
     case "error":

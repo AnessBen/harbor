@@ -1,5 +1,8 @@
-import type { Meta, MetaType } from "@/lib/cinemeta";
+import type { Meta } from "@/lib/cinemeta";
 import { PLUGIN_ADDON_PREFIX } from "../addon";
+import { capstanId } from "./detail";
+import { readListing } from "./listing";
+import { metaType, providerMetaType } from "./meta-type";
 import type { InstalledStreamPlugin, PluginCatalogue } from "../types";
 import type { BridgeProvider, BridgeSearchItem } from "./bridge";
 import { bridgeCatalogue, bridgeCataloguePage, bridgeProviders } from "./bridge";
@@ -9,34 +12,6 @@ const MAX_ROWS_PER_PROVIDER = 12;
 const MAX_ROWS_PER_PLUGIN = 24;
 const MAX_ITEMS = 60;
 const EXHAUSTED_MAX = 200;
-
-/** A provider says what it carries, not what each row carries, so the provider's answer is a row's
- * opening guess and any item that names its own kind overrides it. */
-const META_TYPES: Readonly<Record<string, MetaType>> = {
-  movie: "movie",
-  documentary: "movie",
-  nsfw: "movie",
-  tvseries: "series",
-  cartoon: "series",
-  asiandrama: "series",
-  anime: "anime",
-  animemovie: "anime",
-  ova: "anime",
-  live: "tv",
-};
-
-function metaType(raw: unknown, fallback: MetaType): MetaType {
-  if (typeof raw !== "string") return fallback;
-  return META_TYPES[raw.toLowerCase().replace(/[^a-z]/g, "")] ?? fallback;
-}
-
-function providerMetaType(types: string[]): MetaType {
-  for (const ty of types) {
-    const hit = metaType(ty, "other");
-    if (hit !== "other") return hit;
-  }
-  return "movie";
-}
 
 /** The catalogue's identity folded into one url shaped string, because that is the field every
  * browse surface already persists for a catalogue and reads back to fetch it again. */
@@ -62,7 +37,7 @@ export function isExtensionCatalogueBase(base: string): boolean {
 
 /** Providers are not filtered by their declared home page flag: the layer stands a row up for a
  * provider that answers the call without declaring one, and that row is its only entry point. */
-function providersOf(plugin: InstalledStreamPlugin, all: BridgeProvider[]): BridgeProvider[] {
+export function providersOf(plugin: InstalledStreamPlugin, all: BridgeProvider[]): BridgeProvider[] {
   const named = new Set(plugin.native?.providerIds ?? []);
   const extensionId = plugin.native?.extensionId ?? plugin.entryId;
   return all
@@ -112,16 +87,38 @@ function image(v: unknown): string | undefined {
   return /^https?:\/\//i.test(s) ? s : undefined;
 }
 
-function metaFor(cat: PluginCatalogue, item: BridgeSearchItem): Meta | null {
-  const name = text(item.name).slice(0, 300);
+export function metaFor(cat: PluginCatalogue, item: BridgeSearchItem): Meta | null {
+  const raw = text(item.name);
+  const read = readListing(raw);
+  const name = read.title.slice(0, 300);
   const url = text(item.url);
   if (!name || !url) return null;
   return {
-    id: `capstan:${encodeURIComponent(cat.providerId)}:${encodeURIComponent(url)}`,
+    id: capstanId(cat.providerId, url),
     type: metaType(item.type, cat.type),
     name,
     poster: image(item.posterUrl),
-    addonOrigin: { id: cat.pluginId, name: cat.pluginName, logo: cat.pluginIcon },
+    // What the provider wrote beyond the title, kept so a badge can be read from it later and so
+    // nothing the title cut off is lost.
+    listingExtras: read.rest
+      ? {
+          rest: read.rest,
+          languages: read.languages,
+          quality: read.quality,
+          resolutions: read.resolutions,
+          hdr: read.hdr,
+        }
+      : undefined,
+    listingYear: read.year ?? undefined,
+    pluginQuality: text(item.quality).slice(0, 40) || read.quality[0] || undefined,
+    // The row's source, kept so playing it asks this plugin rather than every plugin: the id
+    // alone names it, and the base carries which of its providers listed it.
+    addonOrigin: {
+      id: cat.pluginId,
+      name: cat.pluginName,
+      logo: cat.pluginIcon,
+      base: extensionCatalogueBase(cat.pluginId, cat.providerId),
+    },
   };
 }
 
@@ -133,6 +130,22 @@ function rowKey(cat: PluginCatalogue): string {
   return `${cat.providerId}|${cat.row}`;
 }
 
+/** A page of a row, briefly. The hero and the rail below it ask for the same first page, and a
+ * provider is a service someone runs: two interfaces reading it should cost it one request. */
+const PAGE_TTL_MS = 2 * 60_000;
+const PAGE_CACHE_MAX = 60;
+const pages = new Map<string, { at: number; metas: Meta[] }>();
+
+function rememberPage(key: string, metas: Meta[]): void {
+  pages.delete(key);
+  pages.set(key, { at: Date.now(), metas });
+  while (pages.size > PAGE_CACHE_MAX) {
+    const first = pages.keys().next().value;
+    if (first === undefined) break;
+    pages.delete(first);
+  }
+}
+
 export async function extensionCatalogueMetas(
   cat: PluginCatalogue,
   page: number,
@@ -141,6 +154,9 @@ export async function extensionCatalogueMetas(
   const key = rowKey(cat);
   const last = exhausted.get(key);
   if (last != null && asked > last) return [];
+  const cacheKey = `${key}|${asked}`;
+  const cached = pages.get(cacheKey);
+  if (cached && Date.now() - cached.at < PAGE_TTL_MS) return cached.metas;
   const found = await bridgeCataloguePage(cat.providerId, cat.row, asked);
   if (!found.hasNext) {
     if (exhausted.size >= EXHAUSTED_MAX) exhausted.clear();
@@ -156,5 +172,6 @@ export async function extensionCatalogueMetas(
     seen.add(meta.id);
     out.push(meta);
   }
+  rememberPage(cacheKey, out);
   return out;
 }

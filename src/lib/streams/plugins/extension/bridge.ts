@@ -31,6 +31,13 @@ export type BridgeEpisode = {
   name: string | null;
   season: number | null;
   episode: number | null;
+  /** The provider's own still for the episode, when it has one. */
+  posterUrl?: string | null;
+  description?: string | null;
+  /** How long the episode runs, in minutes. */
+  runtimeMinutes?: number | null;
+  /** Epoch, in whichever unit the provider used; see the reader in detail.ts. */
+  airDate?: number | null;
   track: string;
 };
 
@@ -38,9 +45,26 @@ export type BridgeMedia = {
   name: string;
   url: string;
   type: string;
+  posterUrl?: string | null;
+  backgroundPosterUrl?: string | null;
   year: number | null;
+  plot?: string | null;
+  tags?: string[];
+  /** How long the item runs, in minutes. */
+  durationMinutes?: number | null;
+  contentRating?: string | null;
+  /** The provider's own score out of ten. It is not an IMDb rating and is never shown as one. */
+  score?: number | null;
+  comingSoon?: boolean;
   playableData: string | null;
   episodes: BridgeEpisode[];
+  /** Other items the provider offers alongside this one, addressed by its own urls. */
+  recommendations?: BridgeSearchItem[];
+  actors?: string[];
+  trailerUrls?: string[];
+  /** The provider's own ids for the title, keyed `imdbId`, `tmdbId`, `kitsuId`, `malId`,
+   * `aniListId` and `simklId`. Declared only by providers that bother, so it is never assumed. */
+  syncIds?: Record<string, string>;
 };
 
 export type BridgeLink = {
@@ -129,8 +153,9 @@ export async function bridgeSearch(
   providerId: string,
   query: string,
   quick: boolean,
+  page = 1,
 ): Promise<BridgeResults<BridgeSearchItem>> {
-  const raw = await invoke("capstan_search", { providerId, query, quick });
+  const raw = await invoke("capstan_search", { providerId, query, quick, page });
   return { items: list<BridgeSearchItem>(raw, "results"), note: note(raw) };
 }
 

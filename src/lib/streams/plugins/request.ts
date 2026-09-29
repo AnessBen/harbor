@@ -1,6 +1,7 @@
 import { meta as cinemetaMeta } from "@/lib/cinemeta";
 import { tmdbIdFromImdb } from "@/lib/providers/tmdb/tmdb-imdb-resolve";
 import type { StreamRequest } from "../addons";
+import { parseCapstanId } from "./extension/detail";
 import { settingsValuesFor } from "./source";
 import type { InstalledStreamPlugin, StreamPluginRequest } from "./types";
 
@@ -140,6 +141,9 @@ export async function buildPluginRequest(
   const kind = type === "series" ? "tv" : "movie";
   const ctx = req.context;
   const imdbId = ctx?.imdbId ?? imdbFromIds(req.ids);
+  // A catalogue row addresses itself with the page it came from, so the plugin is asked to open
+  // that page rather than to find one by name.
+  const listedAt = parseCapstanId(pickedId);
   const fromId = episodeFromId(pickedId);
   let tmdb = tmdbFromIds(req.ids, kind);
   if (!tmdb && imdbId) tmdb = await resolveTmdb(imdbId, type, tmdbKey);
@@ -163,6 +167,8 @@ export async function buildPluginRequest(
     season: ctx?.season ?? fromId?.season ?? null,
     episode: ctx?.episode ?? fromId?.episode ?? null,
     absoluteEpisode: ctx?.absoluteEpisode ?? null,
+    url: listedAt?.url,
+    providerId: listedAt?.providerId,
     settings: settingsValuesFor(plugin),
   };
 }
