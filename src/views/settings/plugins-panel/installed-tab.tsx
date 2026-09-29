@@ -51,7 +51,7 @@ export function InstalledTab({ onAddRepository }: { onAddRepository: () => void 
         <ToggleRow
           label={t("Use plugins outside the Plugins page")}
           sub={t(
-            "Let Home, Discover, Catalogs, search and the Play button ask plugins alongside your addons. Off asks only the addons you have installed.",
+            "Let Android extensions, which stand up rows of their own, be asked from Home, Discover, Catalogs, search and the Play button too. A plugin with no rows of its own has nowhere else to be found, so it is asked either way.",
           )}
           value={settings.pluginsOutsideTab}
           onChange={(v) => update({ pluginsOutsideTab: v })}

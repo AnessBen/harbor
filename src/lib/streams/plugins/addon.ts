@@ -6,7 +6,7 @@ import { toStreams } from "./adapter";
 import { repoKey } from "./manifest";
 import { PRELUDE_VERSION } from "./provider-compat/prelude";
 import { buildPluginRequest } from "./request";
-import { runnableStreamPlugins } from "./runnable";
+import { providesOwnRows, runnableStreamPlugins } from "./runnable";
 import { recordSkip, runStreamPlugin } from "./runtime";
 import { settingsFingerprint } from "./source";
 import { installedStreamPluginsSync } from "./store";
@@ -95,9 +95,16 @@ function repoAddon(repoUrl: string, plugins: InstalledStreamPlugin[]): Addon {
   };
 }
 
-export function pluginAddons(opts: { enabled: boolean; groupByRepo: boolean }): Addon[] {
-  if (!opts.enabled) return [];
-  const plugins = runnableStreamPlugins();
+/** The stream addons a surface may ask.
+ *
+ * A plugin that stands up rows of its own is the one the setting holds back, and only while that
+ * setting is off: those rows are its own page, so asking it from anywhere else is opt-in. A plugin
+ * with no rows of its own has nothing to browse, and holding it back would leave it with no way to
+ * be reached at all, so it is asked either way. */
+export function pluginAddons(opts: { groupByRepo: boolean; includeExtensions: boolean }): Addon[] {
+  const plugins = runnableStreamPlugins().filter(
+    (p) => opts.includeExtensions || !providesOwnRows(p),
+  );
   if (!opts.groupByRepo) return plugins.map(pluginAddon);
   const byRepo = new Map<string, InstalledStreamPlugin[]>();
   for (const p of plugins) {

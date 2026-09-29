@@ -542,8 +542,9 @@ export type Settings = {
   dragAnywhere: boolean;
   resumeDetailScroll: boolean;
   pluginsEnabled: boolean;
-  /** Whether anything outside the Plugins page may ask a plugin: Home, Discover, Catalogs, search
-   * and the Play button. Off by default, so those surfaces ask only the installed addons. */
+  /** Whether anything outside the Plugins page may ask a plugin that stands up rows of its own.
+   * Off by default, so those extensions are asked on their own page only. A plugin with no rows of
+   * its own is asked either way, because nothing else would ever reach it. */
   pluginsOutsideTab: boolean;
   pluginsGroupByRepo: boolean;
   pluginsAutoCheck: boolean;

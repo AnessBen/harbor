@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { providesOwnRows } from "../src/lib/streams/plugins/runnable.ts";
 
 const SRC = "src";
 
@@ -69,18 +70,27 @@ test("the Plugins page is the only surface that always asks for plugin rows", ()
   }
 });
 
-test("the Play button asks plugins only while the switch is on", () => {
-  assert.match(
-    read("src/views/play-picker/use-addons.ts"),
-    /settings\.pluginsEnabled && settings\.pluginsOutsideTab/,
+test("only a plugin that stands up rows of its own is held back", () => {
+  // The extension has a page of its own, so asking it elsewhere is opt-in. A plugin with no rows
+  // of its own has nowhere else to be found, and holding it back would leave it dead.
+  assert.equal(providesOwnRows({ format: "android-extension" }), true);
+  assert.equal(providesOwnRows({ format: "provider-script" }), false);
+});
+
+test("the Play button asks a plugin with no rows of its own whatever the switch says", () => {
+  const picker = read("src/views/play-picker/use-addons.ts");
+  assert.match(picker, /if \(settings\.pluginsEnabled\) \{/);
+  assert.match(picker, /includeExtensions: settings\.pluginsOutsideTab/);
+  assert.ok(
+    !/pluginsEnabled && settings\.pluginsOutsideTab/.test(picker),
+    "the switch must not stand the row-less plugins down",
   );
 });
 
-test("background work needs the switch as well", () => {
-  assert.match(
-    read("src/lib/auto-download/context.ts"),
-    /pluginsEnabled && settings\.pluginsOutsideTab && settings\.pluginsBackground/,
-  );
+test("background work keeps the extensions back but never the row-less plugins", () => {
+  const context = read("src/lib/auto-download/context.ts");
+  assert.match(context, /settings\.pluginsEnabled && settings\.pluginsBackground/);
+  assert.match(context, /includeExtensions: settings\.pluginsOutsideTab/);
 });
 
 test("a plugin row pinned to Home goes with the others", () => {

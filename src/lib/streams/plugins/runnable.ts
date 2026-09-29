@@ -22,9 +22,16 @@ export function runnableStreamPlugins(): InstalledStreamPlugin[] {
   );
 }
 
+/** The plugins that stand up browsable rows of their own, and so the only ones the setting that
+ * keeps plugins out of the surfaces outside their own page holds back. A plugin with no rows of its
+ * own is asked either way: it has nothing to browse, so holding it back would only leave it dead. */
+export function providesOwnRows(p: Pick<InstalledStreamPlugin, "format">): boolean {
+  return p.format === "android-extension";
+}
+
 /** Of those, the ones that can stand up browsable rows of their own. Only a native extension
  * reaches the catalogue layer, and only where the bridge exists, which is the desktop app. */
 export function pluginCatalogueSources(): InstalledStreamPlugin[] {
   if (!extensionsSupported()) return [];
-  return runnableStreamPlugins().filter((p) => p.format === "android-extension");
+  return runnableStreamPlugins().filter(providesOwnRows);
 }

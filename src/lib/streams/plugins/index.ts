@@ -56,7 +56,7 @@ export {
   runPluginAddon,
   setStreamPluginConfig,
 } from "./addon";
-export { pluginCatalogueSources, runnableStreamPlugins } from "./runnable";
+export { pluginCatalogueSources, providesOwnRows, runnableStreamPlugins } from "./runnable";
 export { splitRepoLinks } from "./manifest";
 export {
   extensionCataloguePage,
