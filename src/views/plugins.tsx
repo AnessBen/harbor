@@ -128,7 +128,13 @@ export function Plugins({ active = true }: { active?: boolean }) {
     // Typing must not start a search per keystroke, and a slower search must not land after a
     // faster one and answer for what was typed two words ago.
     const timer = setTimeout(() => {
-      void searchPlugins(wanted)
+      // Each plugin's answer is drawn as it lands rather than all of them at the end, so the tab
+      // shows the first result in about a second instead of waiting for the slowest plugin — which
+      // has a twenty-second budget and is the floor for the whole search. The generation is checked
+      // on every preview too, or a slow search's early answers would overwrite a newer search's.
+      void searchPlugins(wanted, (partial) => {
+        if (gen === searchGen.current) setResults(partial);
+      })
         .then((found) => {
           if (gen === searchGen.current) setResults(found);
         })

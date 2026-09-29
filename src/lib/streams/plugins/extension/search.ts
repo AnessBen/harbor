@@ -135,8 +135,15 @@ export function searchGroups(
 /** What the installed plugins have for a title, each plugin's answer kept apart.
  *
  * The searches run together because a search is one round trip per provider, not one per plugin,
- * and the bridge takes eight calls at once. A plugin that fails costs only its own group. */
-export async function searchPlugins(query: string): Promise<PluginSearchGroup[]> {
+ * and the bridge takes eight calls at once. A plugin that fails costs only its own group.
+ *
+ * `onPartial` is handed the answers as each plugin finishes, in plugin order, so a surface can draw
+ * what has arrived instead of waiting for the slowest of them. Every plugin is still awaited before
+ * this resolves: the partials are a preview, and the return value is the answer. */
+export async function searchPlugins(
+  query: string,
+  onPartial?: (groups: PluginSearchGroup[]) => void,
+): Promise<PluginSearchGroup[]> {
   const wanted = query.trim();
   if (!wanted) return [];
   const plugins = pluginCatalogueSources();
@@ -144,20 +151,22 @@ export async function searchPlugins(query: string): Promise<PluginSearchGroup[]>
   await warmBridge();
   const providers = await bridgeProviders().catch(() => [] as BridgeProvider[]);
   if (!providers.length) return [];
-  const settled = await Promise.allSettled(
-    plugins.map((plugin) =>
-      gated(plugin, `"${wanted}"`, budget(plugin, SEARCH_TIMEOUT_MS), () =>
+
+  const found = new Map<number, PluginSearchGroup>();
+  const inOrder = () => plugins.flatMap((_, i) => (found.has(i) ? [found.get(i)!] : []));
+
+  await Promise.allSettled(
+    plugins.map(async (plugin, i) => {
+      // A plugin that fails, or runs out of its budget, costs its own group and nobody else's.
+      const groups = await gated(plugin, `"${wanted}"`, budget(plugin, SEARCH_TIMEOUT_MS), () =>
         searchOne(plugin, providersOf(plugin, providers), wanted),
-      ),
-    ),
+      ).catch(() => null);
+      const group = groups ? searchGroups(plugin, groups, MAX_PER_PLUGIN) : null;
+      if (group && !found.has(i)) found.set(i, group);
+      // Nothing is sent until something is found: an empty preview would read as "no plugin has
+      // this" while the rest are still being asked, and the answer to that is the return value.
+      if (onPartial && found.size > 0) onPartial(inOrder());
+    }),
   );
-  return plugins.flatMap((plugin, i) => {
-    const result = settled[i];
-    const found = searchGroups(
-      plugin,
-      result.status === "fulfilled" ? result.value : null,
-      MAX_PER_PLUGIN,
-    );
-    return found ? [found] : [];
-  });
+  return inOrder();
 }
