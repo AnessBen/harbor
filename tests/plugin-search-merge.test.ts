@@ -20,19 +20,27 @@ test("the same item reached through two providers is one result", () => {
 });
 
 test("each plugin keeps its own results, and one title found twice stays twice", () => {
-  const plugins = [
+  // Each plugin's answer is read on its own, so one plugin cannot see another's hits.
+  const uhd = searchGroups(
     { id: "p1", name: "UHDmoviesProvider", icon: "u.png" },
+    [{ providerId: "uhdmovies", providerName: "UHDmovies", metas: [hit("same"), hit("only-uhd")] }],
+    10,
+  );
+  const mod = searchGroups(
     { id: "p2", name: "Moviesmod" },
-    { id: "p3", name: "Perverzija" },
-  ];
-  const groups = searchGroups(plugins, [[hit("same"), hit("only-uhd")], [hit("same")], null], 10);
+    [{ providerId: "moviesmod", providerName: "Moviesmod", metas: [hit("same")] }],
+    10,
+  );
+  const failed = searchGroups({ id: "p3", name: "Perverzija" }, null, 10);
   // p3 failed, so it leaves no rail behind.
+  const groups = [uhd, mod].filter((g) => g !== null);
   assert.deepEqual(
     groups.map((g) => g.pluginId),
     ["p1", "p2"],
   );
   assert.equal(groups[0].pluginName, "UHDmoviesProvider");
   assert.equal(groups[0].pluginIcon, "u.png");
+  assert.equal(failed, null);
   // The same title found by two plugins stays two groups: they are different sources of it.
   assert.deepEqual(
     groups.map((g) => g.metas.map((m) => m.id)),
@@ -40,18 +48,122 @@ test("each plugin keeps its own results, and one title found twice stays twice",
   );
 });
 
+test("a plugin's providers are kept as their own shelves", () => {
+  // VegaMovies is a plugin of two providers, and a title found on both is two listings with two
+  // links. One may play where the other does not, so they are shown as two rather than folded.
+  const plugin = { id: "vegamovies", name: "VegaMovies", icon: "v.png" };
+  const group = searchGroups(
+    plugin,
+    [
+      { providerId: "vegamovies", providerName: "VegaMovies", metas: [hit("a"), hit("b")] },
+      { providerId: "rogmovies", providerName: "Rogmovies", metas: [hit("c")] },
+    ],
+    100,
+  );
+  assert.ok(group, "the plugin found something");
+  assert.deepEqual(
+    group.providers.map((p) => [p.providerName, p.metas.map((m) => m.id)]),
+    [
+      ["VegaMovies", ["a", "b"]],
+      ["Rogmovies", ["c"]],
+    ],
+    "one shelf per provider, in the order they were asked in",
+  );
+  assert.deepEqual(group.metas.map((m) => m.id), ["a", "b", "c"], "and every hit kept");
+});
+
+test("one title on two providers is two results, because the links differ", () => {
+  // The ids say which provider a listing came from, so nothing folds the two together.
+  const plugin = { id: "vegamovies", name: "VegaMovies" };
+  const group = searchGroups(
+    plugin,
+    [
+      { providerId: "vegamovies", providerName: "VegaMovies", metas: [hit("vegamovies:1")] },
+      { providerId: "rogmovies", providerName: "Rogmovies", metas: [hit("rogmovies:1")] },
+    ],
+    100,
+  );
+  assert.deepEqual(group?.metas.map((m) => m.id), ["vegamovies:1", "rogmovies:1"]);
+});
+
+test("a provider that found nothing leaves no empty shelf", () => {
+  const plugin = { id: "vegamovies", name: "VegaMovies" };
+  const group = searchGroups(
+    plugin,
+    [
+      { providerId: "rogmovies", providerName: "Rogmovies", metas: [] },
+      { providerId: "vegamovies", providerName: "VegaMovies", metas: [hit("a")] },
+    ],
+    100,
+  );
+  assert.deepEqual(group?.providers.map((p) => p.providerName), ["VegaMovies"]);
+});
+
+test("a plugin whose every provider found nothing gets no group at all", () => {
+  const plugin = { id: "vegamovies", name: "VegaMovies" };
+  assert.equal(
+    searchGroups(plugin, [{ providerId: "vegamovies", providerName: "VegaMovies", metas: [] }], 10),
+    null,
+  );
+  assert.equal(searchGroups(plugin, [], 10), null);
+  assert.equal(searchGroups(plugin, null, 10), null);
+});
+
+test("the cap is across a plugin's providers, not one per provider", () => {
+  // Otherwise a plugin of four providers could fill the page by answering from all four.
+  const plugin = { id: "vegamovies", name: "VegaMovies" };
+  const group = searchGroups(
+    plugin,
+    [
+      { providerId: "vegamovies", providerName: "VegaMovies", metas: [hit("a"), hit("b")] },
+      { providerId: "rogmovies", providerName: "Rogmovies", metas: [hit("c"), hit("d")] },
+    ],
+    3,
+  );
+  assert.equal(group?.metas.length, 3);
+  assert.deepEqual(group?.metas.map((m) => m.id), ["a", "b", "c"]);
+  assert.deepEqual(
+    group?.providers.map((p) => p.metas.length),
+    [2, 1],
+    "the shelf it ran into is the one that stops short",
+  );
+});
+
 test("a plugin that found nothing gets no group", () => {
-  const plugins = [{ id: "p1", name: "One" }, { id: "p2", name: "Two" }];
-  assert.deepEqual(searchGroups(plugins, [[], [hit("b")]], 10).map((g) => g.pluginId), ["p2"]);
-  assert.deepEqual(searchGroups([], [], 10), []);
+  assert.equal(
+    searchGroups({ id: "p1", name: "One" }, [{ providerId: "x", providerName: "X", metas: [] }], 10),
+    null,
+  );
+  const two = searchGroups(
+    { id: "p2", name: "Two" },
+    [{ providerId: "y", providerName: "Y", metas: [hit("b")] }],
+    10,
+  );
+  assert.deepEqual(two?.metas.map((m) => m.id), ["b"]);
 });
 
 test("a plugin's own results are still de-duplicated and capped", () => {
-  const plugins = [{ id: "p1", name: "One" }];
   const many = Array.from({ length: 5 }, (_, i) => hit(`m${i}`));
-  const groups = searchGroups(plugins, [[hit("m0"), hit("m0"), ...many]], 3);
+  const group = searchGroups(
+    { id: "p1", name: "One" },
+    [{ providerId: "one", providerName: "One", metas: [hit("m0"), hit("m0"), ...many] }],
+    3,
+  );
   assert.deepEqual(
-    groups[0].metas.map((m) => m.id),
+    group?.metas.map((m) => m.id),
+    ["m0", "m1", "m2"],
+  );
+});
+
+test("a plugin's own results are still de-duplicated and capped", () => {
+  const many = Array.from({ length: 5 }, (_, i) => hit(`m${i}`));
+  const group = searchGroups(
+    { id: "p1", name: "One" },
+    [{ providerId: "one", providerName: "One", metas: [hit("m0"), hit("m0"), ...many] }],
+    3,
+  );
+  assert.deepEqual(
+    group?.metas.map((m) => m.id),
     ["m0", "m1", "m2"],
   );
 });

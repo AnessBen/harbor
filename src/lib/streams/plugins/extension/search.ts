@@ -11,13 +11,15 @@ const SEARCH_TIMEOUT_MS = 20_000;
 const MAX_PER_PROVIDER = 30;
 const MAX_PER_PLUGIN = 60;
 
-/** One plugin's providers, asked for a title. Providers answer in parallel; the plugin's own
- * deadline covers the lot, because it is the plugin's budget rather than any one provider's. */
+/** One plugin's providers asked in parallel; each provider's own answers kept apart.
+ *
+ * Providers answer in parallel and the plugin's own deadline covers the lot, because it is the
+ * plugin's budget rather than any one provider's. A provider that fails costs only its own shelf. */
 async function searchOne(
   plugin: InstalledStreamPlugin,
   providers: BridgeProvider[],
   query: string,
-): Promise<Meta[]> {
+): Promise<ProviderSearchGroup[]> {
   const settled = await Promise.allSettled(
     providers.map(async (provider) => {
       const cat: PluginCatalogue = {
@@ -32,36 +34,50 @@ async function searchOne(
       // A provider that declares a quick search is asked with it, which is what that flag is for;
       // one that does not gets the ordinary search rather than a quick search it never wrote.
       const found = await bridgeSearch(provider.id, query, provider.hasQuickSearch);
-      return { cat, items: found.items };
+      // Sorted before anything is capped, so the cap keeps the answers that were asked for rather
+      // than whichever the provider happened to list first.
+      const ranked = found.items
+        .slice(0, MAX_PER_PROVIDER)
+        .map((item) => metaFor(cat, item))
+        .filter((meta): meta is Meta => meta !== null)
+        .map((meta) => ({ meta, score: relevanceScore(meta.name, query) }))
+        .sort((a, b) => b.score - a.score)
+        .map((entry) => entry.meta);
+      return { providerId: provider.id, providerName: provider.name, metas: ranked };
     }),
   );
-  const out: Meta[] = [];
-  for (const result of settled) {
-    if (result.status !== "fulfilled") continue;
-    for (const item of result.value.items.slice(0, MAX_PER_PROVIDER)) {
-      const made = metaFor(result.value.cat, item);
-      if (made) out.push(made);
-    }
-  }
-  // Sorted before anything is capped, so the cap keeps the answers that were asked for rather than
-  // whichever the provider happened to list first.
-  return out
-    .map((meta) => ({ meta, score: relevanceScore(meta.name, query) }))
-    .sort((a, b) => b.score - a.score)
-    .map((entry) => entry.meta);
+  return settled
+    .filter(
+      (result): result is PromiseFulfilledResult<ProviderSearchGroup> => result.status === "fulfilled",
+    )
+    .map((result) => result.value);
 }
 
-/** One plugin's answer, kept apart from every other plugin's. A provider is a source of a title,
- * not a source of the plugin's identity, so what one plugin found is read as that plugin's. */
+/** One provider's answer, which is one shelf. A plugin is a bundle of providers, and a provider is
+ * one place a title can be found: the same film on two of them is two listings with two links, and
+ * one may play while the other does not, so they are shown as two rather than folded into one. */
+export type ProviderSearchGroup = {
+  providerId: string;
+  providerName: string;
+  metas: Meta[];
+};
+
+/** One plugin's answer, kept apart from every other plugin's, and inside it one group per provider.
+ * A provider is a source of a title, not a source of the plugin's identity, so what one plugin found
+ * is read as that plugin's; a provider is where within that plugin it was found. */
 export type PluginSearchGroup = {
   pluginId: string;
   pluginName: string;
   pluginIcon?: string;
+  providers: ProviderSearchGroup[];
+  /** Every provider's hits, for counting rather than for drawing. */
   metas: Meta[];
 };
 
-/** Every plugin's hits as one list, with an item reached through more than one provider appearing
- * once: the same poster twice on a rail is a rail the reader has to read twice. */
+/** Every plugin's hits as one list, with the same listing from the same provider appearing once.
+ *
+ * A title listed by two providers of one plugin is two listings, not a duplicate: two links, one of
+ * which may work. Only the same link twice is folded, which is what an id names. */
 export function mergeHits(groups: readonly Meta[][], max: number): Meta[] {
   const out: Meta[] = [];
   const seen = new Set<string>();
@@ -76,30 +92,44 @@ export function mergeHits(groups: readonly Meta[][], max: number): Meta[] {
   return out;
 }
 
-/** One group per plugin that found something, in the order the plugins answered.
+/** One plugin's answer, with each of its providers kept as its own group.
  *
- * The same title found by two plugins stays two groups: they are different sources of it, and
- * folding them together would hide which one has it. A plugin that found nothing gets no group,
- * and a plugin that failed gets none either, so neither leaves an empty rail behind. */
+ * The same title found by two plugins stays two plugins, and within one plugin it stays one group
+ * per provider: a provider is one place to find it, with its own link. A provider that found nothing
+ * gets no group, and a plugin that found nothing gets none either, so neither leaves an empty shelf
+ * behind. The order is the order the providers were asked in, which is the order they are listed in
+ * everywhere else, so a title does not move about between visits.
+ *
+ * A group is capped across all of a plugin's providers rather than per provider, so one plugin
+ * cannot fill the page by answering from four of them. */
 export function searchGroups(
-  plugins: readonly { id: string; name: string; icon?: string }[],
-  hits: readonly (Meta[] | null)[],
+  plugin: { id: string; name: string; icon?: string },
+  found: readonly ProviderSearchGroup[] | null,
   maxPerPlugin: number,
-): PluginSearchGroup[] {
-  const out: PluginSearchGroup[] = [];
-  plugins.forEach((plugin, i) => {
-    const found = hits[i];
-    if (!found) return;
-    const metas = mergeHits([found], maxPerPlugin);
-    if (!metas.length) return;
-    out.push({
-      pluginId: plugin.id,
-      pluginName: plugin.name,
-      pluginIcon: plugin.icon,
-      metas,
-    });
-  });
-  return out;
+): PluginSearchGroup | null {
+  if (!found?.length) return null;
+  const kept: ProviderSearchGroup[] = [];
+  const seen = new Set<string>();
+  for (const group of found) {
+    const metas: Meta[] = [];
+    for (const meta of group.metas) {
+      if (seen.has(meta.id)) continue;
+      seen.add(meta.id);
+      metas.push(meta);
+      if (seen.size >= maxPerPlugin) break;
+    }
+    if (metas.length) kept.push({ ...group, metas });
+    if (seen.size >= maxPerPlugin) break;
+  }
+  const metas = kept.flatMap((group) => group.metas);
+  if (!metas.length) return null;
+  return {
+    pluginId: plugin.id,
+    pluginName: plugin.name,
+    pluginIcon: plugin.icon,
+    providers: kept,
+    metas,
+  };
 }
 
 /** What the installed plugins have for a title, each plugin's answer kept apart.
@@ -121,9 +151,13 @@ export async function searchPlugins(query: string): Promise<PluginSearchGroup[]>
       ),
     ),
   );
-  return searchGroups(
-    plugins,
-    settled.map((result) => (result.status === "fulfilled" ? result.value : null)),
-    MAX_PER_PLUGIN,
-  );
+  return plugins.flatMap((plugin, i) => {
+    const result = settled[i];
+    const found = searchGroups(
+      plugin,
+      result.status === "fulfilled" ? result.value : null,
+      MAX_PER_PLUGIN,
+    );
+    return found ? [found] : [];
+  });
 }

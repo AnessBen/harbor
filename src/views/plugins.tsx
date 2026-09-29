@@ -204,15 +204,41 @@ export function Plugins({ active = true }: { active?: boolean }) {
             </p>
           ) : (
             results.map((group) => (
-              <FeedShelf
-                key={group.pluginId}
-                shelf={{
-                  id: `plugin-search:${group.pluginId}`,
-                  title: group.pluginName,
-                  kicker: t("{n} results", { n: group.metas.length }),
-                }}
-                items={group.metas}
-              />
+              <section key={group.pluginId} className="flex flex-col gap-6">
+                <div className="flex items-center gap-2.5">
+                  {group.pluginIcon ? (
+                    <img
+                      src={group.pluginIcon}
+                      alt=""
+                      draggable={false}
+                      className="h-6 w-6 rounded-sm object-contain"
+                    />
+                  ) : (
+                    <span className="flex h-6 w-6 items-center justify-center rounded-sm bg-elevated text-[11px] font-bold text-ink-subtle ring-1 ring-edge-soft">
+                      {group.pluginName.charAt(0).toUpperCase()}
+                    </span>
+                  )}
+                  <h2 className="text-[15.5px] font-semibold tracking-tight text-ink">
+                    {group.pluginName}
+                  </h2>
+                  <span className="text-[12px] text-ink-subtle">
+                    {t("{n} results", { n: group.metas.length })}
+                  </span>
+                </div>
+                <div className="flex flex-col gap-7 ps-1">
+                  {group.providers.map((provider) => (
+                    <FeedShelf
+                      key={provider.providerId}
+                      shelf={{
+                        id: `plugin-search:${group.pluginId}:${provider.providerId}`,
+                        title: provider.providerName,
+                        kicker: t("{n} results", { n: provider.metas.length }),
+                      }}
+                      items={provider.metas}
+                    />
+                  ))}
+                </div>
+              </section>
             ))
           )
         ) : loading ? (
