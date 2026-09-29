@@ -38,7 +38,7 @@ import {
 } from "@/lib/cinemeta";
 import { addonBasesForOrigin, fetchAddonMeta, gatherCatalogAddons } from "@/lib/addons";
 import { useCapstanDetail } from "@/lib/streams/plugins/extension/detail-hook";
-import { titlesAgree } from "@/lib/streams/plugins/extension/detail";
+import { isCapstanId, titlesAgree } from "@/lib/streams/plugins/extension/detail";
 import { resolveMeta } from "@/lib/meta-resource";
 import { useMdblistScores } from "@/lib/providers/mdblist";
 import { lastPlayedEpisode, readResumeEntry, saveResumeMs } from "@/lib/resume";
@@ -739,7 +739,17 @@ export function DetailView({
 
   useEffect(() => {
     if (meta.type !== "series") return;
+    // A plugin's own item is answered by the provider, not by a metadata service, and its id names
+    // no title one of them could resolve: `capstan:provider:url` is Cinemeta's 404, and a 404 here
+    // is not harmless. It lands, sets state, and re-runs the effects below it, and each re-run
+    // aborts whatever stream query was in flight — so a plugin that had streams to give appeared to
+    // have none twice before one query happened to finish inside a cycle.
+    //
+    // The origin check above covers an addon but not a plugin: a plugin's origin carries the base it
+    // was installed from rather than a manifest, so `addonOrigin.base` is set for an addon and this
+    // is what is left. `resolveMeta` has nothing to resolve for these ids either way.
     if (meta.addonOrigin?.base) return;
+    if (isCapstanId(meta.id)) return;
     if (/^(tt\d|tmdb:|kitsu:|mal:|anilist:|anidb:|simkl:)/.test(meta.id)) return;
     if (cinemetaFull?.videos && cinemetaFull.videos.length > 0) return;
     let cancelled = false;
