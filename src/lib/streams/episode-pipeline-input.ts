@@ -82,7 +82,9 @@ export function buildEpisodePipelineInput(params: {
   // off, because the switch keeps every plugin addon out of the list above.
   let effectiveAddons = addons;
   let pinnedId: string | undefined;
-  if (params.resolvePinnedPlugin !== false) {
+  // The master switch wins: with every plugin paused there is nothing to resolve an item with,
+  // however it names its source.
+  if (params.resolvePinnedPlugin !== false && settings.pluginsEnabled) {
     pinnedId = originBases
       .map((base) => pluginIdFromCatalogueBase(base))
       .find((id) => id != null);
