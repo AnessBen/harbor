@@ -1138,7 +1138,7 @@ SELECT DISTINCT ?matched ?item ?itemDescription WHERE {
   VALUES ?kind { wd:Q571 wd:Q8261 wd:Q277759 wd:Q1667921 wd:Q7725634 wd:Q47461344 }
   ?item (rdfs:label|skos:altLabel) ?matched.
   ?item wdt:P31 ?kind.
-  SERVICE wikibase:label { bd:serviceParam wikibase:language "${getUiLanguage()},en,ar". }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "${getUiLanguage()},en,ar,mul". }
 }`;
       const url = new URL("https://query.wikidata.org/sparql");
       url.searchParams.set("query", query);
@@ -1307,7 +1307,7 @@ SELECT DISTINCT ?seed ?item ?series ?seriesLabel ?ordinal ?kind WHERE {
     BIND(?seed AS ?series)
     BIND("sequence" AS ?kind)
   }
-  SERVICE wikibase:label { bd:serviceParam wikibase:language "en,ar". }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "en,ar,mul". }
 }`;
   const url = new URL("https://query.wikidata.org/sparql");
   url.searchParams.set("query", query);
@@ -1629,7 +1629,7 @@ SELECT DISTINCT ?item ?series ?seriesLabel ?ordinal WHERE {
   wd:${ebook.wikidataId} wdt:P179 ?series.
   ?item wdt:P179 ?series.
   OPTIONAL { ?item p:P179 ?statement. ?statement ps:P179 ?series. ?statement pq:P1545 ?ordinal. }
-  SERVICE wikibase:label { bd:serviceParam wikibase:language "${getUiLanguage()},en,ar". }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "${getUiLanguage()},en,ar,mul". }
 }`;
     const url = new URL("https://query.wikidata.org/sparql");
     url.searchParams.set("query", query);

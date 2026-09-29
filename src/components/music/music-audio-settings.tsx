@@ -1,8 +1,18 @@
 import { useEffect, useRef, useState } from "react";
+import { MusicServiceLogo } from "./music-service-logo";
+import { musicSourceName } from "@/lib/music/recovery";
+import {
+  PLAYABLE_MUSIC_SOURCES,
+  musicHealthSnapshot,
+  preferredMusicSource,
+  setPreferredMusicSource,
+} from "@/lib/music/sources";
 import { ArrowLeft, Disc3, Plus, RefreshCw, X } from "@/components/icons/music-icons";
 import { UiIcon } from "@/components/ui-icon";
 import { useSettings } from "@/lib/settings";
+import { useMusicAppearance } from "@/lib/music/appearance";
 import { openDjDeck } from "@/lib/music/dj-deck";
+import djDeckPreview from "@/assets/settings-preview/dj-deck.png";
 import { useT } from "@/lib/i18n";
 import {
   loadMusicAudioDevices,
@@ -36,6 +46,49 @@ import { useMusicAudioMeter } from "@/lib/music/audio-meter";
 import { MusicSignalDetails } from "./music-signal-details";
 import "./music-audio-settings.css";
 
+function PreferredSourceRow() {
+  const t = useT();
+  const [value, setValue] = useState(preferredMusicSource);
+  const [available, setAvailable] = useState<string[]>([]);
+  useEffect(() => {
+    let alive = true;
+    void musicHealthSnapshot()
+      .then((rows) => {
+        if (!alive) return;
+        setAvailable(rows.filter((row) => row.health !== "offline").map((row) => row.id));
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+  const ids = PLAYABLE_MUSIC_SOURCES.filter(
+    (id) => available.length === 0 || available.includes(id),
+  );
+  return (
+    <section className="music-audio-section">
+      <div className="music-audio-row">
+        <label>{t("music.audio.preferredSource")}</label>
+      </div>
+      <Dropdown
+        value={value}
+        ariaLabel={t("music.audio.preferredSource")}
+        className="music-audio-output"
+        onChange={(next) => {
+          setValue(next);
+          setPreferredMusicSource(next);
+        }}
+        options={ids.map((id) => ({
+          value: id,
+          label: musicSourceName({ connectorId: id } as Parameters<typeof musicSourceName>[0]),
+          left: <MusicServiceLogo source={id} size={18} />,
+        }))}
+      />
+      <p>{t("music.audio.preferredSourceHint")}</p>
+    </section>
+  );
+}
+
 export function MusicAudioSettings({
   onBack,
   connectorId,
@@ -50,6 +103,10 @@ export function MusicAudioSettings({
   }, []);
   const state = useMusicAudioSettings();
   const player = useMusicPlayer();
+  const appearance = useMusicAppearance();
+  const dockCompanion =
+    Boolean(player.current) &&
+    (appearance.mikuVisualizer || (appearance.gifVisualizer && Boolean(appearance.gifId)));
   const [showSignal, setShowSignal] = useState(false);
   const meter = useMusicAudioMeter(player.current, showSignal);
   const [draft, setDraft] = useState(state.settings);
@@ -128,6 +185,7 @@ export function MusicAudioSettings({
         </details>
       )}
       <fieldset disabled={!state.ready || state.saving}>
+        <PreferredSourceRow />
         <ListeningProfiles draft={draft} update={update} />
         <section className="music-audio-section">
           <div className="music-audio-row">
@@ -179,19 +237,29 @@ export function MusicAudioSettings({
         </section>
         <SpeedSection draft={draft} live={live} />
         <MusicBroadcast />
-        <section className="music-audio-section">
-          <div className="music-audio-row">
-            <span className="music-audio-title">{t("dj.title")}</span>
+        <section className="music-audio-section music-deck-preview">
+          <div className="music-deck-preview-copy">
+            <div className="music-audio-row">
+              <span className="music-audio-title">{t("dj.title")}</span>
+            </div>
+            <p>{t("dj.blurb")}</p>
+            <button
+              type="button"
+              className="music-speed-chip-add"
+              onClick={() => void openDjDeck().catch(() => {})}
+            >
+              <Disc3 size={14} />
+              {t("dj.open")}
+            </button>
           </div>
-          <p>{t("dj.blurb")}</p>
-          <button
-            type="button"
-            className="music-speed-chip-add"
-            onClick={() => void openDjDeck().catch(() => {})}
-          >
-            <Disc3 size={14} />
-            {t("dj.open")}
-          </button>
+          <img
+            className="music-deck-preview-image"
+            src={djDeckPreview}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            draggable={false}
+          />
         </section>
         <section className="music-audio-section">
           <div className="music-audio-row">
@@ -391,7 +459,7 @@ export function MusicAudioSettings({
         </section>
         <ListeningControls draft={draft} update={update} />
         <MusicDockParts />
-        <footer data-dirty={dirty || undefined}>
+        <footer data-dirty={dirty || undefined} data-companion={dockCompanion || undefined}>
           <button
             type="button"
             className="music-audio-apply"

@@ -27,7 +27,11 @@ import { matchPersonForQuery, PersonTopMatch } from "./person-top-match";
 import { PeopleRow } from "./people-row";
 import { collectionForTitle, useCollectionHits } from "./use-collection-hits";
 import { MetaList } from "./meta-list";
-import { SearchFilterBar, type SearchFilterKey } from "./search-filter-bar";
+import {
+  SearchFilterBar,
+  type SearchFilter,
+  type SearchFilterKey,
+} from "./search-filter-bar";
 import { requestMusicSearch } from "@/lib/music/navigation";
 import { AddonHits } from "./addon-hits";
 import { AddonResults } from "./addon-results";
@@ -64,7 +68,7 @@ export function SearchOverlay() {
   const [aiActive, setAiActive] = useState(false);
   const [aiMode, setAiMode] = useState(false);
   const [aiRunSignal, setAiRunSignal] = useState(0);
-  const [mediaFilter, setMediaFilter] = useState<SearchFilterKey>("all");
+  const [mediaFilter, setMediaFilter] = useState<SearchFilter>("all");
   useEffect(() => {
     setMediaFilter("all");
   }, [query]);
@@ -241,7 +245,18 @@ export function SearchOverlay() {
         sports: currentResults.sports.length,
       }
     : {};
-  const showKind = (key: SearchFilterKey) => mediaFilter === "all" || mediaFilter === key;
+  const addonFilter = mediaFilter.startsWith("addon:") ? mediaFilter.slice(6) : null;
+  const showKind = (key: SearchFilterKey) =>
+    !addonFilter && (mediaFilter === "all" || mediaFilter === key);
+  const addonPills = (currentResults?.addonGroups ?? []).map((group) => ({
+    id: group.id,
+    name: group.name,
+    logo: group.logo,
+    count: group.metas.length,
+  }));
+  const shownAddonGroups = (currentResults?.addonGroups ?? []).filter(
+    (group) => !addonFilter || group.id === addonFilter,
+  );
   const personMatch = matchPersonForQuery(currentResults?.people, trimmed);
   const topMatchIsAnime =
     !personMatch &&
@@ -466,6 +481,7 @@ export function SearchOverlay() {
                     <div className="harbor-search-section flex flex-col gap-6 pb-2">
                       <SearchFilterBar
                         counts={filterCounts}
+                        addons={addonPills}
                         value={mediaFilter}
                         onChange={setMediaFilter}
                       />
@@ -561,7 +577,7 @@ export function SearchOverlay() {
                       <EBookRow items={showKind("ebooks") ? currentResults.ebooks : []} onClose={commit} />
                       <SportsRow items={showKind("sports") ? currentResults.sports : []} onClose={commit} />
                       <CharacterGroup items={currentResults.characters} onClose={commit} />
-                      <AddonResults groups={currentResults.addonGroups} onClose={commit} />
+                      <AddonResults groups={shownAddonGroups} onClose={commit} />
                     </div>
                   )}
 

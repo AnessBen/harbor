@@ -6,6 +6,7 @@ import { MusicSectionHead } from "@/components/music/music-track-grid";
 import { Row } from "@/components/row";
 import { activeProfileId } from "@/lib/active-profile-id";
 import { readListeningAffinity } from "@/lib/music/listening-affinity";
+import { cachedTastePool, loadTastePool } from "@/lib/music/taste-pool";
 import { loadDailyMixTracks, planDailyMixes, type DailyMix } from "@/lib/music/daily-mixes";
 import { requestMusicExplore } from "@/lib/music/navigation";
 import { playMusic } from "@/lib/music/player";
@@ -120,7 +121,15 @@ function MadeForYouRow({ mixes, t, title }: { mixes: DailyMix[]; t: Translate; t
 
 export function madeForYouBand(ctx: MusicBandContext): MusicBand | null {
   const affinity = readListeningAffinity(activeProfileId());
-  const mixes = planDailyMixes(ctx.player.recents, ctx.player.likedTracks, affinity);
+  const pool = cachedTastePool();
+  void loadTastePool().catch(() => {});
+  const mixes = planDailyMixes(
+    ctx.player.recents,
+    ctx.player.likedTracks,
+    affinity,
+    Date.now(),
+    { extra: pool.tracks, playlists: pool.playlists },
+  );
   if (!mixes.length) return null;
   return {
     key: "madeForYou",

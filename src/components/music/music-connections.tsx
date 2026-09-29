@@ -53,13 +53,17 @@ export function requestMusicConnection(focusId: string) {
   window.dispatchEvent(new Event("harbor:music-connect"));
 }
 
-export function MusicConnectionsProvider({ children }: { children: ReactNode }) {
+export function MusicConnectionsProvider({ children, active = true }: { children: ReactNode; active?: boolean }) {
   const [request, setRequest] = useState<ConnectionsRequest | null>(null);
   const [connections, setConnections] = useState<MusicConnection[] | null>(null);
   const [error, setError] = useState("");
   const closeConnections = useCallback(() => setRequest(null), []);
   const generation = useRef(0);
   useEffect(() => {
+    if (!active) {
+      setRequest(null);
+      return;
+    }
     const consume = () => {
       if (pendingConnection) {
         setRequest({ focusId: pendingConnection });
@@ -69,7 +73,7 @@ export function MusicConnectionsProvider({ children }: { children: ReactNode }) 
     consume();
     window.addEventListener("harbor:music-connect", consume);
     return () => window.removeEventListener("harbor:music-connect", consume);
-  }, []);
+  }, [active]);
 
   const reload = useCallback(() => {
     const run = ++generation.current;
@@ -86,11 +90,12 @@ export function MusicConnectionsProvider({ children }: { children: ReactNode }) 
   }, []);
 
   useEffect(() => {
+    if (!active) return;
     reload();
     return () => {
       generation.current += 1;
     };
-  }, [reload]);
+  }, [active, reload]);
 
   const apply = useCallback((next: MusicConnection) => {
     setConnections((current) =>
@@ -100,6 +105,7 @@ export function MusicConnectionsProvider({ children }: { children: ReactNode }) 
 
   const openConnections = useCallback(
     (focusId?: string) => {
+      if (!active) return;
       const trigger = document.activeElement;
       setRequest({
         focusId,
@@ -108,7 +114,7 @@ export function MusicConnectionsProvider({ children }: { children: ReactNode }) 
       });
       reload();
     },
-    [reload],
+    [active, reload],
   );
 
   const value = useMemo<MusicConnectionsContextValue>(() => {
@@ -129,7 +135,7 @@ export function MusicConnectionsProvider({ children }: { children: ReactNode }) 
   return (
     <MusicConnectionsContext.Provider value={value}>
       {children}
-      <MusicSourceConsent />
+      {active && <MusicSourceConsent />}
     </MusicConnectionsContext.Provider>
   );
 }

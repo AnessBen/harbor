@@ -14,11 +14,11 @@ function normalize(value: string): string {
     .replace(/[^\p{L}\p{N}]+/gu, "");
 }
 
-function mentionsArtist(track: MusicTrack, wanted: string): boolean {
+export function mentionsArtist(track: MusicTrack, wanted: string): boolean {
   if (!wanted) return false;
+  if (normalize(track.title).includes(wanted)) return true;
   const credits = [track.artist, ...artistCreditParts(track.artist)].map(normalize);
-  if (credits.some((name) => name.includes(wanted) || wanted.includes(name))) return true;
-  return normalize(track.title).includes(wanted);
+  return credits.some((name) => name === wanted);
 }
 
 function rareness(track: MusicTrack): number {

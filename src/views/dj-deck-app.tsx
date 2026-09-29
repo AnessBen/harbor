@@ -23,7 +23,11 @@ import {
 } from "@/lib/music/appearance";
 import { loadStoredSettings } from "@/lib/settings/load";
 import { Dropdown } from "@/components/dropdown";
-import { MUSIC_EQ_FREQUENCIES } from "@/lib/music/audio-settings";
+import {
+  MUSIC_EQ_FREQUENCIES,
+  musicVolumeCeiling,
+  useMusicAudioSettings,
+} from "@/lib/music/audio-settings";
 import {
   MUSIC_EQ_PRESETS,
   matchEqPreset,
@@ -112,6 +116,7 @@ export function DjDeckApp() {
     [set, settings.eqMode],
   );
   const [state, setState] = useState(getMusicState);
+  useMusicAudioSettings();
   const [mode, setMode] = useState<"ez" | "advanced">("ez");
   const [kills, setKills] = useState<Record<string, boolean>>({});
   const [filter, setFilter] = useState(0);
@@ -395,7 +400,7 @@ export function DjDeckApp() {
               label={t("dj.volume")}
               value={volumeDraft ?? state.volume}
               min={0}
-              max={1}
+              max={musicVolumeCeiling(state.current?.connectorId)}
               step={0.05}
               readout={(shown) => `${Math.round(shown * 100)}%`}
               onChange={(value) => {

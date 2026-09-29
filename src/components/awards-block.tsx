@@ -89,6 +89,7 @@ export function AwardsBlock({
             rank={nytRank}
             curator={nytList.curator}
             title={nytList.title}
+            listId={nytList.id}
             year={nytList.publishedYear}
             companion={
               nytList.companion &&
@@ -107,16 +108,19 @@ function NytAccolade({
   rank,
   curator,
   title,
+  listId,
   year,
   companion,
 }: {
   rank: number;
   curator: string;
   title: string;
+  listId: string;
   year?: number;
   companion?: CuratedCompanion;
 }) {
   const t = useT();
+  const { openCuratedList } = useView();
   const [open, setOpen] = useState(false);
   return (
     <section className="grid gap-7 lg:grid-cols-[240px_1fr] lg:gap-14">
@@ -151,7 +155,13 @@ function NytAccolade({
         <ul className="grid grid-cols-1 gap-x-10 gap-y-0">
           <li className="flex items-baseline gap-4 border-b border-edge-soft/30 py-2.5 text-[13px]">
             <span className="w-11 shrink-0 font-semibold tabular-nums text-accent">{year}</span>
-            <span className="min-w-0 flex-1 font-medium leading-tight text-ink">{t(title)}</span>
+            <button
+              type="button"
+              onClick={() => openCuratedList(listId)}
+              className="min-w-0 flex-1 text-start font-medium leading-tight text-ink underline decoration-ink/30 underline-offset-2 transition-colors hover:decoration-ink"
+            >
+              {t(title)}
+            </button>
           </li>
         </ul>
         {companion && (

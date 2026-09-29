@@ -351,6 +351,13 @@ const music: Record<string, string> = {
   "music.consent.enable": "Attiva le fonti che vuoi usare",
   "music.consent.scroll": "Leggi fino in fondo per continuare",
   "music.consent.accept": "Accetto",
+  "music.consent.review": "Vedi condizioni",
+  "music.consent.turnOff": "Disattiva",
+  "music.consent.needed": "Richiede il tuo consenso",
+  "music.explore.scene": "Dalla scena",
+  "music.artist.inPlaylists": "Playlist con {name}",
+  "music.audio.preferredSource": "Sorgente preferita",
+  "music.audio.preferredSourceHint": "Harbor riproduce prima da qui, poi passa a qualsiasi sorgente funzionante.",
   "music.spotify.connect": "Spotify Premium",
   "music.spotify.connectDetail":
     "Connettiti una volta per la riproduzione nativa senza pubblicità.",

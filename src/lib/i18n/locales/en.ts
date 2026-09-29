@@ -1,4 +1,5 @@
 import mediaStart from "./en/media-start";
+import spooktober from "./en/spooktober";
 import music from "./en/music";
 import settingsRefinements from "./en/settings-refinements";
 
@@ -14,6 +15,7 @@ import soundtrack from "./en/soundtrack";
 
 const en: Record<string, string> = {
   ...mediaStart,
+  ...spooktober,
   ...videoCast,
   ...music,
   Soccer: "Football",

@@ -172,6 +172,7 @@ impl MusicDb {
         Self::configure(&mut connection).expect("configure in-memory music database");
         Self {
             connection: Mutex::new(Some(connection)),
+            opened: Mutex::new(None),
         }
     }
 }

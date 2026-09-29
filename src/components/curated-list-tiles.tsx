@@ -3,6 +3,7 @@ import { shelfLists } from "@/lib/curated/registry";
 import type { CuratedList } from "@/lib/curated/types";
 import { useView } from "@/lib/view";
 import { Row } from "./row";
+import { curatedListLogos } from "./curated-list-logos";
 
 const ART_COUNT = 3;
 
@@ -17,7 +18,7 @@ export function CuratedListTiles({ title }: { title?: string }) {
   const lists = shelfLists();
   if (lists.length === 0) return null;
   return (
-    <Row title={title ?? t("The canon")} min={210} shape="tile" alwaysActive>
+    <Row title={title ?? t("The canon")} min={210} shape="tile" scrollKey="discover:canon" alwaysActive>
       {lists.map((list) => (
         <CuratedListTile key={list.id} list={list} />
       ))}
@@ -28,12 +29,13 @@ export function CuratedListTiles({ title }: { title?: string }) {
 function CuratedListTile({ list }: { list: CuratedList }) {
   const t = useT();
   const { openCuratedList } = useView();
+  const logo = curatedListLogos[list.id];
   return (
     <button
       type="button"
       onClick={() => openCuratedList(list.id)}
       aria-label={`${t(list.curator)}: ${t(list.title)}`}
-      className="group relative aspect-[5/4] w-full cursor-pointer overflow-hidden rounded-2xl border border-edge-soft bg-elevated text-start transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0.24,1)] hover:-translate-y-1"
+      className="group relative aspect-[5/4] min-h-[196px] w-full cursor-pointer overflow-hidden rounded-2xl border border-edge-soft bg-elevated text-start transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0.24,1)] hover:-translate-y-1"
     >
       <div aria-hidden className="absolute inset-0 flex">
         {artFor(list).map((src) => (
@@ -58,9 +60,8 @@ function CuratedListTile({ list }: { list: CuratedList }) {
         }}
       />
       <div className="absolute inset-x-5 top-4 bottom-[58px] flex items-center justify-center">
-        <span className="text-center font-display text-[24px] font-medium leading-tight tracking-tight text-white [text-shadow:0_2px_18px_rgba(0,0,0,0.5)]">
-          {t(list.title)}
-        </span>
+        {logo && <img src={logo} alt="" aria-hidden draggable={false}
+          className="h-16 w-full max-w-[170px] object-contain brightness-0 invert" />}
       </div>
       <div className="absolute inset-x-5 bottom-4 flex items-end justify-between gap-3">
         <span className="min-w-0">

@@ -1,6 +1,7 @@
 import type { MusicAudioMeterState } from "./audio-meter";
 import { createMikuRhythm } from "./miku-rhythm";
 import { createMikuSection } from "./miku-section";
+import { createMikuDanceFit } from "./miku-dance-fit";
 
 export const MIKU_TIMING = {
   lift: 780,
@@ -56,6 +57,8 @@ export function createMikuGroove() {
   let interrupted = false;
   const section = createMikuSection();
   const rhythm = createMikuRhythm();
+  const danceSuitability = createMikuDanceFit();
+  let danceFit = 0;
   return {
     sample(state: MusicAudioMeterState, trackId: string, connectorId: string | null, now: number) {
       energy = mikuEnergy(state, trackId, connectorId); clock = now;
@@ -71,7 +74,7 @@ export function createMikuGroove() {
         noise = kickNoise = snareNoise = hatNoise = punch = percussion = 0;
         estimatedAt = confirmedAt = 0; lastBeat = -Infinity;
         proposedPeriod = proposedAt = proposedSince = proposedCount = 0;
-        highlight = false; section.reset();
+        highlight = false; section.reset(); danceSuitability.reset(); danceFit = 0;
         interrupted = false;
       }
       // Kick and snare drive the nod. Upper percussion only corroborates a
@@ -109,6 +112,7 @@ export function createMikuGroove() {
       // when choosing tempo. This also keeps vocal rhythm out of the clock.
       const rhythmFlux = hasSpectrum ? Math.min(1, Math.max(kick, snare * 0.45)) : flux;
       rhythm.push(now, rhythmFlux, Math.min(1, snare), Math.min(1, hat), accentFlux, hatFlux);
+      danceSuitability.sample(now, Math.min(1, kick), Math.min(1, snare));
       if (now - estimatedAt >= 350) {
         estimatedAt = now;
         const estimate = rhythm.estimate(period);
@@ -215,7 +219,8 @@ export function createMikuGroove() {
         remaining -= dt;
       }
       if (Math.abs(position) < 0.001 && Math.abs(velocity) < 0.01) position = velocity = 0;
-      return { bob: position, sway, period, locked: mix > 0.8, excitement, beat: phase, highlight };
+      danceFit = danceSuitability.advance(elapsed, clock, phase, period, driving && mix > .8);
+      return { bob: position, sway, period, locked: mix > 0.8, excitement, beat: phase, highlight, danceFit };
     },
     reset(preservePose = false) {
       bands = null; noise = kickNoise = snareNoise = hatNoise = 0; lastSample = 0; lastBeat = -Infinity;
@@ -224,6 +229,7 @@ export function createMikuGroove() {
       proposedPeriod = proposedAt = proposedSince = proposedCount = 0;
       punch = excitement = 0;
       percussion = 0; highlight = false; section.reset();
+      danceSuitability.reset(); danceFit = 0;
       interrupted = false;
     },
   };

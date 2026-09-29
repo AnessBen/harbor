@@ -1696,6 +1696,12 @@ const catalogAC: Record<string, string> = {
   "Comments are blurred until you reveal them, even if they are not tagged as spoilers.":
     "टिप्पणियाँ तब तक धुंधली रहती हैं, जब तक आप उन्हें नहीं दिखाते, भले ही उन पर स्पॉइलर का टैग न हो।",
   "Comments are hidden": "टिप्पणियाँ छिपी हुई हैं",
+  "Hosted elsewhere": "कहीं और होस्टेड",
+  "A third party runs these plans. Harbor is not affiliated with them and receives nothing from a signup. Current pricing and terms are on their site.": "ये प्लान कोई तीसरा पक्ष चलाता है। Harbor उससे जुड़ा नहीं है और साइनअप से कुछ नहीं पाता। मौजूदा कीमत और शर्तें उनकी साइट पर हैं।",
+  "{name} can run on a hosted instance": "{name} होस्टेड इंस्टेंस पर चल सकता है",
+  "A third party operates this. Harbor is not affiliated with them, does not resell it, and receives nothing if you sign up. Whatever it costs and whatever it includes is on their site.": "इसे कोई तीसरा पक्ष चलाता है। Harbor उससे जुड़ा नहीं है, इसे बेचता नहीं, और साइन अप पर कुछ नहीं पाता। कीमत और ब्यौरा उनकी साइट पर है।",
+  "Show comments": "टिप्पणियाँ दिखाएँ",
+  "Hide comments": "टिप्पणियाँ छिपाएँ",
   "Comments may take a moment to appear on Trakt": "Trakt पर टिप्पणियाँ दिखने में कुछ समय लग सकता है",
   "Comments on anime pages are blurred until you reveal them, even if they are not tagged as spoilers.":
     "ऐनिमे पेजों पर टिप्पणियाँ तब तक धुंधली रहती हैं, जब तक आप उन्हें नहीं दिखाते, भले ही उन पर स्पॉइलर का टैग न हो।",

@@ -15,16 +15,16 @@ export function appendMusicVideos(previous: MusicTrack[], incoming: MusicTrack[]
   })];
 }
 
-export function searchMusicVideoPage(query: string, regular: boolean, cursor: string | null = null, refresh = false): Promise<MusicVideoPage> {
-  const clean = query.trim().slice(0, 200), key = JSON.stringify([clean, regular, cursor]);
+export function searchMusicVideoPage(query: string, regular: boolean, cursor: string | null = null, refresh = false, subject = ""): Promise<MusicVideoPage> {
+  const clean = query.trim().slice(0, 200), key = JSON.stringify([clean, regular, cursor, subject]);
   const hit = cache.get(key);
   if (!refresh && hit && hit.until > Date.now()) return hit.request;
   const request = invoke<MusicVideoPage>("music_search_video_page", { query: clean, regular, cursor })
-    .then(page => ({ tracks: musicVideoResults(page.tracks, Number.MAX_SAFE_INTEGER), next: typeof page.next === "string" && page.next !== cursor ? page.next : null }))
+    .then(page => ({ tracks: musicVideoResults(page.tracks, Number.MAX_SAFE_INTEGER, subject), next: typeof page.next === "string" && page.next !== cursor ? page.next : null }))
     .catch(async error => {
       // HMR can update the UI before the native app restarts with the new command.
       if (!cursor && /command.*music_search_video_page.*not found/i.test(String(error))) {
-        return { tracks: await searchMusicVideos(clean, refresh, regular, 40), next: null };
+        return { tracks: await searchMusicVideos(clean, refresh, regular, 40, subject), next: null };
       }
       throw error;
     });

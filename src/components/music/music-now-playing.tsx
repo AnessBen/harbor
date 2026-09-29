@@ -157,6 +157,18 @@ export function MusicNowPlaying({
   });
   const video = current?.mediaKind === "video";
   const immersive = video && appearance.immersive;
+  // Immersive swaps position, inset, aspect-ratio and radius at once, and none of those can be
+  // transitioned, so the frame snaps. A veil rises over the swap and clears once it has landed,
+  // which reads as a deliberate cut and works the same going in as coming out.
+  const [shifting, setShifting] = useState(false);
+  const wasImmersive = useRef(immersive);
+  useEffect(() => {
+    if (wasImmersive.current === immersive) return;
+    wasImmersive.current = immersive;
+    setShifting(true);
+    const timer = setTimeout(() => setShifting(false), 520);
+    return () => clearTimeout(timer);
+  }, [immersive]);
   const artwork = useRef<HTMLDivElement>(null);
   const hostRef = useRef<HTMLDivElement | null>(null);
   hostRef.current ??= document.createElement("div");
@@ -356,6 +368,7 @@ export function MusicNowPlaying({
         style={{ insetInlineStart: inset } as CSSProperties}
         aria-label={t("music.now.title")}
       >
+        {shifting && <span className="music-now-veil" aria-hidden="true" />}
         <header className="music-now-header">
           <button
             ref={closeRef}

@@ -19,7 +19,9 @@ async function previewFor(track: MusicTrack): Promise<{ url: string; audioUrl: s
   if (direct?.url) return { url: direct.url, audioUrl: direct.audioUrl };
   const query = [track.artist, track.title].filter(Boolean).join(" ").trim();
   if (!query) return null;
-  const found = await searchMusicVideos(query).catch(() => []);
+  const found = await searchMusicVideos(query, false, false, undefined, track.artist).catch(
+    () => [],
+  );
   const top = found[0];
   if (!top) return null;
   const stream = await musicVideoStream(top).catch(() => null);

@@ -2,7 +2,7 @@ import { ArrowUpRight } from "lucide-react";
 import elfLogo from "@/assets/elfhosted.svg";
 import { useT } from "@/lib/i18n";
 import { openUrl } from "@/lib/window";
-import { ELF_BUNDLE, elfProductFor, elfProductUrl } from "@/lib/addons-store/elfhosted";
+import { elfProductFor, elfProductUrl } from "@/lib/addons-store/elfhosted";
 
 export function ElfHostedAction({
   addonId,
@@ -22,15 +22,12 @@ export function ElfHostedAction({
       <button
         type="button"
         onClick={() => openUrl(elfProductUrl(product.slug))}
-        className="flex h-11 items-center gap-2 rounded-full border border-accent/40 bg-accent-soft ps-2 pe-4 text-[13.5px] font-semibold text-accent transition-colors hover:border-accent hover:bg-accent-soft/80"
+        className="flex h-11 items-center gap-2 rounded-full border border-edge ps-2 pe-4 text-[13.5px] font-semibold text-ink transition-colors hover:bg-elevated"
       >
         <span className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-canvas ring-1 ring-edge-soft">
           <img src={elfLogo} alt="" draggable={false} className="h-[18px] w-[18px] object-contain" />
         </span>
-        {t("Get your own")}
-        <span className="text-[12px] font-medium opacity-70">
-          {t("Trial for ${n}", { n: String(ELF_BUNDLE.trialUsd) })}
-        </span>
+        {t("Hosted elsewhere")}
         <ArrowUpRight size={13} strokeWidth={2.2} className="opacity-70" />
       </button>
 
@@ -45,23 +42,11 @@ export function ElfHostedAction({
           </span>
         </div>
         <p className="mt-2 text-[13px] font-semibold leading-snug text-ink">
-          {t("Your own private {name}, bundled with Debridge", { name: product.label })}
-        </p>
-        <p className="mt-1 text-[12px] leading-relaxed text-ink-muted">
-          {t("Debridge is the part that finds you a working file. A TorBox and a Usenet account come with it, so you do not need to buy a debrid service separately. Already have Real-Debrid or AllDebrid? Plug it in instead.")}
+          {t("{name} can run on a hosted instance", { name: product.label })}
         </p>
         <p className="mt-1.5 text-[12px] leading-relaxed text-ink-muted">
-          {t("No Docker, no server, nothing to configure.")}
+          {t("A third party operates this. Harbor is not affiliated with them, does not resell it, and receives nothing if you sign up. Whatever it costs and whatever it includes is on their site.")}
         </p>
-        <div className="mt-2.5 flex items-center gap-1.5 border-t border-edge-soft pt-2.5">
-          <span className="text-[12px] font-semibold text-accent">
-            {t("${n} for {days} days", {
-              n: String(ELF_BUNDLE.trialUsd),
-              days: String(ELF_BUNDLE.trialDays),
-            })}
-          </span>
-          <span className="text-[11.5px] text-ink-subtle">{t("cancel anytime")}</span>
-        </div>
       </div>
     </div>
   );

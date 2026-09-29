@@ -148,7 +148,7 @@ export function LibraryTab() {
 
 function ArtworkSwatch({ ratio }: { ratio: "portrait" | "landscape" | "logo" }) {
   const t = useT();
-  const art = useSampleArtwork();
+  const art = useSampleArtwork(10);
   if (ratio === "logo") {
     return (
       <div className="flex h-14 w-full items-center justify-center rounded-[10px] bg-elevated px-3">

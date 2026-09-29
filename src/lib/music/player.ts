@@ -15,6 +15,7 @@ import {
 import { createDeckAdoption } from "./deck-primary";
 import { insertIntoQueue, markManuallyQueued, queueInsertIndex } from "./queue-insert";
 import { queueTrackKey } from "./queue-order";
+import { musicAdvance, musicPrevious, resetMusicOrder } from "./transport";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { useSyncExternalStore } from "react";
@@ -92,8 +93,10 @@ const SOURCE_CACHE_MAX = 16;
 function sourcesFor(
   track: MusicTrack,
   ttlMs: number = SOURCE_TTL_MS,
+  fresh = false,
 ): Promise<MusicSourceCandidate[]> {
   const key = `${track.connectorId}:${track.id}:${track.title}:${track.artist}`;
+  if (fresh) queuedSources.delete(key);
   const saved = queuedSources.get(key);
   if (saved && saved.until > Date.now()) return saved.promise;
   let timer: ReturnType<typeof setTimeout>;
@@ -158,24 +161,6 @@ function warmBeforeEnd(): void {
 
 export function musicSourceCandidates(track: MusicTrack): Promise<MusicSourceCandidate[]> {
   return sourcesFor(track).catch(() => [] as MusicSourceCandidate[]);
-}
-
-export type MusicAdvance = (queue: MusicTrack[], index: number, auto: boolean) => MusicTrack | null;
-
-const sequentialAdvance: MusicAdvance = (queue, index) => queue[index + 1] ?? null;
-let advance: MusicAdvance = sequentialAdvance;
-
-let goPrevious = (queue: MusicTrack[], index: number): MusicTrack | null =>
-  queue[index - 1] ?? null;
-let resetOrder = () => {};
-export function setMusicAdvance(
-  next: MusicAdvance | null,
-  previous?: typeof goPrevious,
-  reset?: () => void,
-): void {
-  advance = next ?? sequentialAdvance;
-  goPrevious = previous ?? ((queue, index) => queue[index - 1] ?? null);
-  resetOrder = reset ?? (() => {});
 }
 
 type LegacyMusicMigration = {
@@ -685,7 +670,7 @@ function skipUnavailableTrack(track: MusicTrack, queue: MusicTrack[]): boolean {
   autoSkipped.add(queueTrackKey(track));
   let index = queue.findIndex((item) => queueTrackKey(item) === queueTrackKey(track));
   for (let attempt = 0; attempt < queue.length; attempt++) {
-    const next = advance(queue, index, false);
+    const next = musicAdvance(queue, index, false);
     if (!next) return false;
     index = queue.findIndex((item) => queueTrackKey(item) === queueTrackKey(next));
     if (autoSkipped.has(queueTrackKey(next))) continue;
@@ -700,13 +685,19 @@ const SOURCE_ATTEMPT_CEILING = 6;
 // than quietly playing something else under the same name.
 let explicitSource: string | null = null;
 
+async function recoverySources(track: MusicTrack): Promise<MusicSourceCandidate[]> {
+  const cached = await sourcesFor(track).catch(() => null);
+  if (cached && cached.length > 0) return cached;
+  return await sourcesFor(track, SOURCE_TTL_MS, true).catch(() => []);
+}
+
 async function nextPlayableSource(
   attemptTrack: MusicTrack,
   failedAttempts: Set<string>,
 ): Promise<MusicTrack | null> {
   if (attemptTrack.mediaKind === "video") return null;
   if (failedAttempts.size >= SOURCE_ATTEMPT_CEILING) return null;
-  const candidates = await sourcesFor(attemptTrack).catch(() => []);
+  const candidates = await recoverySources(attemptTrack);
   const usable = candidates.filter(
     (candidate) =>
       candidate.health !== "offline" &&
@@ -731,7 +722,7 @@ export async function playMusic(
   observedPause = null;
   if (!continuing && !failedAttempts.size) {
     beginMusicQueue(queue, state.queue);
-    resetOrder();
+    resetMusicOrder();
     resumeAt = null;
     autoSkipped.clear();
   }
@@ -848,7 +839,7 @@ export async function playMusic(
           const candidates =
             attemptTrack.mediaKind === "video"
               ? []
-              : await sourcesFor(attemptTrack).catch(() => []);
+              : await recoverySources(attemptTrack);
           if (request !== playRequest) return;
           const usable = candidates.filter(
             (candidate) =>
@@ -1136,7 +1127,7 @@ export function setMusicVolume(volume: number): void {
 export function nextMusic(auto = false): void {
   if (!state.current) return;
   if (!auto) autoSkipped.clear();
-  const next = advance(state.queue, state.queueIndex, auto);
+  const next = musicAdvance(state.queue, state.queueIndex, auto);
   if (next) void playMusic(next, state.queue, new Set(), true, auto).catch(() => {});
   else {
     if (auto) enginePrimed = false;
@@ -1154,7 +1145,7 @@ export function previousMusic(): void {
     seekMusic(0);
     return;
   }
-  const previous = goPrevious(state.queue, state.queueIndex);
+  const previous = musicPrevious(state.queue, state.queueIndex);
   if (previous) void playMusic(previous, state.queue, new Set(), true).catch(() => {});
 }
 
@@ -1201,7 +1192,7 @@ export async function closeMusicPlayer(): Promise<void> {
     if (request !== playRequest) return;
     enginePrimed = false;
     audioReady = null;
-    resetOrder();
+    resetMusicOrder();
     publish({
       current: null,
       queue: [],

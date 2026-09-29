@@ -811,6 +811,12 @@ const miscA: Record<string, string> = {
   "Comments are blurred until you reveal them, even if they are not tagged as spoilers.":
     "Spoiler olarak etiketlenmemiş olsalar bile yorumlar siz açana kadar bulanık görünür.",
   "Comments are hidden": "Yorumlar gizli",
+  "Hosted elsewhere": "Başka yerde barındırılıyor",
+  "A third party runs these plans. Harbor is not affiliated with them and receives nothing from a signup. Current pricing and terms are on their site.": "Bu planları üçüncü bir taraf yürütüyor. Harbor onlarla bağlı değil ve kayıttan hiçbir şey almyor. Güncel fiyat ve koşullar kendi sitelerinde.",
+  "{name} can run on a hosted instance": "{name} barındırılan bir örnekte çalışabilir",
+  "A third party operates this. Harbor is not affiliated with them, does not resell it, and receives nothing if you sign up. Whatever it costs and whatever it includes is on their site.": "Bunu üçüncü bir taraf işletiyor. Harbor onlarla bağlı değil, yeniden satmıyor ve kaydolursanız hiçbir şey almıyor. Fiyat ve kapsam kendi sitelerinde.",
+  "Show comments": "Yorumları göster",
+  "Hide comments": "Yorumları gizle",
   "Comments may take a moment to appear on Trakt":
     "Yorumların Trakt'ta görünmesi biraz zaman alabilir",
   Community: "Topluluk",

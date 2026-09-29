@@ -329,6 +329,13 @@ const music: Record<string, string> = {
   "music.consent.enable": "Turn on the sources you want to use",
   "music.consent.scroll": "Read to the end to continue",
   "music.consent.accept": "I agree and accept",
+  "music.consent.review": "Review terms",
+  "music.consent.turnOff": "Turn off",
+  "music.consent.needed": "Needs your agreement",
+  "music.explore.scene": "From the scene",
+  "music.artist.inPlaylists": "Playlists including {name}",
+  "music.audio.preferredSource": "Preferred source",
+  "music.audio.preferredSourceHint": "Harbor plays from this first, then falls back to any source that works.",
   "music.spotify.connect": "Spotify Premium",
   "music.spotify.connectDetail": "Connect once for native, ad-free playback.",
   "music.spotify.connectAction": "Connect",
@@ -543,6 +550,13 @@ const music: Record<string, string> = {
   "music.metadata.contributors": "Contributors",
   "music.metadata.explicit": "Explicit",
   "music.metadata.deezerFans": "Deezer fans",
+  "music.spotifyDevices.title": "Play on",
+  "music.spotifyDevices.body":
+    "Harbor plays Spotify through its own output. Pick another device to hear it there instead.",
+  "music.spotifyDevices.harbor": "Harbor",
+  "music.spotifyDevices.refresh": "Refresh",
+  "music.spotifyDevices.empty":
+    "No other Spotify devices are awake. Open Spotify on a phone, speaker or desktop and refresh.",
   "music.spotifySetup.createTitle": "Create a Spotify app",
   "music.spotifySetup.createBody":
     "Use a Spotify Premium account to create an app in the developer dashboard.",

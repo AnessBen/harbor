@@ -1,4 +1,5 @@
 import mediaStart from "./ja/media-start";
+import spooktober from "./ja/spooktober";
 import listenTogether from "./ja/listen-together";
 import music from "./ja/music";
 import sportsConsent from "./ja/sports-consent";
@@ -49,6 +50,7 @@ import nytTv from "./ja/nyt-tv";
 
 const ja: Record<string, string> = {
   ...mediaStart,
+  ...spooktober,
   ...videoCast,
   ...music,
   ...ebookSources,

@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
   useSyncExternalStore,
+  type ReactNode,
 } from "react";
 import { BackToTop } from "@/components/back-to-top";
 import { HeroCarousel, type Slide } from "@/components/hero-carousel";
@@ -110,7 +111,7 @@ import { RowSkeleton } from "./home/row-skeleton";
 import { AddSourceModal } from "@/components/add-source-modal";
 import type { SourceRow } from "@/lib/custom-sources";
 
-export function Home({ active = true, onReady }: { active?: boolean; onReady?: () => void }) {
+export function Home({ active = true, onReady, seasonalInvitation }: { active?: boolean; onReady?: () => void; seasonalInvitation?: ReactNode }) {
   const { authKey, user } = useAuth();
   const { activeProfile, profiles } = useProfiles();
   const { settings, update } = useSettings();
@@ -1241,6 +1242,7 @@ export function Home({ active = true, onReady }: { active?: boolean; onReady?: (
                 />
               </div>
             )}
+          {seasonalInvitation}
           {!cwTop && cwBlock}
           {settings.homeMode !== "classic" && (
             <div data-scroll-anchor="streaming">

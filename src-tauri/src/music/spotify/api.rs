@@ -86,6 +86,78 @@ pub async fn me(http: &reqwest::Client, token: &str) -> Result<Value, ApiError> 
     get(http, token, "/me", &[]).await
 }
 
+pub async fn devices(http: &reqwest::Client, token: &str) -> Result<Value, ApiError> {
+    get(http, token, "/me/player/devices", &[]).await
+}
+
+/// Player reads answer 204 with no body whenever nothing at all is loaded on the account.
+pub async fn player_state(
+    http: &reqwest::Client,
+    token: &str,
+) -> Result<Option<Value>, ApiError> {
+    let response = http
+        .get(format!("{BASE}/me/player"))
+        .bearer_auth(token)
+        .timeout(std::time::Duration::from_secs(25))
+        .send()
+        .await
+        .map_err(|error| ApiError {
+            status: None,
+            message: format!("Spotify request failed: {error}"),
+        })?;
+    let status = response.status().as_u16();
+    if status == 204 {
+        return Ok(None);
+    }
+    if response.status().is_success() {
+        return response
+            .json::<Value>()
+            .await
+            .map(Some)
+            .map_err(|error| ApiError {
+                status: Some(status),
+                message: format!("Spotify response was invalid: {error}"),
+            });
+    }
+    let body = response.text().await.unwrap_or_default();
+    Err(ApiError {
+        status: Some(status),
+        message: describe(status, &body),
+    })
+}
+
+/// Player writes answer 204 with no body, so nothing is parsed back out of them.
+pub async fn player_command(
+    http: &reqwest::Client,
+    token: &str,
+    path: &str,
+    query: &[(&str, String)],
+    body: Option<Value>,
+) -> Result<(), ApiError> {
+    let mut request = http
+        .put(format!("{BASE}{path}"))
+        .bearer_auth(token)
+        .query(query)
+        .timeout(std::time::Duration::from_secs(25));
+    request = match body {
+        Some(value) => request.json(&value),
+        None => request.header("content-length", "0"),
+    };
+    let response = request.send().await.map_err(|error| ApiError {
+        status: None,
+        message: format!("Spotify request failed: {error}"),
+    })?;
+    if response.status().is_success() {
+        return Ok(());
+    }
+    let status = response.status().as_u16();
+    let text = response.text().await.unwrap_or_default();
+    Err(ApiError {
+        status: Some(status),
+        message: describe(status, &text),
+    })
+}
+
 pub async fn post(
     http: &reqwest::Client,
     token: &str,

@@ -1,4 +1,5 @@
 import mediaStart from "./hi/media-start";
+import spooktober from "./hi/spooktober";
 import listenTogether from "./hi/listen-together";
 import music from "./hi/music";
 import sportsConsent from "./hi/sports-consent";
@@ -26,6 +27,7 @@ import nytTv from "./hi/nyt-tv";
 
 const hi: Record<string, string> = {
   ...mediaStart,
+  ...spooktober,
   ...videoCast,
   ...music,
   ...ebookSources,

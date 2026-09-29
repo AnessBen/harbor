@@ -807,6 +807,32 @@
   outline: 2px solid var(--dj-cyan);
   outline-offset: 3px;
 }
+@property --dj-angle {
+  syntax: "<angle>";
+  inherits: true;
+  initial-value: 0deg;
+}
+@property --dj-arc-from {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+@property --dj-arc-to {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+.dj-knob[data-rescale] .dj-knob-body {
+  transition:
+    --dj-angle 300ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    --dj-arc-from 300ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    --dj-arc-to 300ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .dj-knob[data-rescale] .dj-knob-body {
+    transition: none;
+  }
+}
 .dj-knob-track {
   position: absolute;
   inset: 0;

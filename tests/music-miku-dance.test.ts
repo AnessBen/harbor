@@ -461,3 +461,32 @@ test("a tempo correction during hands-down cannot stall or rush the entrance", (
     assert.ok(frames.size >= 14, "a faster estimate still shows the moving arm poses");
   }
 });
+
+test("the two shorter grooves settle at either half-loop without accelerating the last gesture", () => {
+  for (const kind of [0, 1]) for (const period of [300, 500, 850]) for (const phase of [.15, .65]) {
+    const f = fixture(kind, period); f.until("dancing");
+    const beats = MIKU_DANCE.loopBeats[kind], frames = MIKU_DANCE.loopFrames[kind];
+    const start = f.now;
+    while (f.now - start < phase * beats * period) f.tick();
+    let state = f.state, prior = state.frame, advanced = 0, duration = 0;
+    let exitStart = -1, exitEnd = -1;
+    const expected = phase < .5 ? 146 : 105;
+    while (state.stage !== "listening" && duration < 3000) {
+      state = f.tick(.8, false, true, false); duration += 16;
+      if (state.stage === "dancing") {
+        advanced += (state.frame - prior + frames) % frames;
+        assert.ok(Math.abs(advanced - duration / period * frames / beats) < 1.1);
+        prior = state.frame;
+      }
+      if (state.stage === "disengaging") {
+        if (exitStart < 0) exitStart = state.frame;
+        if (exitEnd >= 0) assert.ok(state.frame >= exitEnd && state.frame <= exitEnd + 1);
+        exitEnd = state.frame;
+      }
+      assert.ok(state.opacity === 0 || state.opacity === 1);
+    }
+    assert.equal(state.stage, "listening"); assert.ok(state.resting);
+    assert.equal(exitStart, expected); assert.equal(exitEnd, expected + 19);
+    assert.ok(duration >= MIKU_DANCE.lowerMs && duration <= period * beats / 2 + MIKU_DANCE.lowerMs + 32);
+  }
+});

@@ -113,9 +113,9 @@ type Notice = { kind: "busy" | "info" | "error"; text: string };
 
 export function MusicView({ active }: { active: boolean; shellBackAvailable?: boolean }) {
   return (
-    <MusicConnectionsProvider>
-      <MusicSourcePickerProvider>
-        <MusicPlaylistPickerProvider>
+    <MusicConnectionsProvider active={active}>
+      <MusicSourcePickerProvider active={active}>
+        <MusicPlaylistPickerProvider active={active}>
           <MusicViewContent active={active} />
         </MusicPlaylistPickerProvider>
       </MusicSourcePickerProvider>

@@ -219,6 +219,17 @@ export function recordMusicRecentContext(
   commit({ contexts, links });
 }
 
+export function refreshMusicRecentContextArtwork(updates: Map<string, string[]>): void {
+  let changed = false;
+  const contexts = store.contexts.map((context) => {
+    const next = updates.get(context.id);
+    if (!next?.length || next.join("|") === context.artwork.join("|")) return context;
+    changed = true;
+    return { ...context, artwork: next.slice(0, ARTWORK_LIMIT) };
+  });
+  if (changed) commit({ contexts, links: store.links });
+}
+
 export function musicContextArtwork(tracks: readonly MusicTrack[]): string[] {
   const seen = new Set<string>();
   const covers: string[] = [];

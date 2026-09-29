@@ -532,7 +532,15 @@ export function MusicDetail({
       {shownRows.map((row) => (
         <MusicCatalogRow
           key={row.id}
-          row={row}
+          row={
+            row.id === "artist:playlists" && item.kind === "artist"
+              ? {
+                  ...row,
+                  title: t("music.artist.inPlaylists", { name: item.name }),
+                  titleLiteral: true,
+                }
+              : row
+          }
           min={160}
           onOpen={(item) => onOpen(item, row.items)}
           onEndReached={

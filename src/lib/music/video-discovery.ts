@@ -23,8 +23,30 @@ export function musicVideoIdentity(title: string, artist: string): string {
   return `${strip(title)}|${strip(artist)}`;
 }
 
+/** Collapsed to letters and digits so a name is matched whole, never token by token. */
+function relevanceKey(value: string): string {
+  return value.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "");
+}
+
+/**
+ * A search for one act happily returns another whose name merely shares words, so a result has
+ * to carry the requested name whole, in its artist or its title. The title counts because a
+ * re-upload or edit is credited to the uploader while still naming the act.
+ */
+function aboutSubject(track: MusicTrack, subject: string): boolean {
+  const want = relevanceKey(subject);
+  if (want.length < 3) return true;
+  return (
+    relevanceKey(track.artist).includes(want) || relevanceKey(track.title).includes(want)
+  );
+}
+
 /** Only accepts exact YouTube identities returned by the native video-only endpoint. */
-export function musicVideoResults(value: unknown, cap = VIDEO_RESULT_CAP): MusicTrack[] {
+export function musicVideoResults(
+  value: unknown,
+  cap = VIDEO_RESULT_CAP,
+  subject = "",
+): MusicTrack[] {
   if (!Array.isArray(value)) return [];
   const seen = new Set<string>();
   const songs = new Set<string>();
@@ -46,6 +68,7 @@ export function musicVideoResults(value: unknown, cap = VIDEO_RESULT_CAP): Music
         seen.has(track.sourceId)
       )
         return false;
+      if (subject && !aboutSubject(track, subject)) return false;
       const identity = musicVideoIdentity(track.title, track.artist);
       if (identity.length > 1 && songs.has(identity)) return false;
       seen.add(track.sourceId);
@@ -90,11 +113,12 @@ export function searchMusicVideos(
   refresh = false,
   interviews = false,
   limit = VIDEO_RESULT_CAP,
+  subject = "",
 ): Promise<MusicTrack[]> {
   const clean = query.trim().slice(0, 200);
   if (!clean) return Promise.resolve([]);
   const take = Math.max(1, Math.min(Math.trunc(limit) || VIDEO_RESULT_CAP, VIDEO_SEARCH_LIMIT));
-  const key = `${interviews ? "interviews" : "videos"}:${clean.toLocaleLowerCase()}`;
+  const key = `${interviews ? "interviews" : "videos"}:${subject.toLocaleLowerCase()}:${clean.toLocaleLowerCase()}`;
   const hit = cache.get(key);
   // Reinsert on a hit, because eviction takes the oldest entry and the list being watched is
   // read over and over without ever being written again.
@@ -111,7 +135,7 @@ export function searchMusicVideos(
     interviews,
   })
     .then((value) => {
-      const tracks = musicVideoResults(value, VIDEO_SEARCH_LIMIT);
+      const tracks = musicVideoResults(value, VIDEO_SEARCH_LIMIT, subject);
       cache.delete(key);
       cache.set(key, { expires: Date.now() + TTL, tracks });
       while (cache.size > 12) cache.delete(cache.keys().next().value!);

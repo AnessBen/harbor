@@ -69,6 +69,8 @@ const BACK_KEYS = new Set(["Escape", "Esc", "BrowserBack", "GoBack", "Back"]);
 
 const MODAL_SELECTOR = '[role="dialog"], [aria-modal="true"]';
 const LOCAL_KEYBOARD_SELECTOR = [
+  // Embedded surfaces handle their own keys; shadow DOM retargets events to their host.
+  '[data-local-keyboard]',
   '[role="listbox"]',
   '[role="menu"]',
   '[role="grid"]',
@@ -195,7 +197,7 @@ function setPointerModality() {
   // TV marker is removed. Drop that stale focus so pointer movement does not
   // replace the inset TV ring with the regular outer keyboard outline.
   const active = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-  if (active && !isEditable(active)) active.blur();
+  if (active && !isEditable(active) && !isLocallyManaged(active)) active.blur();
 }
 
 export function advanceFocus(el: HTMLElement, dir?: Dir) {
@@ -688,7 +690,7 @@ function getSearchFocusVisual(el: HTMLElement): HTMLElement | null {
 
   return (
     el.closest<HTMLElement>("label, [data-tv-text-field], [data-tv-focus-container]") ??
-    el.parentElement
+    el
   );
 }
 
@@ -703,7 +705,7 @@ function clearSearchVisualFocus() {
     });
 }
 
-/** Ring the visible field container (label/panel) instead of the bare input. */
+/** Ring explicit field wrappers only; a bare input may live in a whole section. */
 function markSearchEditingVisual(el: HTMLElement) {
   const visual = getSearchFocusVisual(el);
   if (visual && visual !== el) {
@@ -1464,7 +1466,9 @@ export function useKeyboardNavigation(options: TVNavigationOptions = {}) {
         const focused =
           document.activeElement instanceof HTMLElement ? document.activeElement : null;
 
-        if (focused && !isEditable(focused)) focused.blur();
+        // Menus and embedded surfaces own focus; blurring their host can close
+        // a menu before the pointer's click reaches the selected item.
+        if (focused && !isEditable(focused) && !isLocallyManaged(focused)) focused.blur();
       });
     };
 

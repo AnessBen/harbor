@@ -159,6 +159,15 @@ export function Knob({
   size?: "sm" | "md";
 }) {
   const span = max - min;
+  const [rescale, setRescale] = useState(false);
+  const lastSpan = useRef(span);
+  useEffect(() => {
+    if (lastSpan.current === span) return;
+    lastSpan.current = span;
+    setRescale(true);
+    const timer = window.setTimeout(() => setRescale(false), 340);
+    return () => window.clearTimeout(timer);
+  }, [span]);
   const { shown, read, push } = useLatch(value);
   const settle = useRef(onSettle ?? (() => {}));
   settle.current = onSettle ?? (() => {});
@@ -200,6 +209,7 @@ export function Knob({
       data-tone={tone}
       data-size={size ?? "md"}
       data-bipolar={bipolar || undefined}
+      data-rescale={rescale || undefined}
       ref={wheel}
     >
       <div

@@ -38,7 +38,7 @@ export function MusicPerformanceSpotlight({ active, onWatch }: { active: boolean
   useEffect(() => {
     if (!active) return;
     let live = true; setResult(null); setIndex(0);
-    searchMusicVideos(query, retry > 0, true, 6).then(tracks => { if (live) setResult({ query, tracks, error: false }); })
+    searchMusicVideos(query, retry > 0, true, 6, scene === "personal" && seed ? seed.artist : "").then(tracks => { if (live) setResult({ query, tracks, error: false }); })
       .catch(() => { if (live) setResult({ query, tracks: [], error: true }); });
     return () => { live = false; };
   }, [query, active, retry]);

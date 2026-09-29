@@ -141,7 +141,7 @@ import { ThemeChromeBridge } from "@/components/theme-chrome-bridge";
 import type { MetaType } from "@/lib/cinemeta";
 import { useDiscordPresence } from "@/lib/discord/use-discord-presence";
 import { useWatchShare } from "@/lib/social/watch-presence";
-import { Home } from "@/views/home";
+import { SpooktoberHome } from "@/views/spooktober/spooktober-home";
 import { MusicDock } from "@/components/music/music-dock";
 import { ParentalProvider } from "@/lib/parental";
 import { TraktProvider } from "@/lib/trakt/provider";
@@ -830,12 +830,12 @@ function Shell({ onReady }: { onReady?: () => void }) {
   }, [onReady, topKind]);
 
   const handleTvBack = useCallback(() => {
-    if (stackKinds.length > 1 || topKind !== "home") {
+    if (canGoBack || topKind !== "home") {
       goBack();
       return true;
     }
     return false;
-  }, [goBack, stackKinds.length, topKind]);
+  }, [goBack, canGoBack, topKind]);
 
   const handleTvBackToNav = useCallback(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
@@ -1539,7 +1539,7 @@ function Shell({ onReady }: { onReady?: () => void }) {
           className={`relative flex min-h-0 min-w-0 flex-1 flex-col ${playerActive ? "invisible" : ""}`}
         >
           <div {...parkLayerProps(homeTop)}>
-            <Home active={homeTop} onReady={onReady} />
+            <SpooktoberHome active={homeTop} onReady={onReady} />
           </div>
           {settingsAlive && (
             <div {...layerProps(settingsTop)}>

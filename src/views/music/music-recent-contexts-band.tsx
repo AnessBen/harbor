@@ -11,6 +11,7 @@ import {
   reopenMusicMix,
   useMusicRecentContexts,
   useMusicTrackContext,
+  refreshMusicRecentContextArtwork,
   type MusicRecentContext,
 } from "@/lib/music/recent-context";
 import type { MusicCatalogItem, MusicTrack } from "@/lib/music/types";
@@ -41,6 +42,34 @@ function MusicRecentContextsRow({
   current: MusicTrack | null;
 }) {
   const contexts = useMusicRecentContexts();
+  const healed = useRef(false);
+  useEffect(() => {
+    if (healed.current) return;
+    const stale = contexts.filter(
+      (context) =>
+        context.id.startsWith("spooktober:") &&
+        context.artwork.every((url) => !url || url.includes("/spooktober/assets/")),
+    );
+    if (!stale.length) return;
+    healed.current = true;
+    void import("@/views/spooktober/spooktober-music")
+      .then(({ loadSpooktoberMusic, spooktoberAsset }) =>
+        loadSpooktoberMusic().then((data) => {
+          const songs = new Map(data.songs.map((song) => [song.id, song]));
+          refreshMusicRecentContextArtwork(
+            new Map(data.playlists.map((entry) => [
+              `spooktober:${entry.id}`,
+              entry.songIds
+                .map((id) => songs.get(id))
+                .filter((song) => Boolean(song?.poster))
+                .slice(0, 8)
+                .map((song) => spooktoberAsset(song!.poster)),
+            ])),
+          );
+        }),
+      )
+      .catch(() => {});
+  }, [contexts]);
   const [note, setNote] = useState<"loading" | "error" | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const { openSourcePicker } = useMusicSourcePicker();
@@ -54,7 +83,15 @@ function MusicRecentContextsRow({
     setNote(null);
     try {
       const playlist = context.kind === "playlist"
-        ? (await listMusicPlaylists()).find((item) => item.id === context.id)
+        ? context.id.startsWith("spooktober:")
+          ? await (async () => {
+              const { loadSpooktoberMusic, spooktoberSongToTrack } = await import("@/views/spooktober/spooktober-music");
+              const data = await loadSpooktoberMusic();
+              const festival = data.playlists.find((item) => `spooktober:${item.id}` === context.id);
+              const byId = new Map(data.songs.map((song) => [song.id, song]));
+              return festival ? { id: context.id, name: context.name, tracks: festival.songIds.map((id) => spooktoberSongToTrack(byId.get(id)!)) } : null;
+            })()
+          : (await listMusicPlaylists()).find((item) => item.id === context.id)
         : null;
       const tracks = context.kind === "playlist"
         ? playlist?.tracks ?? []

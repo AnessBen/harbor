@@ -181,7 +181,7 @@ impl ConnectorRegistry {
         let results = join_all(connectors.into_iter().map(|connector| {
             let query = query.to_string();
             async move {
-                let tracks = connector.search(app, &query, 5).await;
+                let tracks = connector.search(app, &query, 12).await;
                 (connector, tracks)
             }
         }))

@@ -34,7 +34,7 @@ pub async fn music_search(
     if query.len() > 200 {
         return Err("Music search is too long".to_string());
     }
-    let limit = limit.unwrap_or(24).clamp(1, 40);
+    let limit = limit.unwrap_or(24).clamp(1, 100);
     let tracks = state
         .registry
         .search(&app, query, limit, connector.as_deref())

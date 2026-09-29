@@ -1,12 +1,28 @@
 use super::super::MusicTrack;
-use super::{player, Account, SpotifyState};
+use super::{devices, player, Account, SpotifyState};
 use std::sync::atomic::Ordering;
+use std::sync::Arc;
 
 const DEFAULT_VOLUME: f64 = 0.82;
 const CONNECT_BEFORE_PLAY: &str = "Connect Spotify Premium before playing this source";
 
 impl SpotifyState {
-    pub async fn play(&self, track: MusicTrack, volume: f64) -> Result<(), String> {
+    pub async fn play(self: &Arc<Self>, track: MusicTrack, volume: f64) -> Result<(), String> {
+        if let Some(device) = self.remote_device() {
+            let uri = track
+                .source_id
+                .clone()
+                .ok_or_else(|| "Spotify track is missing its URI".to_string())?;
+            devices::start(self, &device, &uri).await?;
+            let _ = devices::set_volume(self, &device, percent(volume)).await;
+            self.paused.store(false, Ordering::SeqCst);
+            self.paused_for_video.store(false, Ordering::SeqCst);
+            let handle = self.app.read().clone();
+            if let Some(app) = handle {
+                devices::watch(self, app, uri);
+            }
+            return Ok(());
+        }
         // Best effort: a stale session is rebuilt here, and a genuine sign-in problem still
         // falls through to the message below rather than surfacing a reconnect error.
         let _ = self.ensure_session().await;
@@ -23,6 +39,12 @@ impl SpotifyState {
     }
 
     pub async fn set_paused(&self, paused: bool) -> Result<(), String> {
+        if let Some(device) = self.remote_device() {
+            devices::set_paused(self, &device, paused).await?;
+            self.paused.store(paused, Ordering::SeqCst);
+            self.paused_for_video.store(false, Ordering::SeqCst);
+            return Ok(());
+        }
         let slot = self.runtime.lock().await;
         if let Some(runtime) = slot.as_ref() {
             if paused {
@@ -40,6 +62,12 @@ impl SpotifyState {
         if self.paused.load(Ordering::SeqCst) {
             return Ok(false);
         }
+        if let Some(device) = self.remote_device() {
+            devices::set_paused(self, &device, true).await?;
+            self.paused.store(true, Ordering::SeqCst);
+            self.paused_for_video.store(true, Ordering::SeqCst);
+            return Ok(true);
+        }
         let slot = self.runtime.lock().await;
         let Some(runtime) = slot.as_ref() else {
             return Ok(false);
@@ -54,6 +82,9 @@ impl SpotifyState {
         if !position.is_finite() {
             return Err("Music seek position is invalid".to_string());
         }
+        if let Some(device) = self.remote_device() {
+            return devices::seek(self, &device, (position.max(0.0) * 1000.0) as u64).await;
+        }
         let slot = self.runtime.lock().await;
         if let Some(runtime) = slot.as_ref() {
             runtime
@@ -65,6 +96,9 @@ impl SpotifyState {
     }
 
     pub async fn set_volume(&self, volume: f64) -> Result<(), String> {
+        if let Some(device) = self.remote_device() {
+            return devices::set_volume(self, &device, percent(volume)).await;
+        }
         let slot = self.runtime.lock().await;
         if let Some(runtime) = slot.as_ref() {
             runtime.audio.mixer.set_volume(volume_to_u16(volume));
@@ -73,6 +107,17 @@ impl SpotifyState {
     }
 
     pub async fn stop(&self, resume: bool) -> Result<(), String> {
+        if let Some(device) = self.remote_device() {
+            if resume && !self.paused_for_video.swap(false, Ordering::SeqCst) {
+                return Ok(());
+            }
+            if !resume {
+                devices::stop_watching(self);
+            }
+            devices::set_paused(self, &device, !resume).await?;
+            self.paused.store(!resume, Ordering::SeqCst);
+            return Ok(());
+        }
         if resume {
             if !self.paused_for_video.swap(false, Ordering::SeqCst) {
                 return Ok(());
@@ -106,6 +151,15 @@ impl SpotifyState {
     }
 }
 
+fn percent(volume: f64) -> u64 {
+    let clamped = if volume.is_finite() {
+        volume.clamp(0.0, 1.0)
+    } else {
+        DEFAULT_VOLUME
+    };
+    (clamped * 100.0).round() as u64
+}
+
 fn volume_to_u16(volume: f64) -> u16 {
     let clamped = if volume.is_finite() {
         volume.clamp(0.0, 1.0)
@@ -128,7 +182,7 @@ mod tests {
 
     #[tokio::test]
     async fn playback_without_a_session_asks_for_a_premium_sign_in() {
-        let state = SpotifyState::new();
+        let state = Arc::new(SpotifyState::new());
         let error = state
             .play(
                 MusicTrack {

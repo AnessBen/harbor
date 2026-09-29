@@ -1,4 +1,6 @@
 import { MusicTrackRowsSkeleton } from "./music-skeletons";
+import { useMusicTrackMenuItems } from "./music-track-menu";
+import { requestMusicExplore } from "@/lib/music/navigation";
 import { HoverTooltip } from "@/components/hover-tooltip";
 import { isMusicLiked } from "@/lib/music/liked";
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
@@ -10,9 +12,7 @@ import {
   ChevronDown,
   ChevronUp,
   Heart,
-  ListPlus,
   MoreHorizontal,
-  Play,
   Plus,
   X,
 } from "@/components/icons/music-icons";
@@ -153,6 +153,12 @@ function LibraryTrack({
   const t = useT();
   const { openSourcePicker } = useMusicSourcePicker();
   const { openPlaylistPicker } = useMusicPlaylistPicker();
+  const shared = useMusicTrackMenuItems(track, {
+    onPlay: () => start(track, tracks),
+    onAddToQueue: () => enqueueMusic(track),
+    onAddToPlaylist: () => openPlaylistPicker(track),
+    onMoreLikeThis: () => requestMusicExplore({ kind: "similar", track }),
+  });
   const anchor = useRef<HTMLButtonElement>(null);
   const menu = useRef<HTMLDivElement | null>(null);
   const bindMenu = useCallback((node: HTMLDivElement | null) => {
@@ -174,17 +180,7 @@ function LibraryTrack({
     setOpen(false);
   };
   const actions = [
-    { label: t("music.play"), icon: <Play size={16} />, run: () => start(track, tracks) },
-    {
-      label: t("music.card.addToQueue"),
-      icon: <ListPlus size={16} />,
-      run: () => enqueueMusic(track),
-    },
-    {
-      label: t("music.card.addToPlaylist"),
-      icon: <Plus size={16} />,
-      run: () => openPlaylistPicker(track),
-    },
+    ...shared,
     {
       label: t(liked ? "music.unsaveTrack" : "music.saveTrack"),
       icon: <Heart size={16} fill={liked ? "currentColor" : "none"} />,
@@ -225,7 +221,13 @@ function LibraryTrack({
       className="music-library-track"
       data-library-track={track.id}
       data-now-playing={nowPlaying || undefined}
+      data-menu-open={open || undefined}
       aria-current={nowPlaying ? "true" : undefined}
+      onContextMenu={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        setOpen(true);
+      }}
     >
       <span className="music-library-track-number">{String(index + 1).padStart(2, "0")}</span>
       <div className="music-library-track-play">

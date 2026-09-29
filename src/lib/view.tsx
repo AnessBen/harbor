@@ -1554,7 +1554,7 @@ export function useScrollMemory(
     let settleId: number | null = null;
     let saveTimer: number | null = null;
     let revealId: number | null = null;
-    let lastTop = 0;
+    let pendingSnap: ScrollSnapshot | null = null;
     let parked = el.clientHeight === 0;
     let everVisible = !parked;
 
@@ -1615,15 +1615,18 @@ export function useScrollMemory(
       reveal();
     };
 
-    const saveNow = () => {
-      if (el.clientHeight === 0) return;
+    const capture = (): ScrollSnapshot => {
       const top = el.scrollTop;
       const found = pickAnchor(el, top);
-      rememberScroll(key, {
+      return {
         anchor: found?.key,
         delta: found?.delta ?? 0,
         fallback: top,
-      });
+      };
+    };
+    const saveNow = () => {
+      if (el.clientHeight === 0) return;
+      rememberScroll(key, capture());
     };
 
     const cancelSave = () => {
@@ -1634,9 +1637,9 @@ export function useScrollMemory(
     };
 
     const flushParked = () => {
-      if (saveTimer === null || restoring || lastTop <= 0) return;
+      if (saveTimer === null || restoring || !pendingSnap) return;
       cancelSave();
-      rememberScroll(key, { delta: 0, fallback: lastTop });
+      rememberScroll(key, pendingSnap);
     };
 
     const onResize = () => {
@@ -1661,11 +1664,13 @@ export function useScrollMemory(
     const onScroll = () => {
       if (restoring) return;
       if (el.clientHeight === 0) return;
-      lastTop = el.scrollTop;
+      // Capture geometry while the page is visible. Navigation can hide it
+      // before the debounce runs, when anchor offsets can no longer be read.
+      pendingSnap = capture();
       cancelSave();
       saveTimer = window.setTimeout(() => {
         saveTimer = null;
-        saveNow();
+        if (pendingSnap) rememberScroll(key, pendingSnap);
       }, 200);
     };
 

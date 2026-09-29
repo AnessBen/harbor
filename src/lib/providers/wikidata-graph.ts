@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { lruSet } from "../cache";
 
-const CACHE_KEY = "harbor.graph.wikidata.v1";
+const CACHE_KEY = "harbor.graph.wikidata.v2";
 const STALE_MS = 30 * 24 * 60 * 60 * 1000;
 const CACHE_MAX = 80;
 const QUERY_TIMEOUT_MS = 12000;
@@ -85,7 +85,7 @@ const CREW_QUERY = `SELECT ?other ?otherLabel ?tmdb (COUNT(DISTINCT ?person) AS 
   ?other ?role ?person .
   ?other wdt:P31 wd:Q11424 ; wdt:P4947 ?tmdb .
   FILTER(?other != ?f)
-  SERVICE wikibase:label { bd:serviceParam wikibase:language "en". ?other rdfs:label ?otherLabel . ?person rdfs:label ?personLabel }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "en,mul". ?other rdfs:label ?otherLabel . ?person rdfs:label ?personLabel }
 }
 GROUP BY ?other ?otherLabel ?tmdb HAVING(COUNT(DISTINCT ?person) >= SHARED_MIN) ORDER BY DESC(?shared) LIMIT 12`;
 
@@ -95,7 +95,7 @@ const SOURCE_QUERY = `SELECT ?src ?srcLabel (MIN(?y) AS ?pub) (SAMPLE(?ol) AS ?o
   OPTIONAL { ?src wdt:P648 ?ol }
   OPTIONAL { ?src wdt:P2034 ?gut }
   OPTIONAL { ?src wdt:P577 ?d . BIND(YEAR(?d) AS ?y) }
-  SERVICE wikibase:label { bd:serviceParam wikibase:language "en". ?src rdfs:label ?srcLabel . ?author rdfs:label ?authorLabel }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "en,mul". ?src rdfs:label ?srcLabel . ?author rdfs:label ?authorLabel }
 }
 GROUP BY ?src ?srcLabel
 LIMIT 6`;
@@ -107,7 +107,7 @@ const SIBLING_QUERY = `SELECT ?src ?other ?otherLabel ?kind ?tmdb (MIN(?y) AS ?y
   ?other ?prop ?tmdb .
   FILTER(?other != ?f)
   OPTIONAL { ?other wdt:P577 ?d . BIND(YEAR(?d) AS ?y) }
-  SERVICE wikibase:label { bd:serviceParam wikibase:language "en". ?other rdfs:label ?otherLabel }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "en,mul". ?other rdfs:label ?otherLabel }
 }
 GROUP BY ?src ?other ?otherLabel ?kind ?tmdb
 ORDER BY ?year

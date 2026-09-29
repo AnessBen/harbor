@@ -24,9 +24,10 @@ test("the dock publishes its height for everything else to clear", () => {
 
 test("settings content, rail and footer all clear the dock", () => {
   const css = read("src/index.css");
-  for (const selector of [".hset-main", ".hset-rail", ".hset-footer"]) {
+  for (const selector of [".hset-main", ".hset-rail", ".hset-main:has(.hset-footer)"]) {
     assert.ok(topLevelBlock(css, selector).includes(GAP), selector + " sits under the music dock");
   }
+  assert.ok(topLevelBlock(css, ".hset-footer").includes("inset-block-end: 0"), "footer must not count the dock clearance twice");
 });
 
 test("the composite gap covers both the dock and any viewport lift", () => {
@@ -45,6 +46,7 @@ test("floating bottom surfaces clear the dock", () => {
     "src/components/episode-jumper.tsx",
     "src/components/update/update-card.tsx",
     "src/components/music/music-source-picker.tsx",
+    "src/chrome/minui-dock.tsx",
   ];
   for (const file of files)
     assert.ok(read(file).includes(DOCK), file + " floats at the bottom without clearing the dock");

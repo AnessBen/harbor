@@ -996,7 +996,16 @@ export function AnimeView({ active = true }: { active?: boolean }) {
             for (const spec of SPECS) {
               if (spec.key === TOP_PICKS_KEY) continue;
               const r = filteredRowsByKey[spec.key] ?? EMPTY_ROW;
-              if (r.ready && r.metas.length === 0) continue;
+              const raw = rowsByKey[spec.key];
+              // Franchise dedupe can strip a freshly loaded page down to a couple of cards while
+              // the next page is already on its way. Showing that stub makes the row visibly pop
+              // as it fills, so it stays a skeleton until it has settled.
+              const settling =
+                r.ready &&
+                r.metas.length < ROW_MIN_VISIBLE &&
+                !!raw?.hasMore &&
+                (raw?.page ?? 1) < ROW_MAX_PAGES;
+              if (r.ready && !settling && r.metas.length === 0) continue;
               const specName = nameOf(spec.key, t(spec.title));
               const rankName = t("Top 10 {name}", { name: specName.replace(/^Top\s*/i, "") });
               const viewAll = () =>
@@ -1008,7 +1017,7 @@ export function AnimeView({ active = true }: { active?: boolean }) {
               rd.push({
                 key: spec.key,
                 name: spec.rank ? rankName : specName,
-                node: !r.ready ? (
+                node: !r.ready || settling ? (
                   <RowSkeleton title={spec.rank ? rankName : specName} />
                 ) : spec.rank && r.metas.length >= 10 ? (
                   <Row
