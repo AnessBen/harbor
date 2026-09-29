@@ -51,7 +51,9 @@ export function Plugins({ active = true }: { active?: boolean }) {
 
   const load = useCallback(() => {
     const gen = ++genRef.current;
-    return listBrowseCatalogs(authKey).then((list) => {
+    // The Plugins page is where a plugin's rows belong, so it asks for them whatever the setting
+    // that keeps them out of the other surfaces says.
+    return listBrowseCatalogs(authKey, { pluginRows: true }).then((list) => {
       // Two loads run at once on mount: this one and the one a runtime report triggers. Reading
       // the addons is the slow half, so the older call can land last and blank a filled list.
       if (gen !== genRef.current) return;

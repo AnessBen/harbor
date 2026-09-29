@@ -458,6 +458,7 @@ export const DEFAULT: Settings = {
   dragAnywhere: false,
   resumeDetailScroll: true,
   pluginsEnabled: true,
+  pluginsOutsideTab: false,
   pluginsGroupByRepo: false,
   pluginsAutoCheck: true,
   pluginsBackground: false,

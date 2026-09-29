@@ -42,11 +42,20 @@ export function InstalledTab({ onAddRepository }: { onAddRepository: () => void 
         <ToggleRow
           label={t("Use plugins")}
           sub={t(
-            "Ask every enabled plugin for streams when you press Play. Turn this off to pause them all without removing anything.",
+            "Pause or resume every plugin at once, without removing anything. The switch below decides where they are asked.",
           )}
           value={settings.pluginsEnabled}
           onChange={(v) => update({ pluginsEnabled: v })}
           newId="plugins:use-plugins"
+        />
+        <ToggleRow
+          label={t("Use plugins outside the Plugins page")}
+          sub={t(
+            "Let Home, Discover, Catalogs, search and the Play button ask plugins alongside your addons. Off asks only the addons you have installed.",
+          )}
+          value={settings.pluginsOutsideTab}
+          onChange={(v) => update({ pluginsOutsideTab: v })}
+          newId="plugins:outside-tab"
         />
         <ToggleRow
           label={t("Group by repository")}
@@ -59,7 +68,7 @@ export function InstalledTab({ onAddRepository }: { onAddRepository: () => void 
         <ToggleRow
           label={t("Also use plugins for background checks")}
           sub={t(
-            "Let auto-download and the next-episode prefetch ask plugins too. Off keeps plugins to the moment you press Play.",
+            "Let auto-download and the next-episode prefetch ask plugins too. Off keeps plugins out of background work.",
           )}
           value={settings.pluginsBackground}
           onChange={(v) => update({ pluginsBackground: v })}

@@ -113,7 +113,7 @@ export function useAddons(
           list.push(torbox);
         }
       }
-      if (settings.pluginsEnabled) {
+      if (settings.pluginsEnabled && settings.pluginsOutsideTab) {
         await loadStreamPlugins();
         if (cancelled) return;
         setStreamPluginConfig({ tmdbKey: settings.tmdbKey });
@@ -139,6 +139,7 @@ export function useAddons(
     settings.dlKey,
     settings.tmdbKey,
     settings.pluginsEnabled,
+    settings.pluginsOutsideTab,
     settings.pluginsGroupByRepo,
     pluginTick,
   ]);

@@ -93,7 +93,7 @@ async function gatherStreamAddons(authKey: string | null, settings: Settings): P
       list.push(torbox);
     }
   }
-  if (settings.pluginsEnabled && settings.pluginsBackground) {
+  if (settings.pluginsEnabled && settings.pluginsOutsideTab && settings.pluginsBackground) {
     await loadStreamPlugins();
     setStreamPluginConfig({ tmdbKey: settings.tmdbKey });
     list.push(...pluginAddons({ enabled: true, groupByRepo: settings.pluginsGroupByRepo }));
