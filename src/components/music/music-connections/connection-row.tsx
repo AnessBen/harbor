@@ -18,6 +18,7 @@ import {
   isGatedMusicSource,
   type GatedMusicSource,
   musicSourceAllowed,
+  useMusicSourceConsent,
   requestMusicSourceConsent,
   setMusicSourceEnabled,
 } from "@/lib/music/source-consent";
@@ -75,6 +76,7 @@ export function MusicConnectionRow({
   onRefresh: () => void;
 }) {
   const t = useT();
+  useMusicSourceConsent();
   const [open, setOpen] = useState(defaultOpen && connection.needs.length > 0);
   const [values, setValues] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<Busy>(null);
@@ -314,6 +316,7 @@ function RowAction({
   onDisconnect: () => void;
 }) {
   const t = useT();
+  useMusicSourceConsent();
   if (connection.status === "unavailable") return <span />;
   if (isGatedMusicSource(connection.id)) {
     const allowed = musicSourceAllowed(connection.id);

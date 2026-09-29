@@ -13,6 +13,7 @@ import { Check, ExternalLink, LoaderCircle, Music2, Unplug, X } from "@/componen
 import { ModalShell, useModalExit } from "@/components/modal-shell";
 import { MusicSourceRow } from "@/components/music/music-source-row";
 import { useT } from "@/lib/i18n";
+import { adoptRequestedIdentity } from "@/lib/music/queue-source";
 import { playMusic } from "@/lib/music/player";
 import {
   getMusicSourceCandidates,
@@ -30,15 +31,6 @@ import { MusicSourcePopover } from "./music-source-popover";
 import { MusicSourcePossible } from "./music-source-possible";
 
 const SOURCE_KEY = "harbor.music.preferred-source.v1";
-function fromCollection(selected: MusicTrack, original: MusicTrack): MusicTrack {
-  return {
-    ...selected,
-    collectionOrigin: original.collectionOrigin ?? {
-      id: original.id,
-      connectorId: original.connectorId,
-    },
-  };
-}
 type PlaybackReady = (track: MusicTrack, queue: MusicTrack[]) => void;
 
 type PickerRequest = {
@@ -123,7 +115,7 @@ function MusicSourcePickerRoot({ children, active }: { children: ReactNode; acti
               window.dispatchEvent(new Event("harbor:music-playback-source-required"));
               return;
             }
-            const selected = fromCollection(match.track, track);
+            const selected = adoptRequestedIdentity(match.track, track);
             const selectedQueue = queue.map((item) =>
               item.id === track.id && item.connectorId === track.connectorId ? selected : item,
             );
@@ -302,7 +294,7 @@ export function MusicSourcePicker({
       setPending(connectorId);
       writeMusicPreference(SOURCE_KEY, connectorId);
     }
-    const selected = fromCollection(chosen, request.track);
+    const selected = adoptRequestedIdentity(chosen, request.track);
     const queue = request.queue.map((track) =>
       track.id === request.track.id && track.connectorId === request.track.connectorId
         ? selected

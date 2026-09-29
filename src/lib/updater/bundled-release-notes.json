@@ -1,5 +1,32 @@
 {
   "notes": {
+    "0.9.128": {
+      "title": "Harbor Beta 0.9.128",
+      "intro": "We are pushing this beta now so you can try new bug fixes, the music page, the sports page and other additions to Harbor, for those who do not build from source.",
+      "sections": [
+        {
+          "heading": "What's in this one",
+          "items": [
+            "Bug fixes across the app.",
+            "Music page additions and fixes.",
+            "Sports page additions.",
+            "For the newest features without waiting, build from beta-branch on GitHub."
+          ]
+        },
+        {
+          "heading": "More notes coming",
+          "items": [
+            "We have another beta coming soon and will flesh out these notes with all the changes done. Thank you again for trying Harbor and making it better."
+          ]
+        },
+        {
+          "heading": "Mobile and TV",
+          "items": [
+            "We are still working on mobile and TV apps. We have no ETA but we appreciate and value all feedback given for the circulating TV betas."
+          ]
+        }
+      ]
+    },
     "0.9.127": {
       "title": "Harbor Beta 0.9.127",
       "intro": "A focused update for Windows HDR playback, window startup, and embedded subtitle selection.",

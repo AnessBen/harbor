@@ -120,9 +120,9 @@ async fn native_meter_reads_real_stereo_preserves_processing_and_disables() {
     assert!(filters.contains("pan="));
     assert!(!filters.contains("astats"));
     assert_ne!(mpv.get_property::<NativeFlag>("pause").unwrap().0, 0);
-    engine.stop(false).await.unwrap();
     drop(events);
     drop(mpv);
+    engine.stop(false).await.unwrap();
     std::fs::remove_file(path).unwrap();
     std::fs::remove_file(settings_path).unwrap();
 }
@@ -246,8 +246,8 @@ async fn native_seek_to_end_can_resume_and_paused_seeks_keep_their_position() {
             .is_ok_and(|position| position > 4.05 && position < 5.0)
     })
     .await;
-    engine.stop(false).await.expect("stop isolated player");
     drop(mpv);
+    engine.stop(false).await.expect("stop isolated player");
     std::fs::remove_file(path).expect("remove silent fixture");
 }
 

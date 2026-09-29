@@ -15,6 +15,7 @@ import {
 import { createDeckAdoption } from "./deck-primary";
 import { insertIntoQueue, markManuallyQueued, queueInsertIndex } from "./queue-insert";
 import { queueTrackKey } from "./queue-order";
+import { adoptRequestedIdentity } from "./queue-source";
 import { musicAdvance, musicPrevious, resetMusicOrder } from "./transport";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
@@ -34,6 +35,7 @@ import {
 } from "./session-checkpoint";
 import { beginMusicQueue, getMusicPlaybackOrigin, restoreMusicPlaybackOrigin } from "./playback-origin";
 import { hydrateMusicContextTracks, hydrateMusicRecentContexts } from "./recent-context";
+import { hydrateMusicSourceConsent } from "./source-consent";
 import type {
   MusicAudioQuality,
   MusicPlayerState,
@@ -338,6 +340,7 @@ export function initializeMusic(): Promise<void> {
   void hydrateMusicRecentContexts().catch(() => {});
   void hydrateLikedArtistStore().catch(() => {});
   void hydrateArtistBlockStore().catch(() => {});
+  void hydrateMusicSourceConsent().catch(() => {});
   initialization = Promise.all([
     invoke<NativeMusicBootstrap>("music_db_init", {
       migration,
@@ -863,13 +866,7 @@ export async function playMusic(
               window.dispatchEvent(new Event("harbor:music-playback-source-required"));
             return;
           }
-          const next = {
-            ...replacement,
-            collectionOrigin: attemptTrack.collectionOrigin ?? {
-              id: attemptTrack.id,
-              connectorId: attemptTrack.connectorId,
-            },
-          };
+          const next = adoptRequestedIdentity(replacement, attemptTrack);
           await playMusic(
             next,
             queue.map((item) =>
@@ -995,13 +992,7 @@ export async function playMusic(
         publish({ phase: "resolving", error: null });
         try {
           await playMusic(
-            {
-              ...next,
-              collectionOrigin: track.collectionOrigin ?? {
-                id: track.id,
-                connectorId: track.connectorId,
-              },
-            },
+            adoptRequestedIdentity(next, track),
             queue,
             failedAttempts,
             true,
