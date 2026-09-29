@@ -48,7 +48,9 @@ export {
 export {
   isPluginAddon,
   pluginAddons,
+  pluginAddonById,
   pluginCacheTokens,
+  pluginIdFromCatalogueBase,
   pluginListKey,
   pluginsForAddon,
   runPluginAddon,

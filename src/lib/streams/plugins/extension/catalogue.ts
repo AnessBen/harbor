@@ -111,7 +111,14 @@ export function metaFor(cat: PluginCatalogue, item: BridgeSearchItem): Meta | nu
       : undefined,
     listingYear: read.year ?? undefined,
     pluginQuality: text(item.quality).slice(0, 40) || read.quality[0] || undefined,
-    addonOrigin: { id: cat.pluginId, name: cat.pluginName, logo: cat.pluginIcon },
+    // The row's source, kept so playing it asks this plugin rather than every plugin: the id
+    // alone names it, and the base carries which of its providers listed it.
+    addonOrigin: {
+      id: cat.pluginId,
+      name: cat.pluginName,
+      logo: cat.pluginIcon,
+      base: extensionCatalogueBase(cat.pluginId, cat.providerId),
+    },
   };
 }
 

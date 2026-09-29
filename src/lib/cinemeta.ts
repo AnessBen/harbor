@@ -82,12 +82,17 @@ export type Meta = {
 
 export function persistableAddonOrigin(origin: unknown): AddonOrigin | undefined {
   if (!origin || typeof origin !== "object") return undefined;
-  const value = origin as { id?: unknown; name?: unknown; logo?: unknown };
+  const value = origin as { id?: unknown; name?: unknown; logo?: unknown; base?: unknown };
   if (typeof value.id !== "string" || !value.id) return undefined;
+  // The base is what a saved row is resolved and played through: an addon's manifest address, or
+  // the plugin catalogue it came from. Without it a plugin row saved to the library loses which
+  // plugin listed it, and playing it asks every plugin instead of that one.
+  const base = typeof value.base === "string" && value.base ? value.base : undefined;
   return {
     id: value.id,
     name: typeof value.name === "string" && value.name ? value.name : value.id,
     logo: typeof value.logo === "string" ? value.logo : undefined,
+    ...(base ? { base } : {}),
   };
 }
 

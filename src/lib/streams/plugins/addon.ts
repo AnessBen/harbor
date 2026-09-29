@@ -26,6 +26,27 @@ export function isPluginAddon(addon: Pick<Addon, "transportUrl">): boolean {
   return addon.transportUrl.startsWith(PLUGIN_ADDON_PREFIX);
 }
 
+/** The plugin a catalogue base belongs to. A row's base names the plugin and the provider
+ * (`harbor-plugin://plugin/provider`), while the stream addon is per plugin, so the provider part
+ * tells one plugin's rows from another's and the match is on the plugin. A repository grouping is
+ * not a plugin and pins nothing. */
+export function pluginIdFromCatalogueBase(base: string): string | undefined {
+  if (!base.startsWith(PLUGIN_ADDON_PREFIX)) return undefined;
+  const rest = base.slice(PLUGIN_ADDON_PREFIX.length);
+  if (rest.startsWith("repo/")) return undefined;
+  const cut = rest.indexOf("/");
+  const id = cut < 0 ? rest : rest.slice(0, cut);
+  return id || undefined;
+}
+
+/** The stream addon for one installed plugin, for answering an item that names its own source.
+ * Undefined while that plugin is not installed and enabled: a catalogue that is no longer here
+ * pins nothing, and every plugin stays free rather than all of them standing down for it. */
+export function pluginAddonById(pluginId: string): Addon | undefined {
+  const found = runnableStreamPlugins().find((p) => p.id === pluginId);
+  return found ? pluginAddon(found) : undefined;
+}
+
 export { runnableStreamPlugins };
 
 /** The ids a plugin answers to: whatever its repository declared, plus the ids its own catalogue

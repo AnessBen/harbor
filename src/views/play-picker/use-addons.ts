@@ -113,10 +113,13 @@ export function useAddons(
           list.push(torbox);
         }
       }
+      // The store is read even while the switch keeps plugins out of the list: an item that names
+      // the plugin that listed it is still that plugin's to answer, and answering needs the
+      // installed set. Reading it starts no runtime; only querying one does.
+      await loadStreamPlugins();
+      if (cancelled) return;
+      setStreamPluginConfig({ tmdbKey: settings.tmdbKey });
       if (settings.pluginsEnabled && settings.pluginsOutsideTab) {
-        await loadStreamPlugins();
-        if (cancelled) return;
-        setStreamPluginConfig({ tmdbKey: settings.tmdbKey });
         list.push(...pluginAddons({ enabled: true, groupByRepo: settings.pluginsGroupByRepo }));
         void import("@/lib/plugins/auto-check").then((m) =>
           m.schedulePluginAutoCheck(settings.pluginsAutoCheck),

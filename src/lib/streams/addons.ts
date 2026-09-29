@@ -5,7 +5,7 @@ import { isAddonRanked, isStatusOnlyAddon } from "./addon-detect";
 import type { AddonRankFn } from "./addon-priority";
 import { hasUncachedMarker } from "./cached";
 import { infoHashFromSources, infoHashFromUrl } from "@/lib/torrent/magnet";
-import { isPluginAddon, PLUGIN_ADDON_PREFIX, runPluginAddon } from "./plugins/addon";
+import { isPluginAddon, PLUGIN_ADDON_PREFIX, pluginIdFromCatalogueBase, runPluginAddon } from "./plugins/addon";
 import type { StreamRequestContext } from "./plugins/types";
 import type { Stream } from "./types";
 
@@ -55,6 +55,22 @@ export function pinnedPluginBase(
   return forced?.find((entry) => entry.base.startsWith(PLUGIN_ADDON_PREFIX))?.base;
 }
 
+/** The stream addon answering a request that names a plugin's catalogue, when it is here to
+ * answer. A row's base names the plugin and the provider, while the addon is per plugin, so the
+ * match is on the plugin the base belongs to rather than on the base itself. Honoured only while
+ * that plugin's addon is in the list; otherwise every plugin is left free rather than all of them
+ * being stood down for a catalogue that is no longer here. */
+export function pinnedPluginUrl(
+  forced: readonly { base: string }[] | undefined,
+  addons: readonly Pick<Addon, "transportUrl">[],
+): string | undefined {
+  const base = pinnedPluginBase(forced);
+  const id = base ? pluginIdFromCatalogueBase(base) : undefined;
+  if (!id) return undefined;
+  const url = `${PLUGIN_ADDON_PREFIX}${id}`;
+  return addons.some((a) => a.transportUrl === url) ? url : undefined;
+}
+
 /** The id a plugin is asked with. A plugin's own catalogue rows address it by an id its manifest
  * cannot declare for itself, so the id the catalogue handed the request is taken first; only then
  * is the repository's declared prefixes consulted. */
@@ -82,11 +98,8 @@ export async function fetchAddonStreams(
 ): Promise<Stream[]> {
   const forcedBases = new Map((forced ?? []).map((f) => [f.base, f.id]));
   // A request that names a plugin is that plugin's to answer, the way CloudStream asks only the
-  // provider whose catalogue the item came from. The pin is honoured only while that plugin is
-  // still installed and enabled; otherwise every plugin is left free rather than all of them being
-  // stood down for a catalogue that is no longer here.
-  const pinned = pinnedPluginBase(forced);
-  const pinnedPlugin = pinned != null && addons.some((a) => a.transportUrl === pinned) ? pinned : undefined;
+  // provider whose catalogue the item came from.
+  const pinnedPlugin = pinnedPluginUrl(forced, addons);
   const namedTasks: Array<{ addonId: string; name: string; p: Promise<Stream[]>; plugin?: boolean }> = [];
   const skipped: string[] = [];
   for (let i = 0; i < addons.length; i++) {
