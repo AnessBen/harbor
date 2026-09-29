@@ -34,6 +34,26 @@ export type Meta = {
   /** Resolution a plugin's own catalogue row claimed. A plugin row arrives as a poster with no
    * addon meta behind it, so this is the only field its quality can be carried in. */
   pluginQuality?: string;
+  /** What a plugin wrote on its listing line beyond the title, read back out of it and kept. A
+   * provider names a listing after everything it carries, so this is where its languages are: the
+   * title has them cut off it, and nothing else in the payload states them. */
+  /** What a plugin wrote on its listing line beyond the title, read back out of it and kept. A
+   * provider names a listing after everything it carries, so this is where its languages are: the
+   * title has them cut off it, and nothing else in the payload states them.
+   *
+   * `resolutions` is every tier the line names, best first — a line naming `2160p`, `4K` and `UHD`
+   * is one tier, not three. `hdr` is null when the line said nothing, which is not a claim that the
+   * file has none. */
+  listingExtras?: {
+    rest: string;
+    languages: string[];
+    quality: string[];
+    resolutions: string[];
+    hdr: string | null;
+  };
+  /** A year a plugin put on the listing line, when it wrote one. The addon meta carries its own
+   * `releaseInfo`; this is for rows that have no addon meta behind them. */
+  listingYear?: number;
   runtime?: string;
   genres?: string[];
   trailers?: Array<{ source: string; type?: string }>;

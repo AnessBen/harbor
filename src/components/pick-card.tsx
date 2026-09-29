@@ -49,6 +49,7 @@ import { ClapperMini } from "./icons/clapper-mini";
 import { ImdbIcon } from "./icons/imdb-icon";
 import { MalLogo } from "./icons/mal-logo";
 import { Poster, useLocalizedPoster } from "./poster";
+import { ListingBadgeStrip } from "./listing-badge-strip";
 import { CardHoverOverlay, cardHoverPosterClass, type CardHoverStyle } from "./pick-card/card-hover";
 import { CustomHoverOverlay, customHoverPosterProps } from "./pick-card/custom-hover";
 import { ExpandingCardArtwork, useExpandingCard } from "./pick-card/use-expanding-card";
@@ -609,6 +610,9 @@ const PosterCard = memo(function PosterCard({
             onReady={expandingCard.onArtworkReady}
             onError={expandingCard.onArtworkError}
           />
+          {/* A plugin's own line, read back and badged. Only a listing that carried extras has
+              anything here, so every other surface draws exactly what it drew before. */}
+          <ListingBadgeStrip meta={meta} />
         </Poster>
         {settings.cardHoverShine && (
           <div

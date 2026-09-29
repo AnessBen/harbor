@@ -461,6 +461,8 @@ export const DEFAULT: Settings = {
   pluginsGroupByRepo: false,
   pluginsAutoCheck: true,
   pluginsBackground: false,
+  pluginsPosterLanguages: false,
+  pluginsPosterQuality: false,
   cwPerProfile: false,
   closeToTray: false,
   trayAlwaysOnTop: false,

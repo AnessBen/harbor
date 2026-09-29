@@ -1,5 +1,6 @@
 import type { Meta, MetaType } from "@/lib/cinemeta";
 import { bridgeLoad, extensionsSupported, type BridgeMedia } from "./bridge";
+import { readListing } from "./listing";
 import { normalizeTitle } from "./match";
 import { metaType } from "./meta-type";
 
@@ -135,12 +136,25 @@ function recommendationsOf(
     const name = text(item.name).slice(0, MAX_NAME);
     const url = text(item.url);
     if (!name || !url) continue;
+    // The provider's line, read the same way a catalogue row's is, so an item opened from a search
+    // or a plugin page carries its languages through to the detail page.
+    const read = readListing(name);
     out.push({
       id: capstanId(providerId, url),
       type: metaType(item.type, type),
-      name,
+      name: read.title.slice(0, MAX_NAME),
       poster: httpUrl(item.posterUrl),
-      pluginQuality: text(item.quality).slice(0, 40) || undefined,
+      listingExtras: read.rest
+        ? {
+            rest: read.rest,
+            languages: read.languages,
+            quality: read.quality,
+            resolutions: read.resolutions,
+            hdr: read.hdr,
+          }
+        : undefined,
+      listingYear: read.year ?? undefined,
+      pluginQuality: text(item.quality).slice(0, 40) || read.resolutions[0] || undefined,
       addonOrigin: origin,
     });
   }
@@ -205,11 +219,15 @@ export function capstanDetailFrom(
   const parsed = parseCapstanId(id);
   const duration = minutesOf(media.durationMinutes);
   const tags = Array.isArray(media.tags) ? media.tags.map(text).filter(Boolean) : [];
+  // The provider's own line, read the same way a catalogue row's is. `media.name` is the title the
+  // page was loaded under, which for these providers is the whole listing line: the languages and
+  // quality are in it and nowhere else in the payload, so they are read back out here too.
+  const listing = readListing(text(media.name));
   return {
     meta: {
       id,
       type,
-      name: text(media.name),
+      name: listing.title,
       poster: httpUrl(media.posterUrl),
       background: httpUrl(media.backgroundPosterUrl),
       description: text(media.plot) || undefined,
@@ -217,6 +235,16 @@ export function capstanDetailFrom(
       runtime: duration != null ? `${duration} min` : undefined,
       genres: tags.length ? tags : undefined,
       videos: videosOf(media),
+      listingExtras: listing.rest
+        ? {
+            rest: listing.rest,
+            languages: listing.languages,
+            quality: listing.quality,
+            resolutions: listing.resolutions,
+            hdr: listing.hdr,
+          }
+        : undefined,
+      listingYear: listing.year ?? undefined,
     },
     contentRating: text(media.contentRating) || undefined,
     cast: namesOf(media.actors),

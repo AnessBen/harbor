@@ -57,7 +57,9 @@ function extensionCatalogs(): BrowseCatalog[] {
   }
   return rows.map((row) => {
     const many = (perPlugin.get(row.pluginId)?.size ?? 1) > 1;
-    const name = many && row.providerName ? `${row.row} · ${row.providerName}` : row.row;
+    // A hyphen rather than a dot: the provider follows the row and the pair reads as one name
+    // rather than as two things joined by punctuation.
+    const name = many && row.providerName ? `${row.row} - ${row.providerName}` : row.row;
     return {
       key: `${row.pluginId}-${row.providerId}-${row.row}`,
       addonName: row.pluginName,

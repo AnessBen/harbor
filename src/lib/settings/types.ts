@@ -545,6 +545,11 @@ export type Settings = {
   pluginsGroupByRepo: boolean;
   pluginsAutoCheck: boolean;
   pluginsBackground: boolean;
+  /** Badges on the Plugins tab's posters, read out of the listing titles a provider sends. Off by
+   * default: a provider's title carries whatever it wants to say, and not everyone wants a poster
+   * with a language strip on it. */
+  pluginsPosterLanguages: boolean;
+  pluginsPosterQuality: boolean;
   cwPerProfile: boolean;
   closeToTray: boolean;
   trayAlwaysOnTop: boolean;

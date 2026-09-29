@@ -493,6 +493,35 @@ export function DetailView({
   const addToListRef = useRef<HTMLButtonElement | null>(null);
   const [addToListOpen, setAddToListOpen] = useState(false);
 
+  /** The provider's own answer, in a ref so a fetch that was started before it arrived still merges
+   * against it.
+   *
+   * The four callers below each start a fetch and merge the answer when it lands, and their
+   * dependency arrays are about the fetch, not about this. Reached through a closure, a fetch
+   * started before the provider answered would hold the `null` from that render, take the
+   * replace-it branch, and drop the languages a plugin sent — which is what happened: a poster
+   * showed Hindi and the page it opened did not. */
+  const providerMetaRef = useRef<Meta | null>(null);
+  providerMetaRef.current = capstanMeta?.meta ?? null;
+
+  /** Take a fetched meta as the page's full meta, keeping what a plugin told us about the listing.
+   *
+   * The fetched meta is the source for episodes, genres and the year, and it knows nothing about
+   * the line a provider wrote: `listingExtras` is read out of that line and exists on the provider's
+   * answer alone. */
+  const keepProviderListing = useCallback((fetched: Meta) => {
+    const own = providerMetaRef.current;
+    if (!own || own.id !== fetched.id) {
+      setCinemetaFull(fetched);
+      return;
+    }
+    setCinemetaFull({
+      ...fetched,
+      listingExtras: own.listingExtras ?? fetched.listingExtras,
+      listingYear: own.listingYear ?? fetched.listingYear,
+    });
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     setDetail(null);
@@ -510,11 +539,18 @@ export function DetailView({
     seasonEntryRef.current = null;
     setSeasonArt(null);
     setCinemetaFull(meta.videos && meta.videos.length > 0 ? meta : null);
+    // A plugin's own page is read separately and lands a tick after this runs, so the reset above
+    // must not be the last word on it: for a plugin row the incoming `meta` has no videos, so this
+    // sets nothing, and the item's own answer is the only thing that can fill it. Restoring it here
+    // as well keeps the two from racing — this effect can re-run on a dependency change while the
+    // plugin's answer is already in hand, and without this the answer would be thrown away and
+    // never asked for again, because the effect that reads it does not depend on this one.
+    if (capstanMeta?.meta.id === meta.id) setCinemetaFull(capstanMeta.meta);
     if (meta.id.startsWith("tt") && !addonNative) {
       fetchCinemetaMeta(narrowMediaType(meta.type), meta.id)
         .then((full) => {
           if (cancelled || !full) return;
-          setCinemetaFull(full);
+          keepProviderListing(full);
         })
         .catch(() => {});
     }
@@ -524,8 +560,13 @@ export function DetailView({
   }, [meta.id, meta.type, addonNative]);
 
   // A plugin's own rows reach this page as a poster with no addon meta behind them, so the
-  // provider's bridge answer is the only source for this item's year and episode list. The id is
-  // rechecked because a previous item's answer is still in state for one render after a move.
+  // provider's bridge answer is the only source for this item's year, episode list, and the
+  // languages it wrote on its listing. The id is rechecked because a previous item's answer is
+  // still in state for one render after a move.
+  //
+  // `capstanMeta` is a dependency so this re-runs when the answer arrives, and it runs again when
+  // the answer changes rather than being read once: the other effect that writes this state does
+  // not depend on the answer, so nothing else would put it back.
   useEffect(() => {
     if (!capstanMeta || capstanMeta.meta.id !== meta.id) return;
     const own = capstanMeta.meta;
@@ -653,7 +694,10 @@ export function DetailView({
     fetchCinemetaMeta(narrowMediaType(meta.type), imdb)
       .then((full) => {
         if (cancelled || !full) return;
-        setCinemetaFull(full);
+        // Merged rather than replaced: a fetched meta has the episodes and the rating this page
+        // wants, and has no idea what the provider wrote on its listing line. Replacing would drop
+        // the languages a plugin sent the moment the fetch landed, which is exactly what it did.
+        keepProviderListing(full);
       })
       .catch(() => {});
     return () => {
@@ -674,7 +718,7 @@ export function DetailView({
       const attempt = async (base: string) => {
         const full = await fetchAddonMeta(base, meta.type, meta.id).catch(() => null);
         if (cancelled || !full?.videos?.length) return false;
-        setCinemetaFull(full);
+        keepProviderListing(full);
         return true;
       };
       const direct = origin.base ? origin.base.replace(/\/manifest\.json$/, "") : null;
@@ -702,7 +746,7 @@ export function DetailView({
     resolveMeta(authKey, narrowMediaType(meta.type), meta.id)
       .then((full) => {
         if (cancelled || !full?.videos?.length) return;
-        setCinemetaFull(full);
+        keepProviderListing(full);
       })
       .catch(() => {});
     return () => {
@@ -1551,6 +1595,14 @@ export function DetailView({
     episode: lastPlay ? { season: lastPlay.season, episode: lastPlay.episode } : undefined,
   }));
 
+  // The plugin's own line, as the pills read it: the navigation payload's copy when there is one,
+  // otherwise the page's. Every resolution is its own pill, best first, and HDR rides with them.
+  // The `Listing details` pill is gone: it carried the raw line, and the line is a fallback the user
+  // asked not to see. Sizes live only in the tooltip now, which is the trade that removal makes.
+  const listing = meta.listingExtras ?? cinemetaFull?.listingExtras;
+  const listingResolutions = listing?.resolutions ?? [];
+  const listingQuality = listing?.quality ?? [];
+
   const heroPills = (
     <>
       {year && (
@@ -1565,7 +1617,34 @@ export function DetailView({
           {year}
         </Pill>
       )}
-      {meta.pluginQuality && <Pill>{meta.pluginQuality}</Pill>}
+      {/* What the plugin wrote on its listing line, in full.
+       *
+       * A poster can only afford a couple of badges, so a listing naming six languages and four
+       * qualities showed two of each and counted the rest. Here there is room for all of them: every
+       * language, and every quality as its own pill, best first.
+       *
+       * Read from the navigation `meta` first, which is the object the poster's own strip read and
+       * so the one known to carry these: this page never consulted it, and every merge between
+       * fetched metas was preserving a field that was already in scope and never looked at. The
+       * page's own copy is only a fallback, for the case where an item is opened by an id with no
+       * navigation payload behind it.
+       *
+       * `pluginQuality` above is the provider's own quality field, which is a different thing from
+       * what its line says, and both are worth having when they disagree. */}
+      {listing?.languages.map((language) => (
+        <Pill key={`lang:${language}`}>{language}</Pill>
+      ))}
+      {/* Every resolution the listing names, best first, then high dynamic range, then how the file
+          was made. The `Listing details` pill is gone — the user asked for the readings rather than
+          the raw line, which means the sizes and the provider's own tags now live only in the
+          poster's tooltip. */}
+      {listingResolutions.map((r) => (
+        <Pill key={`resolution:${r}`}>{r}</Pill>
+      ))}
+      {listing?.hdr && <Pill>{listing.hdr}</Pill>}
+      {listingQuality.map((q) => (
+        <Pill key={`quality:${q}`}>{q}</Pill>
+      ))}
       {capstanMeta?.contentRating && <Pill>{capstanMeta.contentRating}</Pill>}
       {inLocalLibrary && (
         <HoverTooltip label={t("In your local library")} side="top" align="center" arrow>
