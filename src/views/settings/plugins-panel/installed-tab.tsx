@@ -1,4 +1,5 @@
-import { Puzzle } from "../icons";
+import { useState } from "react";
+import { Loader2, Puzzle, RefreshCw } from "../icons";
 import { useT } from "@/lib/i18n";
 import { pluginKinds, usePluginKindsVersion, type KindAdapter, type PluginKind, type PluginView } from "@/lib/plugins";
 import { useSettings } from "@/lib/settings";
@@ -29,6 +30,29 @@ export function InstalledTab({ onAddRepository }: { onAddRepository: () => void 
   usePluginKindsVersion();
   const groups = groupByRepo();
   const waitSeconds = Math.max(8, Math.min(120, settings.addonTimeoutSec ?? 30));
+  const [refreshing, setRefreshing] = useState(false);
+  // Only a plugin Harbor stood down has anything to gain from a run: one that answers comes back,
+  // and the rest are already asked when Play is pressed. Nothing is offered while every plugin is
+  // paused, because then there is nothing to try.
+  const stoodDown = groups.flatMap((g) =>
+    g.plugins
+      .filter((p) => p.state === "auto-paused")
+      .map((p) => ({ plugin: p, adapter: g.adapter })),
+  );
+
+  const refreshAll = async () => {
+    setRefreshing(true);
+    try {
+      const waitMs = waitSeconds * 1000;
+      // The same run a row's Try again makes, one per plugin. They go together: the gate holds the
+      // whole of it to its own limit, so this costs the runtime what a search would.
+      await Promise.allSettled(
+        stoodDown.map(({ plugin, adapter }) => adapter.check?.(plugin.id, waitMs)),
+      );
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   return (
     <>
@@ -106,6 +130,26 @@ export function InstalledTab({ onAddRepository }: { onAddRepository: () => void 
           settings.pluginsEnabled ? undefined : t("Plugins are paused. Turn on Use plugins above to run them.")
         }
       >
+        {stoodDown.length > 0 && settings.pluginsEnabled && (
+          <SettingRow
+            icon={<RefreshCw size={18} strokeWidth={2} />}
+            label={t("Refresh all")}
+            desc={t(
+              "Runs every plugin Harbor stood down. One that answers comes back; the others stay paused.",
+            )}
+          >
+            <SButton disabled={refreshing} onClick={() => void refreshAll()}>
+              {refreshing ? (
+                <>
+                  <Loader2 size={16} className="animate-spin" />
+                  {t("Checking…")}
+                </>
+              ) : (
+                t("Refresh all")
+              )}
+            </SButton>
+          </SettingRow>
+        )}
         {groups.length === 0 ? (
           <SettingRow
             icon={<Puzzle size={18} strokeWidth={2} />}

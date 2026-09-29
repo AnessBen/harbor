@@ -172,20 +172,27 @@ function errorText(e: unknown): string {
   return String(e);
 }
 
+/** Whether a run of failures has stood the plugin down. A function of the count rather than a latch,
+ * so a plugin that answers again comes back rather than staying down for good. */
+function autoPausedAt(failures: number): boolean {
+  return failures >= AUTO_PAUSE_FAILURES;
+}
+
 async function recordFailure(plugin: InstalledStreamPlugin, text: string): Promise<void> {
   const fresh = streamPluginById(plugin.id);
   if (!fresh) return;
   const failures = fresh.failures + 1;
-  const autoPaused = failures >= AUTO_PAUSE_FAILURES;
-  if (autoPaused) disposeStreamPlugin(plugin.id);
-  await saveStreamPlugin({ ...fresh, failures, autoPaused: autoPaused || fresh.autoPaused });
+  if (autoPausedAt(failures)) disposeStreamPlugin(plugin.id);
+  await saveStreamPlugin({ ...fresh, failures, autoPaused: autoPausedAt(failures) });
   pushLog(plugin.id, "error", text);
 }
 
 async function recordSuccess(plugin: InstalledStreamPlugin): Promise<void> {
   const fresh = streamPluginById(plugin.id);
-  if (!fresh || fresh.failures === 0) return;
-  await saveStreamPlugin({ ...fresh, failures: 0 });
+  if (!fresh || (fresh.failures === 0 && !fresh.autoPaused)) return;
+  // An answer lifts the pause as well as clearing the count. Kept, the pause outlived the plugin
+  // being asked again -- and nothing asks a plugin that is paused, so it never came back.
+  await saveStreamPlugin({ ...fresh, failures: 0, autoPaused: false });
 }
 
 function requestCount(plugin: InstalledStreamPlugin): number {
