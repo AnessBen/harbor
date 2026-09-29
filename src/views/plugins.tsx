@@ -18,8 +18,6 @@ import { PluginHero } from "./plugins/plugin-hero";
 import { PluginArrange } from "./plugins/plugin-arrange";
 import { forFilter, readOrder, type SectionOrder } from "./plugins/section-order";
 
-const SEARCH_DEBOUNCE_MS = 350;
-
 /** The plugin the tab was last left on, kept the way the other views keep a small choice. */
 const PLUGIN_FILTER_KEY = "harbor.plugins.filter";
 
@@ -37,6 +35,10 @@ export function Plugins({ active = true }: { active?: boolean }) {
   const [catalogs, setCatalogs] = useState<BrowseCatalog[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
+  // What was asked for, and which ask it was. The box's text is not the same thing: a search runs
+  // when it is submitted, so an edited box keeps the last search's results until Enter is pressed.
+  const [asked, setAsked] = useState("");
+  const [askRun, setAskRun] = useState(0);
   const [pluginFilter, setPluginFilter] = useState(
     () => localStorage.getItem(PLUGIN_FILTER_KEY) ?? ALL_PLUGINS,
   );
@@ -89,7 +91,17 @@ export function Plugins({ active = true }: { active?: boolean }) {
   }
   const allGroups = [...grouped.entries()];
 
-  const wanted = query.trim();
+  // A search runs when it is asked for rather than as the box is typed in. One per typing pause
+  // meant a search that never answered looked exactly like one that did.
+  const submitSearch = () => {
+    setAsked(query.trim());
+    setAskRun((n) => n + 1);
+  };
+
+  const clearSearch = () => {
+    setQuery("");
+    setAsked("");
+  };
 
   useEffect(() => {
     localStorage.setItem(PLUGIN_FILTER_KEY, pluginFilter);
@@ -121,35 +133,31 @@ export function Plugins({ active = true }: { active?: boolean }) {
     [catalogs, pluginFilter, order],
   );
 
+  // Every ask supersedes the one before it: a slower search must not land after a faster one and
+  // answer for a title that is no longer being looked at. Each plugin's answer is drawn as it lands
+  // rather than all of them at the end, so the tab shows the first result in about a second instead
+  // of waiting for the slowest plugin — which has a twenty-second budget and is the floor for the
+  // whole search. The generation is checked on every preview too, or a slow search's early answers
+  // would overwrite a newer search's. The results are dropped on the way in: the last title's rows
+  // are not an answer to this one.
   useEffect(() => {
     const gen = ++searchGen.current;
-    if (!wanted) {
-      setResults(null);
-      return;
-    }
-    // Typing must not start a search per keystroke, and a slower search must not land after a
-    // faster one and answer for what was typed two words ago.
-    const timer = setTimeout(() => {
-      // Each plugin's answer is drawn as it lands rather than all of them at the end, so the tab
-      // shows the first result in about a second instead of waiting for the slowest plugin — which
-      // has a twenty-second budget and is the floor for the whole search. The generation is checked
-      // on every preview too, or a slow search's early answers would overwrite a newer search's.
-      void searchPlugins(wanted, (partial) => {
-        if (gen === searchGen.current) setResults(partial);
+    setResults(null);
+    if (!asked) return;
+    void searchPlugins(asked, (partial) => {
+      if (gen === searchGen.current) setResults(partial);
+    })
+      .then((found) => {
+        if (gen === searchGen.current) setResults(found);
       })
-        .then((found) => {
-          if (gen === searchGen.current) setResults(found);
-        })
-        .catch(() => {
-          if (gen === searchGen.current) setResults([]);
-        });
-    }, SEARCH_DEBOUNCE_MS);
-    return () => clearTimeout(timer);
-  }, [wanted]);
+      .catch(() => {
+        if (gen === searchGen.current) setResults([]);
+      });
+  }, [asked, askRun]);
 
   useEffect(() => () => void (searchGen.current += 1), []);
 
-  const searchingShelf = { id: "plugin-search", title: t("Results for {q}", { q: wanted }) };
+  const searchingShelf = { id: "plugin-search", title: t("Results for {q}", { q: asked }) };
 
   return (
     <main className="flex-1 overflow-y-auto px-12 pb-24 pt-28">
@@ -174,12 +182,19 @@ export function Plugins({ active = true }: { active?: boolean }) {
           )}
         </header>
 
-        {!loading && catalogs.length > 0 && !wanted && (
+        {!loading && catalogs.length > 0 && !asked && (
           <PluginHero catalogs={heroCatalogs} showOrigin={pluginFilter === ALL_PLUGINS} />
         )}
 
         {!loading && catalogs.length > 0 && (
-          <div data-plugins-search className="relative h-11 w-full max-w-[420px]">
+          <form
+            data-plugins-search
+            onSubmit={(e) => {
+              e.preventDefault();
+              submitSearch();
+            }}
+            className="relative h-11 w-full max-w-[420px]"
+          >
             <Search
               size={16}
               className="absolute start-3.5 top-1/2 -translate-y-1/2 text-ink-subtle"
@@ -193,17 +208,18 @@ export function Plugins({ active = true }: { active?: boolean }) {
             />
             {query && (
               <button
-                onClick={() => setQuery("")}
+                type="button"
+                onClick={clearSearch}
                 aria-label={t("Clear")}
                 className="absolute end-2.5 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-ink-subtle transition-colors hover:bg-canvas/60 hover:text-ink"
               >
                 <X size={15} />
               </button>
             )}
-          </div>
+          </form>
         )}
 
-        {wanted ? (
+        {asked ? (
           results === null ? (
             <FeedShelf shelf={searchingShelf} items={null} />
           ) : results.length === 0 ? (
