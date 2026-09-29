@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { namedPage } from "../src/lib/streams/plugins/extension/run.ts";
-import { listingTitle } from "../src/lib/streams/plugins/extension/catalogue.ts";
+import { listingTitle } from "../src/lib/streams/plugins/extension/listing.ts";
 import type { StreamPluginRequest } from "../src/lib/streams/plugins/types.ts";
 
 const req = (over: Partial<StreamPluginRequest> = {}): StreamPluginRequest => ({

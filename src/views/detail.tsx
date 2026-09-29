@@ -1641,6 +1641,9 @@ export function DetailView({
       {listingResolutions.map((r) => (
         <Pill key={`resolution:${r}`}>{r}</Pill>
       ))}
+      {/* High dynamic range, shown whenever the plugin said the file has any: there is room for it
+          among the pills where there is none on the artwork, and it is not worth a setting of its
+          own when saying nothing simply shows nothing. */}
       {listing?.hdr && <Pill>{listing.hdr}</Pill>}
       {listingQuality.map((q) => (
         <Pill key={`quality:${q}`}>{q}</Pill>

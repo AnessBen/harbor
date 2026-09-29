@@ -67,18 +67,20 @@ export function InstalledTab({ onAddRepository }: { onAddRepository: () => void 
         <ToggleRow
           label={t("Show languages on plugin posters")}
           sub={t(
-            "A plugin names its listings after everything they carry, so the language is in the name. Read it back out and badge the poster. Only the Plugins page is affected.",
+            "Some plugins name a listing after everything it carries, so its languages are in the title. Harbor reads them back out and badges the poster. Shown only when the plugin provides it.",
           )}
           value={settings.pluginsPosterLanguages}
           onChange={(v) => update({ pluginsPosterLanguages: v })}
+          newId="plugins:poster-languages"
         />
         <ToggleRow
           label={t("Show quality on plugin posters")}
           sub={t(
-            "Badge the resolution and release a plugin's listing claimed, on the Plugins page only.",
+            "Badge the resolutions a plugin's listing names, best first, and count the rest. Shown only when the plugin provides it.",
           )}
           value={settings.pluginsPosterQuality}
           onChange={(v) => update({ pluginsPosterQuality: v })}
+          newId="plugins:poster-quality"
         />
         <SettingRow
           label={t("Wait time")}
