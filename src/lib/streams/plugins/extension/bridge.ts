@@ -153,8 +153,9 @@ export async function bridgeSearch(
   providerId: string,
   query: string,
   quick: boolean,
+  page = 1,
 ): Promise<BridgeResults<BridgeSearchItem>> {
-  const raw = await invoke("capstan_search", { providerId, query, quick });
+  const raw = await invoke("capstan_search", { providerId, query, quick, page });
   return { items: list<BridgeSearchItem>(raw, "results"), note: note(raw) };
 }
 

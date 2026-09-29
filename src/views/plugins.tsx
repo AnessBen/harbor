@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Puzzle, Search, X, ListOrdered } from "lucide-react";
+import { ChevronRight, Puzzle, Search, X, ListOrdered } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import {
   listBrowseCatalogs,
@@ -7,7 +7,7 @@ import {
   type BrowseCatalog,
 } from "@/lib/catalog-browse";
 import { isExtensionCatalogueBase, subscribeStreamPlugins } from "@/lib/streams/plugins";
-import { searchPlugins, type PluginSearchGroup } from "@/lib/streams/plugins/extension/search";
+import { searchPlugins, searchPluginPage, type PluginSearchGroup } from "@/lib/streams/plugins/extension/search";
 import { useView } from "@/lib/view";
 import { useT } from "@/lib/i18n";
 import { useContentDrag } from "@/lib/window-drag";
@@ -30,7 +30,7 @@ function pluginCatalogs(all: BrowseCatalog[]): BrowseCatalog[] {
 export function Plugins({ active = true }: { active?: boolean }) {
   const t = useT();
   const { authKey } = useAuth();
-  const { openSettings } = useView();
+  const { openSettings, openGrid } = useView();
   const contentDrag = useContentDrag();
   const [catalogs, setCatalogs] = useState<BrowseCatalog[]>([]);
   const [loading, setLoading] = useState(true);
@@ -229,25 +229,47 @@ export function Plugins({ active = true }: { active?: boolean }) {
           ) : (
             results.map((group) => (
               <section key={group.pluginId} className="flex flex-col gap-6">
-                <div className="flex items-center gap-2.5">
-                  {group.pluginIcon ? (
-                    <img
-                      src={group.pluginIcon}
-                      alt=""
-                      draggable={false}
-                      className="h-6 w-6 rounded-sm object-contain"
-                    />
-                  ) : (
-                    <span className="flex h-6 w-6 items-center justify-center rounded-sm bg-elevated text-[11px] font-bold text-ink-subtle ring-1 ring-edge-soft">
-                      {group.pluginName.charAt(0).toUpperCase()}
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex min-w-0 items-center gap-2.5">
+                    {group.pluginIcon ? (
+                      <img
+                        src={group.pluginIcon}
+                        alt=""
+                        draggable={false}
+                        className="h-6 w-6 rounded-sm object-contain"
+                      />
+                    ) : (
+                      <span className="flex h-6 w-6 items-center justify-center rounded-sm bg-elevated text-[11px] font-bold text-ink-subtle ring-1 ring-edge-soft">
+                        {group.pluginName.charAt(0).toUpperCase()}
+                      </span>
+                    )}
+                    <h2 className="text-[15.5px] font-semibold tracking-tight text-ink">
+                      {group.pluginName}
+                    </h2>
+                    <span className="text-[12px] text-ink-subtle">
+                      {t("{n} results", { n: group.metas.length })}
                     </span>
-                  )}
-                  <h2 className="text-[15.5px] font-semibold tracking-tight text-ink">
-                    {group.pluginName}
-                  </h2>
-                  <span className="text-[12px] text-ink-subtle">
-                    {t("{n} results", { n: group.metas.length })}
-                  </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      // Deliberately no `initial`: page one is walked again rather than seeded with
+                      // the shelves' rows, which are capped. Seeded, the walk would resume at page
+                      // two and the rest of page one would never be seen.
+                      openGrid({
+                        title: group.pluginName,
+                        fetcher: (page: number) => searchPluginPage(group.pluginId, asked, page),
+                      })
+                    }
+                    className="group/va inline-flex shrink-0 items-center gap-1 text-[12.5px] font-medium text-ink-subtle transition-colors hover:text-ink"
+                  >
+                    {t("View all")}
+                    <ChevronRight
+                      size={14}
+                      strokeWidth={2.2}
+                      className="dir-icon transition-transform duration-200 group-hover/va:translate-x-0.5"
+                    />
+                  </button>
                 </div>
                 <div className="flex flex-col gap-7 ps-1">
                   {group.providers.map((provider) => (

@@ -170,3 +170,52 @@ export async function searchPlugins(
   );
   return inOrder();
 }
+
+/** One plugin's matches for a title, a page at a time, for a surface that walks past the shelves.
+ *
+ * The providers page: an extension that only ever answers a first page has nothing past it, so its
+ * second page comes back empty and the walk stops on its own rather than repeating what it sent.
+ * Nothing is capped here, because getting past the cap is the whole point of the walk. */
+export async function searchPluginPage(
+  pluginId: string,
+  query: string,
+  page: number,
+): Promise<Meta[]> {
+  const wanted = query.trim();
+  const plugin = pluginCatalogueSources().find((p) => p.id === pluginId);
+  if (!plugin || !wanted || page < 1) return [];
+  await warmBridge();
+  const providers = await bridgeProviders().catch(() => [] as BridgeProvider[]);
+  const mine = providersOf(plugin, providers);
+  if (!mine.length) return [];
+  const settled = await Promise.allSettled(
+    mine.map(async (provider) => {
+      const cat: PluginCatalogue = {
+        pluginId: plugin.id,
+        pluginName: plugin.name,
+        pluginIcon: plugin.icon,
+        providerId: provider.id,
+        providerName: provider.name,
+        type: providerMetaType(provider.types ?? []),
+        row: wanted,
+      };
+      const found = await gated(plugin, `${wanted} page ${page}`, budget(plugin, SEARCH_TIMEOUT_MS), () =>
+        bridgeSearch(provider.id, wanted, provider.hasQuickSearch, page),
+      );
+      return found.items
+        .map((item) => metaFor(cat, item))
+        .filter((meta): meta is Meta => meta !== null);
+    }),
+  );
+  const out: Meta[] = [];
+  const seen = new Set<string>();
+  for (const result of settled) {
+    if (result.status !== "fulfilled") continue;
+    for (const meta of result.value) {
+      if (seen.has(meta.id)) continue;
+      seen.add(meta.id);
+      out.push(meta);
+    }
+  }
+  return out;
+}
