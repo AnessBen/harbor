@@ -74,6 +74,9 @@ export type PlayEpisode = {
   runtime?: number;
 };
 
+/** Source identity stays separate from the provider coordinates used for episode details. */
+export type EpisodeDetailPlayback = { meta: Meta; episode: PlayEpisode };
+
 export type PlayerSrc = {
   /** true: corner preview; false: expanded preview (Back restores it); absent: regular player. */
   sportsDocked?: boolean;
@@ -197,7 +200,7 @@ export type Frame =
       seasonEntryId?: string;
     }
   | { kind: "addon-collection"; meta: Meta }
-  | { kind: "episode-detail"; seriesId: string; season: number; episode: number; seriesMeta?: Meta }
+  | { kind: "episode-detail"; seriesId: string; season: number; episode: number; seriesMeta?: Meta; playback?: EpisodeDetailPlayback }
   | { kind: "person"; id: number }
   | { kind: "profile"; handle: string }
   | { kind: "feed" }
@@ -265,8 +268,8 @@ type ViewValue = {
       exact?: boolean;
     },
   ) => void;
-  episodeDetail: { seriesId: string; season: number; episode: number; seriesMeta?: Meta } | null;
-  openEpisodeDetail: (seriesId: string, season: number, episode: number, seriesMeta?: Meta) => void;
+  episodeDetail: { seriesId: string; season: number; episode: number; seriesMeta?: Meta; playback?: EpisodeDetailPlayback } | null;
+  openEpisodeDetail: (seriesId: string, season: number, episode: number, seriesMeta?: Meta, playback?: EpisodeDetailPlayback) => void;
   promoteMetaToRoot: () => void;
   personId: number | null;
   openPerson: (id: number | null) => void;
@@ -619,6 +622,7 @@ export function ViewProvider({ children }: { children: ReactNode }) {
             season: top.season,
             episode: top.episode,
             seriesMeta: top.seriesMeta,
+            playback: top.playback,
           }
         : null,
     [
@@ -626,7 +630,8 @@ export function ViewProvider({ children }: { children: ReactNode }) {
       top.kind === "episode-detail" ? top.seriesId : "",
       top.kind === "episode-detail" ? top.season : 0,
       top.kind === "episode-detail" ? top.episode : 0,
-      top.kind === "episode-detail" && top.seriesMeta ? top.seriesMeta.id : "",
+      top.kind === "episode-detail" ? top.seriesMeta : undefined,
+      top.kind === "episode-detail" ? top.playback : undefined,
     ],
   );
   const matchDetailGame = top.kind === "match-detail" ? top.game : null;
@@ -953,7 +958,8 @@ export function ViewProvider({ children }: { children: ReactNode }) {
         setNavStack((cur) => {
           const t = cur[cur.length - 1];
           if (t.kind === "meta" && t.meta.id === target.id) return cur;
-          const returningToSeries = t.kind === "episode-detail" && t.seriesId === target.id;
+          const returningToSeries = t.kind === "episode-detail" &&
+            (t.seriesMeta?.id ?? t.seriesId) === target.id;
           if (returningToSeries) {
             // The episode's series link returns to its parent, not another history entry.
             for (let i = cur.length - 2; i >= 0; i--) {
@@ -1122,18 +1128,22 @@ export function ViewProvider({ children }: { children: ReactNode }) {
   );
 
   const openEpisodeDetail = useCallback(
-    (seriesId: string, season: number, episode: number, seriesMeta?: Meta) => {
+    (seriesId: string, season: number, episode: number, seriesMeta?: Meta, playback?: EpisodeDetailPlayback) => {
       setNavStack((cur) => {
         const t = cur[cur.length - 1];
         if (
           t.kind === "episode-detail" &&
           t.seriesId === seriesId &&
           t.season === season &&
-          t.episode === episode
+          t.episode === episode &&
+          t.seriesMeta?.id === seriesMeta?.id &&
+          t.playback?.meta.id === playback?.meta.id &&
+          t.playback?.episode.season === playback?.episode.season &&
+          t.playback?.episode.episode === playback?.episode.episode
         ) {
           return cur;
         }
-        return pushFrame(cur, { kind: "episode-detail", seriesId, season, episode, seriesMeta });
+        return pushFrame(cur, { kind: "episode-detail", seriesId, season, episode, seriesMeta, playback });
       });
     },
     [setNavStack],

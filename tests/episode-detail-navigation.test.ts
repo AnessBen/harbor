@@ -102,3 +102,29 @@ test("returning to a series leaves a docked preview mounted", () => {
   h.pop();
   assert.deepEqual(h.stackRef.current, [home, dock]);
 });
+
+test("canonical anime detail preserves cour playback and returns to the exact Kitsu parent frame", () => {
+  const kitsu = { ...series, id: "kitsu:parent" };
+  const kitsuParent = { ...parent, meta: kitsu, seasonEntryId: "kitsu:part2" };
+  const playback = {
+    meta: { ...series, id: "kitsu:part2" },
+    episode: { season: 1, episode: 1, kitsuStreamId: "kitsu:part2:1", imdbSeason: 3, imdbEpisode: 13 },
+  };
+  const h = fixture([home, kitsuParent]);
+  h.openEpisodeDetail("tt2560140", 3, 13, kitsu, playback);
+  assert.equal(h.stackRef.current.at(-1).playback, playback);
+  h.openMeta(kitsu);
+  assert.deepEqual(h.stackRef.current, [home, kitsuParent]);
+  assert.equal(h.stackRef.current[1], kitsuParent);
+  h.pop();
+  assert.deepEqual(h.stackRef.current, [home]);
+});
+
+test("the same canonical episode opened from another source retains that source", () => {
+  const h = fixture([home]);
+  const a = { meta: { ...series, id: "kitsu:a" }, episode: { season: 1, episode: 1 } };
+  const b = { meta: { ...series, id: "kitsu:b" }, episode: { season: 1, episode: 13 } };
+  h.openEpisodeDetail("tt1", 3, 13, series, a);
+  h.openEpisodeDetail("tt1", 3, 13, series, b);
+  assert.equal(h.stackRef.current.at(-1).playback, b);
+});

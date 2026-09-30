@@ -1849,6 +1849,7 @@ function Shell({ onReady }: { onReady?: () => void }) {
                   season={episodeDetail.season}
                   episode={episodeDetail.episode}
                   seriesMeta={episodeDetail.seriesMeta}
+                  playback={episodeDetail.playback}
                 />
               </Suspense>
             </div>
