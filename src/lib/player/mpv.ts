@@ -771,6 +771,7 @@ export function createMpvBridge(mpvOptions?: MpvOptions): PlayerBridge {
         return;
       }
       snap.status = observedPaused === true ? "paused" : "playing";
+      snap.buffering = false; // Playback recovered, including when the user remains paused.
       snap.firstFrameReady = true;
       if (currentIsLive === false && currentStartupProfile && steadyBufferLoadId !== mediaLoadId) {
         steadyBufferLoadId = mediaLoadId;
