@@ -20,6 +20,7 @@ const DEEP_KINDS = new Set([
   "groups",
   "group",
   "list",
+  "downloads",
 ]);
 
 export function FloatingBack({

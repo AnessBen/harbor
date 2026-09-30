@@ -21,14 +21,26 @@ const saved = Array.from({ length: 10 }, (_, index) => ({
   artwork: "", durationSeconds: 180, durationLabel: "3:00", sourceId: `C:/Music/${index + 1}.flac`,
 }));
 
-function fixture() {
+function fixture({ preferred = null, candidates = [] } = {}) {
   const events = new Map();
   const calls = [];
   const noop = () => {};
+  const react = { useSyncExternalStore: (_subscribe, read) => read() };
+  const sourceRequest = load("source-request", {
+    react,
+    "./now-playing-key": load("now-playing-key", {}),
+  });
   const player = load("player", {
-    "@/lib/active-profile-id": { activeProfileId: () => "test" },
-    "./listening-affinity": { observeMusicListening: noop },
-    "./artist-blocks": { filterBlockedTracks: tracks => tracks },
+    "@/lib/active-profile-id": { activeProfileId: () => "test", activeProfileIsPrimary: () => true },
+    "./listening-affinity": { observeMusicListening: noop, hydrateListeningAffinity: async () => {} },
+    "./artist-blocks": { filterBlockedTracks: tracks => tracks, hydrateArtistBlockStore: async () => {} },
+    "./liked-artists": { hydrateLikedArtistStore: async () => {} },
+    "./recent-context": { hydrateMusicContextTracks: async () => {}, hydrateMusicRecentContexts: async () => {} },
+    "./recent-destinations": { hydrateMusicDestinations: async () => {} },
+    "./source-consent": { hydrateMusicSourceConsent: async () => {} },
+    "./source-version": load("source-version", {}),
+    "./queue-source": load("queue-source", {}),
+    "./transport": { resetMusicOrder: noop, musicWarmTargets: () => [], musicAdvance: () => null, musicPrevious: () => null },
     "./liked": load("liked", {}),
     "./track-identity": {
       sameMusicTrack: (a, b) => a.id === b.id,
@@ -46,14 +58,14 @@ function fixture() {
       if (command === "music_db_init") return {
         likedIds: saved.map(track => track.id), likedTracks: saved, recents: [], queue: [],
       };
-      if (command === "music_source_candidates") return [];
+      if (command === "music_source_candidates") return candidates;
     } },
     "@tauri-apps/api/event": { listen: async (name, callback) => {
       events.set(name, callback);
       return noop;
     } },
-    react: { useSyncExternalStore: (_subscribe, read) => read() },
-    "./preferences": { readMusicPreference: () => null, writeMusicPreference: noop },
+    react,
+    "./preferences": { readMusicPreference: key => key === "harbor.music.preferred-source.v1" ? preferred : null, writeMusicPreference: noop },
     "./audio-settings": {
       clampMusicVolume: volume => volume, initializeMusicAudioSettings: async () => {},
       subscribeMusicAudioSettings: noop,
@@ -70,11 +82,13 @@ function fixture() {
     "./hidden-recents": { unhideMusicRecent: noop },
   });
   const hook = load("use-collection-playback", {
+    "./source-request": sourceRequest,
     "./player": player,
     "@/components/music/music-queue": { useMusicTransport: () => ({ shuffle: false }) },
   });
   return {
-    player, calls,
+    player, calls, sourceRequest,
+    collection: tracks => hook.useCollectionPlayback(tracks, () => {}),
     controls: () => hook.useCollectionPlayback(player.getMusicState().likedTracks, () => {
       assert.fail("The active Saved collection must toggle playback, not start a new queue");
     }),
@@ -107,4 +121,59 @@ test("Saved controls recognize a row-started queue and pause/resume without rest
   assert.equal(player.getMusicState().current.id, saved[7].id);
   assert.equal(player.getMusicState().queueIndex, 7);
   assert.equal(calls.filter(call => call.command === "music_engine_pause").length, 2);
+});
+
+test("collection controls become busy immediately during source lookup and clear on cancellation", () => {
+  const { collection, sourceRequest } = fixture();
+  const finish = sourceRequest.beginMusicSourceRequest(saved[7]);
+  assert.equal(collection(saved).busy, true);
+  assert.equal(collection(saved.slice(0, 3)).busy, false);
+  const newer = sourceRequest.beginMusicSourceRequest(saved[1]);
+  finish();
+  assert.equal(collection(saved.slice(0, 3)).busy, true);
+  newer();
+  assert.equal(collection(saved).busy, false);
+});
+
+const requested = { ...saved[0], id: "soundcloud:original", connectorId: "soundcloud", sourceId: "original", title: "KEEP GOING", artist: "DJ Khaled", artwork: "original-cover.jpg" };
+const candidate = (id, title, connectorId = "youtube", health = "healthy") => ({
+  connectorId, connectorName: connectorId, health,
+  track: { ...requested, id, sourceId: id, connectorId, title, artist: "Uploader", artwork: "upload.jpg" },
+});
+
+test("provider playback chooses the preferred vocal recording and preserves the requested song credit", async () => {
+  const { player, calls } = fixture({ preferred: "youtube", candidates: [
+    candidate("backing", "KEEP GOING (Instrumental)"),
+    candidate("karaoke", "KEEP GOING (Karaoke)"),
+    candidate("other", "KEEP GOING", "tidal"),
+    candidate("vocal", "DJ Khaled - KEEP GOING (Official Audio)"),
+  ] });
+  await player.playMusic(requested);
+  assert.equal(player.getMusicState().error, null);
+  const playing = player.getMusicState().current;
+  assert.equal(playing.id, "vocal");
+  assert.equal(playing.connectorId, "youtube");
+  assert.equal(playing.title, requested.title);
+  assert.equal(playing.artist, requested.artist);
+  assert.equal(playing.artwork, requested.artwork);
+  assert.equal(playing.collectionOrigin.id, requested.id);
+  assert.equal(player.getMusicState().queue[0].id, "vocal");
+  assert.ok(calls.some(call => call.command === "music_play_track" && call.args.track.id === "vocal"));
+});
+
+test("unavailable preferred vocals do not replace an existing song with an instrumental", async () => {
+  const { player } = fixture({ preferred: "youtube", candidates: [
+    candidate("backing", "KEEP GOING - Instrumental"),
+    candidate("offline", "KEEP GOING", "youtube", "offline"),
+  ] });
+  await player.playMusic(requested);
+  assert.equal(player.getMusicState().error, null);
+  assert.equal(player.getMusicState().current.id, requested.id);
+});
+
+test("an explicit source choice bypasses the automatic preference", async () => {
+  const { player, calls } = fixture({ preferred: "youtube", candidates: [candidate("vocal", "KEEP GOING")] });
+  await player.playMusic(requested, [requested], new Set(), false, false, true);
+  assert.equal(player.getMusicState().current.id, requested.id);
+  assert.equal(calls.filter(call => call.command === "music_source_candidates").length, 0);
 });

@@ -10,6 +10,7 @@ import {
   LASTFM_USERNAME,
   startLastFmAuth,
 } from "@/lib/music/lastfm";
+import { useMusicPlayer } from "@/lib/music/player";
 import { flushSecrets, getSecret, setSecret } from "@/lib/secret-store";
 import { openUrl } from "@/lib/window";
 
@@ -23,6 +24,7 @@ export function MusicLastFm() {
   const [expanded, setExpanded] = useState(false);
   const [working, setWorking] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const scrobbleError = useMusicPlayer().scrobbleError;
 
   useEffect(() => {
     let cancelled = false;
@@ -129,7 +131,23 @@ export function MusicLastFm() {
       </button>
 
       {connected ? (
-        <div className="border-t border-edge-soft p-2">
+        <div className="space-y-2 border-t border-edge-soft p-2">
+          {username && (
+            <button
+              type="button"
+              className="inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-[9px] text-ink-muted hover:bg-elevated hover:text-ink"
+              onClick={() => openUrl(`https://www.last.fm/user/${encodeURIComponent(username)}`)}
+            >
+              {t("music.lastfm.viewProfile")} <ArrowUpRight size={11} />
+            </button>
+          )}
+
+          {scrobbleError && (
+            <p role="alert" className="px-3 text-[9px] leading-relaxed text-danger">
+              {scrobbleError}
+            </p>
+          )}
+
           <button
             type="button"
             className="inline-flex h-8 items-center gap-2 rounded-full px-3 text-[9px] text-ink-subtle hover:bg-elevated hover:text-ink"
@@ -141,6 +159,28 @@ export function MusicLastFm() {
       ) : (
         expanded && (
           <div className="space-y-3 border-t border-edge-soft p-3">
+            <p className="text-[9px] leading-4 text-ink-muted">
+              {t("music.lastfm.keyHelp")}
+            </p>
+
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => openUrl("https://www.last.fm/api/account/create")}
+                className="inline-flex h-7 items-center gap-1 rounded-full border border-edge px-3 text-[9px] text-ink-muted hover:border-edge-soft hover:text-ink"
+              >
+                {t("music.lastfm.getKey")} <ArrowUpRight size={10} />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => openUrl("https://www.last.fm/join")}
+                className="inline-flex h-7 items-center gap-1 rounded-full border border-edge px-3 text-[9px] text-ink-muted hover:border-edge-soft hover:text-ink"
+              >
+                {t("music.lastfm.createAccount")} <ArrowUpRight size={10} />
+              </button>
+            </div>
+
             <label className="block font-mono text-[8px] uppercase tracking-[0.12em] text-ink-subtle">
               {t("music.lastfm.apiKey")}
               <input

@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { requestMusicExplore } from "./navigation";
+import { requestMusicExplore, type MusicExploreRequest } from "./navigation";
 import {
   hydrateJsonStore,
   readJsonStore,
@@ -7,6 +7,7 @@ import {
   writeLocalJson,
 } from "./local-store";
 import { musicTrackKeys } from "./playlist-membership";
+import { dedupeMusicTracks } from "./track-identity";
 import type { MusicTrack } from "./types";
 
 export type MusicTrackIdentity = Pick<MusicTrack, "id" | "connectorId" | "title" | "artist">;
@@ -40,23 +41,34 @@ function contextKey(kind: MusicRecentContextKind, id: string): string {
 
 const MIX_STORE = "context-tracks";
 const HELD_LIMIT = 24;
+const SURPRISE_TRACK_LIMIT = 100;
 const heldTracks = new Map<string, MusicTrack[]>();
-let hydrated = false;
+const trackListeners = new Set<() => void>();
+let hydration: Promise<void> | undefined;
+const persistentMix = (key: string) => key.startsWith("similar:mix:surprise:");
+const publishTracks = () => { for (const listener of trackListeners) listener(); };
 
 function persistHeld(): void {
   writeLocalJson(MIX_STORE, Object.fromEntries(heldTracks));
 }
 
-export async function hydrateMusicContextTracks(): Promise<void> {
-  if (hydrated) return;
-  hydrated = true;
-  const saved = await readLocalJson<Record<string, MusicTrack[]>>(MIX_STORE);
-  if (!saved) return;
-  for (const [key, tracks] of Object.entries(saved)) {
-    if (!heldTracks.has(key) && Array.isArray(tracks) && tracks.length) {
-      heldTracks.set(key, tracks);
+export function hydrateMusicContextTracks(): Promise<void> {
+  return hydration ??= (async () => {
+    const saved = await readLocalJson<Record<string, MusicTrack[]>>(MIX_STORE);
+    if (!saved) return;
+    let merged = false;
+    for (const [key, tracks] of Object.entries(saved)) {
+      if (!Array.isArray(tracks) || !tracks.length) continue;
+      if (persistentMix(key)) {
+        const current = heldTracks.get(key);
+        const next = dedupeMusicTracks([...tracks, ...(current ?? [])]).slice(-SURPRISE_TRACK_LIMIT);
+        heldTracks.set(key, next);
+        merged ||= !!current || next.length !== tracks.length;
+      } else if (!heldTracks.has(key)) heldTracks.set(key, tracks);
     }
-  }
+    if (merged) persistHeld();
+    publishTracks();
+  })();
 }
 
 export function rememberMusicContextTracks(
@@ -66,10 +78,16 @@ export function rememberMusicContextTracks(
 ): void {
   if (!tracks.length) return;
   const key = contextKey(kind, id);
+  const current = heldTracks.get(key);
+  // Keep one rolling Surprise mix per profile without evicting it with ordinary snapshots.
+  const next = persistentMix(key) ? dedupeMusicTracks([...(current ?? []), ...tracks]).slice(-SURPRISE_TRACK_LIMIT) : [...tracks];
+  if (persistentMix(key) && current?.length === next.length && current.every((track, at) => track === next[at])) return;
   heldTracks.delete(key);
-  heldTracks.set(key, [...tracks]);
-  while (heldTracks.size > HELD_LIMIT) heldTracks.delete(heldTracks.keys().next().value!);
+  heldTracks.set(key, next);
+  const snapshots = [...heldTracks.keys()].filter(value => !persistentMix(value));
+  for (const stale of snapshots.slice(0, Math.max(0, snapshots.length - HELD_LIMIT))) heldTracks.delete(stale);
   persistHeld();
+  publishTracks();
 }
 
 export function heldMusicContextTracks(
@@ -77,6 +95,15 @@ export function heldMusicContextTracks(
   id: string,
 ): MusicTrack[] | null {
   return heldTracks.get(contextKey(kind, id)) ?? null;
+}
+
+export function useMusicContextTracks(kind: MusicRecentContextKind, id: string | undefined): MusicTrack[] | null {
+  const snapshot = () => id ? heldMusicContextTracks(kind, id) : null;
+  return useSyncExternalStore(
+    listener => { trackListeners.add(listener); return () => { trackListeners.delete(listener); }; },
+    snapshot,
+    snapshot,
+  );
 }
 
 function isKind(value: unknown): value is MusicRecentContextKind {
@@ -272,18 +299,70 @@ export function useMusicTrackContext(
   );
 }
 
-export async function reopenMusicMix(context: MusicRecentContext): Promise<void> {
+export async function reopenMusicMix(
+  context: MusicRecentContext,
+  open: (request: MusicExploreRequest) => void = requestMusicExplore,
+): Promise<void> {
   const seed = context.seed;
   if (!seed) return;
-  await hydrateMusicContextTracks();
-  const held = heldMusicContextTracks("similar", context.id);
-  if (held?.length) {
-    requestMusicExplore({ kind: "similar", track: held[0], queue: held, label: context.name });
+  if (context.id.startsWith("mix:personal:v2:")) {
+    const { activeProfileId } = await import("@/lib/active-profile-id");
+    const mix = await (await import("./made-for-you")).readMadeForYouMix(context.id, activeProfileId());
+    await hydrateMusicContextTracks();
+    const { mixRecordings } = await import("./mix-quality");
+    const { filterBlockedTracks } = await import("./artist-blocks");
+    const { dailyMixHasVariety, dailyArtistKey } = await import("./daily-discovery-selection");
+    const queue = mix?.tracks ?? mixRecordings(filterBlockedTracks(filterBlockedTracks(heldMusicContextTracks("similar", context.id) ?? [], "show"), "play"));
+    if (context.id.endsWith(":artist") ? queue.length < 5 || new Set(queue.map(dailyArtistKey)).size !== 1 : !dailyMixHasVariety(queue)) throw new Error("Music mix unavailable");
+    open({ kind: "similar", track: queue[0], queue, label: context.name, contextId: context.id });
     return;
   }
-  const { musicSimilarTracks } = await import("./player");
-  const mix = await musicSimilarTracks(seed);
+  if (context.id.startsWith("mix:discovery:")) {
+    const mix = await (await import("./daily-discovery")).loadDailyDiscoveryMix(context.id);
+    if (!mix) throw new Error("Music mix unavailable");
+    open({ kind: "similar", track: mix.tracks[0], queue: mix.tracks, label: context.name, contextId: context.id });
+    return;
+  }
+  if (context.id.startsWith("mix:genre:")) {
+    const { loadDailyDiscoveryMix, planDailyDiscovery } = await import("./daily-discovery");
+    const { dailyDayKey } = await import("./daily-discovery-selection");
+    const { activeProfileId } = await import("@/lib/active-profile-id");
+    const genreId = Number(context.id.slice("mix:genre:".length));
+    const plan = planDailyDiscovery([genreId], dailyDayKey(), activeProfileId()).find(value => value.genreId === genreId);
+    const mix = plan ? await loadDailyDiscoveryMix(plan.id) : null;
+    if (!mix) throw new Error("Music mix unavailable");
+    const label = (await import("@/lib/i18n")).t("music.madeForYou.namedMix", { name: mix.name });
+    open({ kind: "similar", track: mix.tracks[0], queue: mix.tracks, label, contextId: mix.id });
+    return;
+  }
+  await hydrateMusicContextTracks();
+  const held = heldMusicContextTracks("similar", context.id);
+  if (context.id.startsWith("mix:daily:")) {
+    const { loadDailyMixTracks, mixArtistKey } = await import("./daily-mixes");
+    const artists = context.id.startsWith("mix:daily:v2:")
+      ? context.id.slice("mix:daily:v2:".length).split("|").map(decodeURIComponent)
+      : [mixArtistKey(seed)];
+    const queue = await loadDailyMixTracks({ id: context.id, index: 1, artists, seeds: [seed], artwork: context.artwork });
+    const { dailyArtistKey, dailyArtistName } = await import("./daily-discovery-selection");
+    const artistOnly = queue.length > 0 && new Set(queue.map(dailyArtistKey)).size === 1;
+    const label = artistOnly ? (await import("@/lib/i18n")).t("music.madeForYou.namedMix", { name: dailyArtistName(queue[0]) }) : context.name;
+    if (artistOnly && label !== context.name) recordMusicRecentContext({ ...context, name: label }, queue);
+    open({ kind: "similar", track: seed, queue, label, contextId: context.id });
+    return;
+  }
+  if (held?.length) {
+    const queue = held;
+    if (queue.length) {
+      open({ kind: "similar", track: seed, queue, label: context.name, contextId: context.id });
+      return;
+    }
+  }
+  const named = context.id.startsWith("mix:artist:");
+  const mix = named
+    ? await (await import("./personal-mixes")).reloadPersonalMix(context.id, seed)
+    : await (await import("./player")).musicSimilarTracks(seed);
+  if (named && !mix.length) throw new Error("Music mix unavailable");
   const queue = mix.length > 0 ? mix : [seed];
   rememberMusicContextTracks("similar", context.id, queue);
-  requestMusicExplore({ kind: "similar", track: seed, queue, label: context.name });
+  open({ kind: "similar", track: seed, queue, label: context.name, contextId: context.id });
 }

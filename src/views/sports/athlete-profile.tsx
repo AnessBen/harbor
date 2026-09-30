@@ -1,7 +1,9 @@
 import { createContext, useEffect, useRef, useState } from "react";
+import { formatStatValue } from "@/lib/sports/stat-format";
+import { useAthletePortrait } from "./use-athlete-portrait";
 import { ArrowLeft, ArrowUpRight, UserRound } from "lucide-react";
 import { ModalShell } from "@/components/modal-shell";
-import { useT } from "@/lib/i18n";
+import { useT, useUiLanguage } from "@/lib/i18n";
 import { safeFetch } from "@/lib/safe-fetch";
 import { openUrl } from "@/lib/window";
 import { hubLeague } from "@/lib/sports/hub-data";
@@ -50,17 +52,24 @@ export function AthleteProfileLink({
   athlete,
   league,
   label,
+  inline = false,
 }: {
   athlete: AthleteIdentity;
   league: string;
   label?: string;
+  inline?: boolean;
 }) {
   const t = useT();
   const [open, setOpen] = useState(false);
   const button = useRef<HTMLButtonElement>(null);
   return (
     <>
-      <button ref={button} className="sh-athlete-link" onClick={() => setOpen(true)}>
+      <button
+        ref={button}
+        type="button"
+        className={`sh-athlete-link${inline ? " is-inline" : ""}`}
+        onClick={() => setOpen(true)}
+      >
         {label || t("Career profile")}
         <ArrowUpRight size={15} />
       </button>
@@ -87,6 +96,7 @@ export function AthleteProfile({
   onClose: () => void;
 }) {
   const t = useT();
+  const locale = useUiLanguage();
   const def = hubLeague(league);
   const path = def?.group === "soccer" ? "soccer/all" : def?.path || "";
   const provider = athlete.source ?? "espn";
@@ -97,6 +107,16 @@ export function AthleteProfile({
   const [broken, setBroken] = useState<Set<string>>(() => new Set());
   const [failed, setFailed] = useState(false);
   const backButton = useRef<HTMLButtonElement>(null);
+  const resolved = useAthletePortrait(
+    {
+      path: def?.path || path,
+      group: def?.group,
+      id: athlete.id,
+      name: athlete.name,
+      image: athlete.image,
+    },
+    true,
+  );
   useEffect(() => {
     backButton.current?.focus({ preventScroll: true });
   }, []);
@@ -196,7 +216,10 @@ export function AthleteProfile({
     return () => controller.abort();
   }, [key, retry]);
   const current = profile?.key === key ? profile.data : null;
-  const portrait = athleteImageUrl(current?.image) || athleteImageUrl(athlete.image);
+  const portrait =
+    athleteImageUrl(current?.image) ||
+    athleteImageUrl(athlete.image) ||
+    athleteImageUrl(resolved.image);
   const emblem = athleteImageUrl(athlete.logo) || athleteImageUrl(current?.team?.logo);
   const external = current?.recordUrl || "";
 
@@ -266,7 +289,7 @@ export function AthleteProfile({
                 <div className="sh-athlete-summary">
                   {current.summary.map((item) => (
                     <div key={item.name}>
-                      <strong>{item.value}</strong>
+                      <strong>{formatStatValue(item.value, locale)}</strong>
                       <span>{item.name}</span>
                     </div>
                   ))}
@@ -289,7 +312,7 @@ export function AthleteProfile({
                       <div className="sh-athlete-summary">
                         {category.totals.map((value, i) => (
                           <div key={i}>
-                            <strong>{value}</strong>
+                            <strong>{formatStatValue(value, locale)}</strong>
                             <span>
                               {t(category.descriptions[i] || category.labels[i] || "Stats")}
                             </span>

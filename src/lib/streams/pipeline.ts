@@ -79,7 +79,10 @@ function applyAnimeEpisodeFilter(
   input: PipelineInput,
 ): { kept: ParsedStream[]; extraRejected: Rejection[] } {
   const expected = input.animeAbsoluteEpisode;
-  if (!input.isAnime || expected == null) return { kept: parsed, extraRejected: [] };
+  // Off/Show all must bypass this pre-filter as well as the main trust checks.
+  if (input.trust?.disabled || !input.isAnime || expected == null) {
+    return { kept: parsed, extraRejected: [] };
+  }
   const validNums = new Set<number>([expected]);
   for (const a of input.animeEpisodeAliases ?? []) {
     if (Number.isFinite(a) && a >= 1) validNums.add(a);

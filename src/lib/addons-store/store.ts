@@ -66,12 +66,9 @@ export function useAddonsCatalog(adultsAllowed: boolean): {
       const seenUrls = new Set<string>();
       const addRow = (a: Addon, source: ResolvedAddon["source"]) => {
         const id = a.manifest?.id;
+        // Only the host is case-insensitive; configured paths and tokens are not.
         let url = a.transportUrl.trim();
-        try {
-          url = new URL(url).href;
-        } catch {
-          /* Keep nonstandard transports distinct. */
-        }
+        try { url = new URL(url).href; } catch { /* Keep nonstandard transports distinct. */ }
         if (!id || seenUrls.has(url)) return;
         seenUrls.add(url);
         const curated = CURATED_BY_ID.get(id);

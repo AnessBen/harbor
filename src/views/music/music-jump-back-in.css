@@ -25,6 +25,10 @@
   overflow: hidden;
   transition: background-color 180ms ease-in-out, transform 180ms ease-in-out;
 }
+.music-jump-tile:nth-child(9) { display: none; }
+@media (min-width: 880px) and (max-width: 1279.98px) {
+  .music-jump-tile:nth-child(9) { display: flex; }
+}
 .music-jump-tile:hover,
 .music-jump-tile:focus-visible {
   background: var(--color-raised);
@@ -45,11 +49,10 @@
   block-size: 100%;
   object-fit: cover;
 }
-.music-jump-art[data-saved] {
-  display: grid;
-  place-items: center;
-  background: linear-gradient(140deg, var(--color-accent) 0%, color-mix(in srgb, var(--color-accent) 35%, var(--color-canvas)) 100%);
-  color: var(--color-canvas);
+.music-jump-art[data-pinned] > .music-collection-pinned {
+  --music-cover-blur: 5px;
+  height: 100%;
+  border-radius: 0;
 }
 .music-jump-art[data-mosaic] {
   display: grid;

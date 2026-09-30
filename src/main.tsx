@@ -15,6 +15,7 @@ import { ModalOverlayApp } from "@/views/modal-overlay-app";
 import { HdrOverlayApp } from "@/views/hdr-overlay-app";
 import { hdrOverlayEmitAction } from "@/lib/hdr-overlay";
 import { PipApp } from "@/views/pip";
+import { VideoPipApp } from "@/views/video-pip";
 import "@/lib/awards-history-eager";
 import "@/index.css";
 import "flag-icons/css/flag-icons.min.css";
@@ -39,6 +40,16 @@ function detectPipMode(): boolean {
   try {
     const w = getCurrentWindow();
     if (w.label === "harbor-pip") return true;
+  } catch {}
+  return false;
+}
+
+/** The detached player window: chrome only, with the live mpv surface behind it. */
+function detectVideoPip(): boolean {
+  if (new URLSearchParams(window.location.search).get("harbor-video-pip") === "1") return true;
+  try {
+    const w = getCurrentWindow();
+    if (w.label === "harbor-video-pip") return true;
   } catch {}
   return false;
 }
@@ -79,6 +90,7 @@ function detectHdrOverlay(): boolean {
 }
 
 const isPip = detectPipMode();
+const isVideoPip = detectVideoPip();
 const isModal = detectModalOverlay();
 const isHdrOverlay = detectHdrOverlay();
 const isCaptions = detectCaptions();
@@ -101,7 +113,7 @@ if (isRemote) {
   document.body.style.userSelect = "auto";
   document.body.style.cursor = "auto";
 }
-if (isModal || isHdrOverlay) {
+if (isModal || isHdrOverlay || isVideoPip) {
   document.documentElement.style.background = "transparent";
   document.body.style.background = "transparent";
   document.body.style.backgroundColor = "transparent";
@@ -130,7 +142,7 @@ if (import.meta.env.DEV)
       }
     })(),
   );
-if (import.meta.env.DEV && !isPip && !isModal && !isHdrOverlay && !isRemote) {
+if (import.meta.env.DEV && !isPip && !isVideoPip && !isModal && !isHdrOverlay && !isRemote) {
   void import("./lib/streams/__fixtures__/verify").then((m) => m.logVerificationReport());
 }
 function revealRoot() {
@@ -190,6 +202,7 @@ async function mount() {
     !isModal &&
     !isCaptions &&
     !isPip &&
+    !isVideoPip &&
     !isDjDeck &&
     !isRemote
   ) {
@@ -199,12 +212,13 @@ async function mount() {
     loadSecrets(),
     hydrateCustomThemes().catch(() => {}),
     ensureUiLocale(getUiLanguage()),
-    !isHdrOverlay && !isModal && !isCaptions && !isPip && !isDjDeck
+    !isHdrOverlay && !isModal && !isCaptions && !isPip && !isVideoPip && !isDjDeck
       ? initializeMusic()
       : Promise.resolve(),
   ]);
   if (!isHdrOverlay && !isModal && !isCaptions && !isDjDeck) void initSubtitleCache();
-  if (!isHdrOverlay && !isModal && !isCaptions && !isPip && !isDjDeck) startTaskbarProgress();
+  if (!isHdrOverlay && !isModal && !isCaptions && !isPip && !isVideoPip && !isDjDeck)
+    startTaskbarProgress();
   createRoot(document.getElementById("root")!).render(
     <StrictMode>
       {isHdrOverlay ? (
@@ -215,12 +229,14 @@ async function mount() {
         <CaptionsApp />
       ) : isModal ? (
         <ModalOverlayApp />
+      ) : isVideoPip ? (
+        <VideoPipApp />
       ) : isPip ? (
         <PipApp />
       ) : (
         <MainRoot />
       )}
-      {(isModal || isPip || isCaptions || isDjDeck) && <StartupReady />}
+      {(isModal || isPip || isVideoPip || isCaptions || isDjDeck) && <StartupReady />}
     </StrictMode>,
   );
 }

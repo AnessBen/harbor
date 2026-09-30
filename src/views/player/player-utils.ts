@@ -67,6 +67,7 @@ export async function pickBridge(
     forceYuv420p?: boolean;
     extraOptions?: string;
     fullDownload?: boolean;
+    cacheDir?: string;
     getEmbedRect?: () => Promise<MpvRect | null> | MpvRect | null;
   },
 ): Promise<{ bridge: PlayerBridge; engine: "html5" | "mpv" }> {

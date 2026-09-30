@@ -133,6 +133,10 @@ export default defineConfig(({ mode }) => {
     optimizeDeps: {
       // Scan only app entries, not the installer or local HTML previews.
       entries: ["index.html", "index-tv.html"],
+      // Reached only from a lazy route's own lazy child, so the scanner does not find it from an
+      // entry. Discovered at runtime instead, it answers the first request with a 504 and a reload
+      // the error boundary swallows, which strands that route until the dep cache is rebuilt.
+      include: ["qrcode"],
       exclude: ["onnxruntime-web", "@mediapipe/tasks-vision"],
     },
     worker: { format: "es" },

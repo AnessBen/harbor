@@ -1,4 +1,5 @@
 import { readResumeEntry, saveResumeBatch } from "@/lib/resume";
+import { privateCwProfileId } from "@/lib/cw-profile";
 import { episodeFromVideoId, libraryGetOne, type LibraryItem } from "@/lib/stremio";
 
 const RESTART_THRESHOLD = 0.8;
@@ -66,6 +67,7 @@ export function resumeLibraryGetOne(authKey: string, id: string): Promise<Librar
 }
 
 export function isResumeStartReady(identity: ResumeIdentity): boolean {
+  if (privateCwProfileId()) return true;
   if (!identity.authKey) return true;
   const account = remoteByAccount.get(identity.authKey);
   if (!account) return false;
@@ -82,6 +84,7 @@ function remoteItems(identity: ResumeIdentity): Promise<Array<LibraryItem | null
 }
 
 export function prefetchResumeStart(identity: ResumeIdentity): void {
+  if (privateCwProfileId()) return;
   if (!identity.authKey) return;
   void remoteItems(identity);
 }
@@ -98,7 +101,7 @@ export async function resolveStartMs({
   const localEntry = readResumeEntry(metaId, season, episode);
   const local = localEntry?.ms ?? 0;
   const isEpisode = typeof season === "number" && typeof episode === "number";
-  if (!authKey) return { ms: local, fromRemote: false, finished: false };
+  if (!authKey || privateCwProfileId()) return { ms: local, fromRemote: false, finished: false };
   const matchesEpisode = (item: LibraryItem | null) => {
     if (!item) return false;
     if (typeof season !== "number" || typeof episode !== "number") return true;

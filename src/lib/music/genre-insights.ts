@@ -1,6 +1,7 @@
 import { safeFetch } from "@/lib/safe-fetch";
 import { getSecret, loadSecrets } from "@/lib/secret-store";
 import { LASTFM_API_KEY } from "./lastfm";
+import { resolveArtist } from "./artist-authority";
 import type { MusicArtistRef } from "./types";
 type Obj = Record<string, unknown>;
 export type GenreArtistStats = { artist: MusicArtistRef; fans?: number; listeners?: number; plays?: number };
@@ -20,13 +21,16 @@ async function artistStats(artist: MusicArtistRef, apiKey: string | null): Promi
   const key = `${artist.id}:${Boolean(apiKey)}`, saved = cache.get(key);
   if (saved && Date.now() - saved.at < 30 * 60_000) return saved.value;
   const value = (async () => {
-    const id = /^deezer:artist:(\d+)$/.exec(artist.id)?.[1];
+    const resolved = artist.id.startsWith("musicbrainz:artist:")
+      ? await resolveArtist(artist.name).catch(() => null) : null;
+    const canonical = resolved?.canonical;
+    const id = /^deezer:artist:(\d+)$/.exec(canonical?.id ?? artist.id)?.[1];
     const [deezer,lastfm] = await Promise.all([
       id ? json(`https://api.deezer.com/artist/${id}`).catch(() => null) : null,
       apiKey ? json(`https://ws.audioscrobbler.com/2.0/?${new URLSearchParams({ method: "artist.getInfo", artist: artist.name, api_key: apiKey, format: "json" })}`).catch(() => null) : null,
     ]);
     const stats = object(object(lastfm?.artist).stats);
-    return { artist: { ...artist, artwork: typeof deezer?.picture_big === "string" ? deezer.picture_big : artist.artwork },
+    return { artist: { ...artist, artwork: typeof deezer?.picture_big === "string" ? deezer.picture_big : canonical?.artwork || artist.artwork },
       fans: realCount(deezer?.nb_fan), listeners: realCount(stats.listeners), plays: realCount(stats.playcount) };
   })();
   cache.set(key,{ at: Date.now(), value });

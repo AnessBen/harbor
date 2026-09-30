@@ -754,6 +754,10 @@ export function MusicNowPlaying({
                 )}
               </div>
             )}
+          </div>
+        </div>
+        </div>
+        <div className="music-now-footer">
             <div className="music-now-output">
               <button type="button" onClick={onSpeakers}>
                 {speaker.active && speaker.device ? (
@@ -770,8 +774,6 @@ export function MusicNowPlaying({
                 {t("music.audio.title")}
               </button>
             </div>
-          </div>
-        </div>
         </div>
         <MusicKaraoke open={karaoke} onClose={() => setKaraoke(false)} />
       </section>

@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { MusicActionGlyph } from "./music-action-feedback";
 import { MusicGlyph } from "@/components/icons/music-glyph";
 import { AnchoredMenu } from "@/components/anchored-menu";
 import { HoverTooltip } from "@/components/hover-tooltip";
@@ -49,22 +50,22 @@ export function MusicDownloadButton({
     <button
       ref={anchor}
       type="button"
-      className={className}
+      className={`${className} music-action-button`}
+      data-music-action-state={done ? "done" : busy ? "busy" : "idle"}
+      aria-busy={busy}
       disabled={busy || done || track.connectorId === "spotify"}
       title={withTooltip ? undefined : tooltipLabel}
       aria-label={label}
       aria-haspopup={filtered ? "menu" : undefined}
       onClick={() => (filtered ? setAsking((open) => !open) : start(false))}
     >
-      {busy ? (
-        <MusicGlyph name="loading" size={18} className="animate-spin motion-reduce:animate-none" />
-      ) : done ? (
-        <MusicGlyph name="check" size={18} />
-      ) : entry?.status === "error" ? (
-        <MusicGlyph name="retry" size={18} />
-      ) : (
-        <MusicGlyph name="download" size={18} viewBox="-1 -1 26 26" />
-      )}
+      <MusicActionGlyph
+        state={done ? "done" : busy ? "busy" : entry?.status === "error" ? "error" : "idle"}
+        identity={`${track.connectorId}:${track.id}`}
+        idle={entry?.status === "error"
+          ? <MusicGlyph name="retry" size={18} />
+          : <MusicGlyph name="download" size={18} viewBox="-1 -1 26 26" />}
+      />
       <span className="sr-only">{label}</span>
       {!withTooltip && busy && entry.progress > 0 && <small>{Math.round(entry.progress * 100)}%</small>}
     </button>

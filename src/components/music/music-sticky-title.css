@@ -14,11 +14,13 @@
   margin-inline: calc(var(--music-sticky-bleed, 20px) * -1);
   padding-inline: var(--music-sticky-bleed, 20px);
   background: var(--color-canvas);
+  visibility: hidden;
+  transition: visibility 0s linear 100ms;
+}
+/* Keep the content cover solid while the controls fade in place. */
+.music-sticky-title-bar > * {
   opacity: 0;
-  transform: translateY(-10px);
-  transition:
-    opacity 220ms ease-out,
-    transform 260ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  transition: opacity 100ms ease-out;
 }
 .music-sticky-title-bar::before {
   content: "";
@@ -32,8 +34,12 @@
   pointer-events: auto;
 }
 .music-sticky-title[data-on] .music-sticky-title-bar {
+  visibility: visible;
+  transition-delay: 0s;
+}
+.music-sticky-title[data-on] .music-sticky-title-bar > * {
   opacity: 1;
-  transform: none;
+  transition-duration: 160ms;
 }
 .music-sticky-play {
   display: grid;
@@ -44,7 +50,7 @@
   border-radius: 50%;
   background: var(--color-ink);
   color: var(--color-canvas);
-  transition: transform 180ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  transition: opacity 100ms ease-out, transform 150ms ease-out;
 }
 [data-art-colors] .music-sticky-play {
   background: var(--music-art-accent, var(--color-ink));
@@ -54,8 +60,10 @@
   transform: scale(1.06);
 }
 .music-sticky-play:disabled {
-  opacity: 0.4;
   cursor: default;
+}
+.music-sticky-title[data-on] .music-sticky-play:disabled {
+  opacity: 0.4;
 }
 .music-sticky-play:focus-visible {
   outline: 2px solid var(--color-accent);
@@ -73,10 +81,9 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .music-sticky-title-bar,
+  .music-sticky-title-bar > *,
+  .music-sticky-title[data-on] .music-sticky-title-bar > *,
   .music-sticky-play {
     transition: none;
-  }
-  .music-sticky-title-bar {
-    transform: none;
   }
 }

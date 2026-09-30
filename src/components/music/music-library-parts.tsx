@@ -1,9 +1,12 @@
+import { useMusicSourceRequest, musicSourceRequestMatches } from "@/lib/music/source-request";
+import type { PlaylistView } from "@/lib/music/playlist-filters";
 import { MusicTrackRowsSkeleton } from "./music-skeletons";
 import { useMusicTrackMenuItems } from "./music-track-menu";
 import { requestMusicExplore } from "@/lib/music/navigation";
 import { HoverTooltip } from "@/components/hover-tooltip";
-import { isMusicLiked } from "@/lib/music/liked";
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import { likedIdsFor } from "@/lib/music/liked";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { MusicVirtualTrackList } from "./music-virtual-track-list";
 import {
   FileDown,
   PlaylistVariation,
@@ -21,6 +24,7 @@ import { MusicPlaylistCover } from "./music-playlist-cover";
 import { MusicCollectionControls } from "./music-collection-controls";
 import { MusicArtistLink } from "./music-artist-link";
 import { MusicMediaBadge } from "./music-media-badge";
+import { MusicTrackLabels } from "./music-track-labels";
 import { useMusicPlaylistPicker } from "./music-playlist-picker";
 import { useMusicSourcePicker } from "./music-source-picker";
 import { useT } from "@/lib/i18n";
@@ -49,9 +53,13 @@ export function LibraryTrackList({
   emptyCopy,
   filtering = false,
   filterKey,
+  showControls = true,
+  onPlay: onPlayOverride,
+  view,
 }: {
   title: string;
   subtitle: string;
+  view?: PlaylistView;
   tracks: MusicTrack[];
   order?: MusicTrack[];
   likedIds: string[];
@@ -62,10 +70,19 @@ export function LibraryTrackList({
   emptyCopy?: string;
   filtering?: boolean;
   filterKey?: string;
+  showControls?: boolean;
+  onPlay?: (track: MusicTrack, queue: MusicTrack[]) => void;
 }) {
   const t = useT();
   const now = useMusicNowPlaying();
+  const sourceRequest = useMusicSourceRequest();
   const resultsRef = useRef<HTMLDivElement>(null);
+  const [slowFilter, setSlowFilter] = useState(false);
+  useEffect(() => {
+    if (!filtering) { setSlowFilter(false); return; }
+    const timer = setTimeout(() => setSlowFilter(true), 180);
+    return () => clearTimeout(timer);
+  }, [filtering]);
   useEffect(() => {
     if (filterKey === undefined || filtering || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const animation = resultsRef.current?.animate(
@@ -75,49 +92,65 @@ export function LibraryTrackList({
     return () => animation?.cancel();
   }, [filterKey, filtering]);
   const play = (track: MusicTrack, queue: MusicTrack[]) => {
+    if (onPlayOverride) { onPlayOverride(track, queue); return; }
     recordMusicPlaylistPlayback(selectedPlaylist, queue);
     openSourcePicker(track, queue);
   };
   const { openSourcePicker } = useMusicSourcePicker();
-  const positions = new Map(order.map((track, index) => [track.id, index]));
-  const added = new Set(selectedPlaylist?.tracks.map((track) => track.id));
+  const positions = useMemo(() => new Map(order.map((track, index) => [track.id, index])), [order]);
+  const added = useMemo(() => new Set(selectedPlaylist?.tracks.map((track) => track.id)), [selectedPlaylist?.tracks]);
+  const liked = useMemo(() => new Set(likedIds), [likedIds]);
+  const keys = useMemo(() => tracks.map(track => track.id), [tracks]);
+  const renderRow = (displayIndex: number) => {
+    const track = tracks[displayIndex];
+    const playing = nowPlayingMatches(now, track);
+    return <LibraryTrack
+      key={track.id}
+      track={track}
+      tracks={tracks}
+      index={positions.get(track.id) ?? 0}
+      displayIndex={view ? displayIndex : undefined}
+      showAlbum={Boolean(view)}
+      count={order.length}
+      liked={likedIdsFor(track).some(id => liked.has(id))}
+      alreadyAdded={added.has(track.id)}
+      onAdd={onAdd}
+      onRemove={onRemove}
+      onMove={onMove}
+      onPlay={play}
+      nowPlaying={playing}
+      loading={musicSourceRequestMatches(sourceRequest, track) || (playing && now.phase === "resolving")}
+    />;
+  };
   return (
-    <section className="music-library-tracklist" aria-busy={filtering}>
-      <div className="music-library-tracklist-header">
+    <section className="music-library-tracklist" data-playlist-view={view} aria-busy={filtering}>
+      {(title || subtitle || showControls) && <div className="music-library-tracklist-header">
         <div>
           {title && <h3>{title}</h3>}
           {subtitle && <p>{subtitle}</p>}
         </div>
-        {!onAdd && !onRemove && tracks.length > 0 ? (
+        {showControls && (!onAdd && !onRemove && tracks.length > 0 ? (
           <MusicCollectionControls tracks={tracks} onPlay={play} />
         ) : (
           <span>{tracks.length}</span>
-        )}
-      </div>
-      <div ref={resultsRef}>
-      {filtering ? <MusicTrackRowsSkeleton rows={Math.max(1, Math.min(tracks.length || order.length, 6))} /> : tracks.length ? (
-        <div>
-          {tracks.map((track) => (
-            <LibraryTrack
-              key={track.id}
-              track={track}
-              tracks={tracks}
-              index={positions.get(track.id) ?? 0}
-              count={order.length}
-              liked={isMusicLiked(likedIds, track)}
-              alreadyAdded={added.has(track.id)}
-              onAdd={onAdd}
-              onRemove={onRemove}
-              onMove={onMove}
-              onPlay={play}
-              nowPlaying={nowPlayingMatches(now, track)}
-              loading={nowPlayingMatches(now, track) && now.phase === "resolving"}
-            />
-          ))}
-        </div>
+        ))}
+      </div>}
+      {view && tracks.length > 0 && <div className="music-playlist-columns" aria-hidden="true">
+        <span>#</span><span>{t("music.playlistTools.title")}</span><span className="music-playlist-album">{t("music.playlistTools.album")}</span><span /><span>{t("music.sort.duration")}</span><span />
+      </div>}
+      <div ref={resultsRef} style={{ position: "relative" }}>
+      <div inert={filtering} style={{ visibility: slowFilter && filtering ? "hidden" : undefined }}>
+      {tracks.length ? (
+        tracks.length > 100
+          ? <MusicVirtualTrackList keys={keys} compact={view === "compact"} renderRow={renderRow} />
+          : <div>{tracks.map((_, index) => renderRow(index))}</div>
       ) : (
         <p className="music-library-empty">{emptyCopy ?? t("music.library.saveEmpty")}</p>
       )}
+      </div>
+      {slowFilter && filtering && <div style={{ position: "absolute", inset: 0 }}>
+        <MusicTrackRowsSkeleton rows={Math.max(1, Math.min(tracks.length || order.length, 6))} />
+      </div>}
       </div>
     </section>
   );
@@ -136,6 +169,8 @@ function LibraryTrack({
   onPlay,
   nowPlaying = false,
   loading = false,
+  displayIndex,
+  showAlbum,
 }: {
   track: MusicTrack;
   tracks: MusicTrack[];
@@ -149,6 +184,8 @@ function LibraryTrack({
   onPlay?: (track: MusicTrack, queue: MusicTrack[]) => void;
   nowPlaying?: boolean;
   loading?: boolean;
+  displayIndex?: number;
+  showAlbum?: boolean;
 }) {
   const t = useT();
   const { openSourcePicker } = useMusicSourcePicker();
@@ -229,7 +266,7 @@ function LibraryTrack({
         setOpen(true);
       }}
     >
-      <span className="music-library-track-number">{String(index + 1).padStart(2, "0")}</span>
+      <span className="music-library-track-number">{String((displayIndex ?? index) + 1).padStart(2, "0")}</span>
       <div className="music-library-track-play">
         <button
           type="button"
@@ -263,6 +300,7 @@ function LibraryTrack({
             <strong>{track.title}</strong>
           </button>
           <span className="flex min-w-0 items-center gap-2">
+            <MusicTrackLabels track={track} />
             <MusicArtistLink
               name={track.artist}
               track={track}
@@ -272,6 +310,7 @@ function LibraryTrack({
           </span>
         </span>
       </div>
+      {showAlbum && <span className="music-playlist-album" title={track.album}>{track.album || "—"}</span>}
       <button
         type="button"
         className="music-library-track-save"
@@ -375,7 +414,9 @@ export function PlaylistHeader({
   onDeleted,
   onError,
   onExport,
+  playbackTracks,
 }: {
+  playbackTracks?: MusicTrack[];
   playlist: MusicPlaylist;
   working: boolean;
   onRenamed: (playlist: MusicPlaylist) => void;
@@ -501,7 +542,7 @@ export function PlaylistHeader({
       )}
       <div className="music-playlist-commands">
         <MusicCollectionControls
-          tracks={playlist.tracks}
+          tracks={playbackTracks ?? playlist.tracks}
           onPlay={(track, queue) => {
             recordMusicPlaylistPlayback(playlist, queue);
             openSourcePicker(track, queue);

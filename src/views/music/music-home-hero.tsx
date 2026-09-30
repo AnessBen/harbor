@@ -1,6 +1,7 @@
 import { MusicHeroMedia } from "./music-hero-media";
 import { useHeroLayers } from "./use-hero-layers";
 import { MusicArtistLink } from "@/components/music/music-artist-link";
+import { MusicTasteIcon } from "@/components/music/music-taste-icon";
 import { MusicBillboardRank } from "@/components/music/music-billboard-rank";
 import { useMusicItemMenu } from "@/components/music/music-item-menu";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -16,7 +17,6 @@ import {
   Pause,
   Play,
   Plus,
-  SlidersHorizontal,
 } from "@/components/icons/music-icons";
 import { MusicNowPlayingMark } from "@/components/music/music-now-playing-mark";
 import { useMusicSourcePicker } from "@/components/music/music-source-picker";
@@ -244,7 +244,7 @@ export function MusicHomeHero({
                 {t("music.taste.playlists")}
               </button>
               <button type="button" className="music-home-text" onClick={onTastes}>
-                <SlidersHorizontal size={17} />
+                <MusicTasteIcon size={17} />
                 {t("music.taste.choose")}
               </button>
             </div>

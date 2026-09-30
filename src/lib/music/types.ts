@@ -8,6 +8,7 @@ export type MusicAudioQuality = {
 };
 
 export type MusicTrack = {
+  releaseDate?: string;
   explicit?: boolean;
   version?: string;
   /** Original collection entry retained when the source chooser selects a provider. */
@@ -85,6 +86,8 @@ export type MusicPlaylist = {
   name: string;
   createdAt: string;
   updatedAt: string;
+  /** Collection-specific timestamps; older entries may have no recorded date. */
+  trackAddedAt?: Record<string, string>;
   tracks: MusicTrack[];
 };
 
@@ -99,6 +102,8 @@ export type MusicPlayerState = {
   duration: number;
   volume: number;
   error: string | null;
+  /** A scrobble is bookkeeping, not playback, so its failure must never read as a stuck track. */
+  scrobbleError: string | null;
   likedIds: string[];
   likedTracks: MusicTrack[];
   recents: MusicTrack[];

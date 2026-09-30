@@ -1,9 +1,10 @@
 import { Fragment, useState } from "react";
-import { ChevronDown, Play } from "lucide-react";
+import { BookMarked, ChevronDown, Play } from "lucide-react";
 import nytLogo from "@/assets/awards/nyt-logo.svg";
+import { curatedListLogos } from "./curated-list-logos";
 import { tmdbPersonIdByName, tmdbPersonIdCached } from "@/lib/providers/tmdb";
-import { curatedList } from "@/lib/curated/registry";
-import { rankInItems, type CuratedCompanion } from "@/lib/curated/types";
+import type { CanonEntry } from "@/lib/curated/canon";
+import { useCanon } from "@/lib/curated/use-canon";
 import { useSettings } from "@/lib/settings";
 import { useView } from "@/lib/view";
 import { type AwardEntry, type AwardType } from "@/lib/providers/wikidata";
@@ -57,14 +58,15 @@ const TYPE_TITLE: Record<AwardType, string> = {
 
 export function AwardsBlock({
   awards,
-  seriesImdbId,
+  imdbId,
+  kind,
 }: {
   awards: AwardEntry[];
-  seriesImdbId?: string | null;
+  imdbId?: string | null;
+  kind: "movie" | "series";
 }) {
   const t = useT();
-  const nytList = curatedList("nyt-tv-100");
-  const nytRank = nytList ? rankInItems(nytList.head, seriesImdbId) : null;
+  const canon = useCanon(imdbId, kind);
   const groups = new Map<AwardType, AwardEntry[]>();
   for (const a of awards) {
     if (a.type === "other") continue;
@@ -72,7 +74,7 @@ export function AwardsBlock({
     arr.push(a);
     groups.set(a.type, arr);
   }
-  if (groups.size === 0 && nytRank == null) return null;
+  if (groups.size === 0 && canon.length === 0) return null;
   const sorted = [...groups.entries()].sort((a, b) => TYPE_ORDER[a[0]] - TYPE_ORDER[b[0]]);
 
   return (
@@ -84,69 +86,77 @@ export function AwardsBlock({
         {sorted.map(([type, entries]) => (
           <AwardGroup key={type} type={type} entries={entries} />
         ))}
-        {nytList && nytRank != null && (
-          <NytAccolade
-            rank={nytRank}
-            curator={nytList.curator}
-            title={nytList.title}
-            listId={nytList.id}
-            year={nytList.publishedYear}
-            companion={
-              nytList.companion &&
-              (nytList.companion.forRank == null || nytList.companion.forRank === nytRank)
-                ? nytList.companion
-                : undefined
-            }
-          />
-        )}
+        {canon.map((entry) => (
+          <CuratedAccolade key={entry.listId} entry={entry} />
+        ))}
       </div>
     </div>
   );
 }
 
-function NytAccolade({
-  rank,
-  curator,
-  title,
-  listId,
-  year,
-  companion,
-}: {
-  rank: number;
-  curator: string;
-  title: string;
-  listId: string;
-  year?: number;
-  companion?: CuratedCompanion;
-}) {
+function CanonMark({ brand, listId }: { brand?: CanonEntry["brand"]; listId: string }) {
+  const publisher = curatedListLogos[listId];
+  if (publisher)
+    return (
+      <span className="flex h-20 w-[124px] shrink-0 items-center justify-center lg:justify-start">
+        <img
+          src={publisher}
+          alt=""
+          aria-hidden
+          draggable={false}
+          className="max-h-14 w-auto max-w-full object-contain opacity-90 brightness-0 invert"
+        />
+      </span>
+    );
+  if (brand === "nyt")
+    return (
+      <span className="flex h-20 w-20 shrink-0 items-center justify-center text-ink">
+        <span
+          aria-hidden
+          className="block h-14 opacity-85"
+          style={{
+            aspectRatio: "103.7 / 133.9",
+            backgroundColor: "currentColor",
+            maskImage: `url("${nytLogo}")`,
+            WebkitMaskImage: `url("${nytLogo}")`,
+            maskSize: "100% 100%",
+            WebkitMaskSize: "100% 100%",
+            maskRepeat: "no-repeat",
+            WebkitMaskRepeat: "no-repeat",
+            maskPosition: "center",
+            WebkitMaskPosition: "center",
+          }}
+        />
+      </span>
+    );
+  return (
+    <span className="shrink-0 text-accent">
+      <Laurel size={88}>
+        <BookMarked size={28} aria-hidden />
+      </Laurel>
+    </span>
+  );
+}
+
+function placeLabel(entry: CanonEntry, t: (key: string) => string) {
+  if (entry.place == null) return t("Listed");
+  return entry.ordering === "spine" ? t("Spine") : t("Ranked");
+}
+
+function CuratedAccolade({ entry }: { entry: CanonEntry }) {
   const t = useT();
   const { openCuratedList } = useView();
   const [open, setOpen] = useState(false);
+  const { curator, title, listId, year, companion } = entry;
   return (
     <section className="grid gap-7 lg:grid-cols-[240px_1fr] lg:gap-14">
       <header className="flex flex-row items-center gap-5 lg:flex-col lg:items-start lg:gap-5">
-        <span className="flex h-20 w-20 shrink-0 items-center justify-center text-ink">
-          <span
-            aria-hidden
-            className="block h-14 opacity-85"
-            style={{
-              aspectRatio: "103.7 / 133.9",
-              backgroundColor: "currentColor",
-              maskImage: `url("${nytLogo}")`,
-              WebkitMaskImage: `url("${nytLogo}")`,
-              maskSize: "100% 100%",
-              WebkitMaskSize: "100% 100%",
-              maskRepeat: "no-repeat",
-              WebkitMaskRepeat: "no-repeat",
-              maskPosition: "center",
-              WebkitMaskPosition: "center",
-            }}
-          />
-        </span>
+        <CanonMark brand={entry.brand} listId={listId} />
         <div className="flex flex-col gap-1.5">
           <h4 className="text-[18px] font-medium tracking-tight text-ink">{t(curator)}</h4>
           <p className="text-[12px] font-semibold uppercase tracking-[0.16em] text-ink-subtle">
-            {t("Ranked")} <span className="text-accent">#{rank}</span>
+            {placeLabel(entry, t)}
+            {entry.place != null && <span className="text-accent"> #{entry.place}</span>}
           </p>
         </div>
       </header>
@@ -154,7 +164,7 @@ function NytAccolade({
       <div className="flex min-w-0 flex-col gap-5">
         <ul className="grid grid-cols-1 gap-x-10 gap-y-0">
           <li className="flex items-baseline gap-4 border-b border-edge-soft/30 py-2.5 text-[13px]">
-            <span className="w-11 shrink-0 font-semibold tabular-nums text-accent">{year}</span>
+            <span className="w-11 shrink-0 font-semibold tabular-nums text-accent">{year ?? ""}</span>
             <button
               type="button"
               onClick={() => openCuratedList(listId)}

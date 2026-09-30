@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Check, LoaderCircle, Plus, Search, X } from "@/components/icons/music-icons";
+import { Plus, Search, X } from "@/components/icons/music-icons";
+import { MusicActionGlyph } from "@/components/music/music-action-feedback";
 import { Dropdown } from "@/components/dropdown";
 import { MusicCollectionControls } from "@/components/music/music-collection-controls";
 import { MusicConnections, MusicConnectionsProvider, useMusicConnections } from "@/components/music/music-connections";
@@ -212,11 +213,12 @@ export function SpooktoberPlaylist({ playlistId, onBack, active = true, focusTra
               <p className="spooktober-playlist-description">{t(`spooktober.playlist.${playlist.id}.description`)}</p>
               <p className="spooktober-playlist-facts"><span>{t("music.trackCount", { count: tracks.length })}</span><span aria-hidden>·</span><span>{length}</span></p>
               <MusicCollectionControls tracks={tracks} onPlay={start} extra={
-                <button className="spooktober-playlist-save" type="button" disabled={saving} onClick={() => void savePlaylist()}>
-                  {saving ? <LoaderCircle size={17} className="animate-spin motion-reduce:animate-none" aria-hidden /> : savedId ? <Check size={17} aria-hidden /> : <Plus size={17} aria-hidden />}
+                <button className="spooktober-playlist-save music-action-button" data-music-action-state={savedId ? "done" : saving ? "busy" : "idle"} type="button" disabled={saving} aria-busy={saving} onClick={() => void savePlaylist()}>
+                  <MusicActionGlyph state={savedId ? "done" : saving ? "busy" : "idle"} idle={<Plus size={17} />} size={17} identity={saveKey} />
                   {t(savedId ? "spooktober.playlist.saved" : "spooktober.playlist.save")}
                 </button>
               } />
+              <span role="status" className="sr-only">{savedId ? t("music.similar.saved") : ""}</span>
               {saveFailed && <p role="alert" className="spooktober-playlist-error">{t("music.action.error")}</p>}
             </div>
             <PlaylistArt playlist={playlist} data={data} />

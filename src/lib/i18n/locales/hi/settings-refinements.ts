@@ -1,4 +1,6 @@
 const settingsRefinements: Record<string, string> = {
+  "Playback cache folder": "प्लेबैक कैश फ़ोल्डर",
+  "Temporary video buffering, including debrid streams. Applies when playback restarts; existing files stay in their current folder.": "वीडियो की अस्थायी बफ़रिंग, डेब्रिड स्ट्रीम सहित। प्लेबैक फिर शुरू होने पर लागू होता है; मौजूदा फ़ाइलें अपने वर्तमान फ़ोल्डर में रहती हैं।",
   "1 option formatted correctly": "1 विकल्प का प्रारूप सही है",
   "1. Open Movies\n2. Select a title\n3. Press Play\n4. Describe what happens": "1. फ़िल्में खोलें\n2. कोई शीर्षक चुनें\n3. चलाएँ दबाएँ\n4. बताएँ कि क्या होता है",
   "3 to 24 letters, numbers, or underscores.": "3 से 24 अक्षर, अंक या अंडरस्कोर।",

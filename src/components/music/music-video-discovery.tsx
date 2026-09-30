@@ -22,8 +22,10 @@ export function MusicVideoDiscovery({
   interviews = false,
   kinds,
   subject = "",
+  filterSubject = subject,
   queryForKind,
   headerContent,
+  controlsInHeader = false,
   onWatch,
 }: {
   query?: string;
@@ -31,8 +33,10 @@ export function MusicVideoDiscovery({
   interviews?: boolean;
   kinds?: MusicVideoKind[];
   subject?: string;
+  filterSubject?: string;
   queryForKind?: (kind: MusicVideoKind) => string;
   headerContent?: ReactNode;
+  controlsInHeader?: boolean;
   onWatch: (track: MusicTrack, queue: MusicTrack[]) => void;
 }) {
   const t = useT();
@@ -57,7 +61,8 @@ export function MusicVideoDiscovery({
   } | null>(null);
   const [loadingMore, setLoadingMore] = useState(false), [moreError, setMoreError] = useState(false);
   const generation = useRef(0), moreRequest = useRef(false), seenCursors = useRef(new Set<string>());
-  const searchKey = `${regular}:${search}`;
+  const resultSubject = queryOverride?.base === baseQuery ? "" : filterSubject;
+  const searchKey = `${regular}:${resultSubject}:${search}`;
   const [edges, setEdges] = useState({ start: true, end: true });
   const tracks = result?.tracks ?? [];
   const itemMenu = useMusicItemMenu({
@@ -85,7 +90,7 @@ export function MusicVideoDiscovery({
     moreRequest.current = false; seenCursors.current.clear();
     setLoadingMore(false); setMoreError(false);
     setResult(null);
-    searchMusicVideoPage(search, regular, null, retry > 0)
+    searchMusicVideoPage(search, regular, null, retry > 0, resultSubject)
       .then((page) => {
         if (!cancelled) setResult({ key: searchKey, ...page, error: false });
       })
@@ -96,20 +101,20 @@ export function MusicVideoDiscovery({
       cancelled = true;
       if (generation.current === version) generation.current++;
     };
-  }, [active, activated, search, retry, regular, searchKey]);
+  }, [active, activated, search, retry, regular, searchKey, resultSubject]);
   const current = result?.key === searchKey ? result : null;
   const more = useCallback(async () => {
     if (!current?.next || moreRequest.current) return;
     const version = generation.current, cursor = current.next;
     moreRequest.current = true; setLoadingMore(true); setMoreError(false);
     try {
-      const page = await searchMusicVideoPage(search, regular, cursor);
+      const page = await searchMusicVideoPage(search, regular, cursor, false, resultSubject);
       if (generation.current !== version) return;
       seenCursors.current.add(cursor);
       setResult(previous => previous?.key === searchKey ? { ...previous, tracks: appendMusicVideos(previous.tracks, page.tracks), next: page.next && !seenCursors.current.has(page.next) ? page.next : null } : previous);
     } catch { if (generation.current === version) setMoreError(true); }
     finally { if (generation.current === version) { moreRequest.current = false; setLoadingMore(false); } }
-  }, [current, search, regular, searchKey]);
+  }, [current, search, regular, searchKey, resultSubject]);
   const moreRef = useRef<(() => void) | null>(null);
   useEffect(() => { moreRef.current = active && visible && !loadingMore && !moreError && current?.next ? () => { void more(); } : null; }, [active, visible, loadingMore, moreError, current, more]);
   const railRef = rail.ref;
@@ -164,8 +169,38 @@ export function MusicVideoDiscovery({
   ) : (
     <Film size={21} aria-hidden />
   );
+  const railControls = current && !current.error && (current.tracks.length > 0 || current.next) ? (
+    <div className="music-video-rail-controls">
+      {!controlsInHeader && moreError && <span role="alert" className="music-video-more-error">{t("music.videos.error")}</span>}
+      {current.next && <button type="button" className="music-video-more" onClick={() => { void more(); }} disabled={loadingMore}>
+        {loadingMore && <LoaderCircle size={16} className="animate-spin motion-reduce:animate-none" aria-hidden/>}
+        {t(moreError ? "common.retry" : "music.library.loadMore")}
+      </button>}
+      <button type="button" onClick={() => move(-1)} disabled={edges.start} aria-label={t("common.previous")}>
+        <ArrowLeft className="dir-icon" size={18} />
+      </button>
+      <button type="button" onClick={() => move(1)} disabled={edges.end} aria-label={t("common.next")}>
+        <ArrowRight className="dir-icon" size={18} />
+      </button>
+    </div>
+  ) : null;
+  const searchForm = (
+    <form onSubmit={submit}>
+      <Search size={17} aria-hidden />
+      <input
+        aria-label={t("music.videos.search")}
+        placeholder={t("music.videos.search")}
+        maxLength={200}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+      />
+      <button type="submit" disabled={!draft.trim()} aria-label={t("common.search")}>
+        <ArrowRight size={19} className="dir-icon" />
+      </button>
+    </form>
+  );
   return (
-    <section ref={root} className="music-video-discovery" aria-label={t(heading)}>
+    <section ref={root} className="music-video-discovery" data-header-controls={controlsInHeader || undefined} aria-label={t(heading)}>
       <header>
         <div>
           <h2>
@@ -195,20 +230,9 @@ export function MusicVideoDiscovery({
             </div>
           )}
         </div>
-        <form onSubmit={submit}>
-          <Search size={17} aria-hidden />
-          <input
-            aria-label={t("music.videos.search")}
-            placeholder={t("music.videos.search")}
-            maxLength={200}
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-          />
-          <button type="submit" disabled={!draft.trim()} aria-label={t("common.search")}>
-            <ArrowRight size={19} className="dir-icon" />
-          </button>
-        </form>
+        {controlsInHeader ? <div className="music-video-header-tools">{railControls}{searchForm}</div> : searchForm}
       </header>
+      {controlsInHeader && moreError && <p role="alert" className="music-video-more-error music-video-header-error">{t("music.videos.error")}</p>}
       {headerContent}
       {!current ? (
         <div className="music-video-skeleton" role="status" aria-label={t("music.videos.loading")}>
@@ -274,29 +298,7 @@ export function MusicVideoDiscovery({
             ))}
           </div>
           {itemMenu.menu}
-          <div className="music-video-rail-controls">
-            {moreError && <span role="alert" className="music-video-more-error">{t("music.videos.error")}</span>}
-            {current.next && <button type="button" className="music-video-more" onClick={() => { void more(); }} disabled={loadingMore}>
-              {loadingMore && <LoaderCircle size={16} className="animate-spin motion-reduce:animate-none" aria-hidden/>}
-              {t(moreError ? "common.retry" : "music.library.loadMore")}
-            </button>}
-            <button
-              type="button"
-              onClick={() => move(-1)}
-              disabled={edges.start}
-              aria-label={t("common.previous")}
-            >
-              <ArrowLeft className="dir-icon" size={18} />
-            </button>
-            <button
-              type="button"
-              onClick={() => move(1)}
-              disabled={edges.end}
-              aria-label={t("common.next")}
-            >
-              <ArrowRight className="dir-icon" size={18} />
-            </button>
-          </div>
+          {!controlsInHeader && railControls}
         </>
       )}
     </section>

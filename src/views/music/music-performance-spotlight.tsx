@@ -57,9 +57,8 @@ export function MusicPerformanceSpotlight({ active, onWatch }: { active: boolean
       <h3>{track?.title ?? sceneName}</h3>
       {track ? <MusicPerformanceArtist track={track}/> : <p>{t("music.explore.performanceHint")}</p>}
       <div className="music-performance-actions">
-        {track ? <button type="button" className="music-home-primary" onClick={() => onWatch(track,current!.tracks)}><Play size={16} aria-hidden/>{t("music.explore.watchPerformance")}</button>
-          : current ? <button type="button" onClick={() => setRetry(value => value + 1)}><RotateCcw size={17} aria-hidden/>{t("common.retry")}</button>
-          : <span role="status">{t("music.videos.loading")}</span>}
+        {!track && (current ? <button type="button" onClick={() => setRetry(value => value + 1)}><RotateCcw size={17} aria-hidden/>{t("common.retry")}</button>
+          : <span role="status">{t("music.videos.loading")}</span>)}
         {current && !track && <span role="status">{t(current.error ? "music.videos.error" : "music.videos.empty")}</span>}
         {!!current?.tracks.length && <div><button type="button" aria-label={t("common.previous")} disabled={index === 0} onClick={() => setIndex(value => value - 1)}><ArrowLeft className="dir-icon" size={18}/></button>
           <span>{index + 1} / {current.tracks.length}</span><button type="button" aria-label={t("common.next")} disabled={index >= current.tracks.length - 1} onClick={() => setIndex(value => value + 1)}><ArrowRight className="dir-icon" size={18}/></button></div>}

@@ -56,14 +56,11 @@ test("the panel builder claims each matched episode exactly once", () => {
     new URL("../src/views/detail/anime-episodes/use-anime-tvdb-panel.ts", import.meta.url),
     "utf8",
   );
+  assert.match(src, /const claimed = new Set<number>\(\);/);
   const matcher = readFileSync(
     new URL("../src/views/detail/anime-episodes/anime-slot-match.ts", import.meta.url),
     "utf8",
   );
-  assert.match(src, /const claimed = new Set<number>\(\);/);
-  // Single-claim enforcement now lives in the shared slot matcher, which the
-  // panel calls with its claimed set: claimed episodes are never returned
-  // twice, so collapsing slots keep every row instead of shrinking.
   assert.match(src, /resolveAnimeSlotMatch\([\s\S]*?claimed,/);
   assert.match(matcher, /claimed\.has\(tvdbMatch\.id\)/);
   assert.match(matcher, /claimed\.has\(pairMatch\.id\)/);

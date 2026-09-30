@@ -6,31 +6,15 @@
   position: relative;
   z-index: 1;
 }
-[data-like-burst][data-burst] > svg {
-  animation: dock-like-pop 0.7s ease-in-out both;
+[data-like-burst][data-burst] > svg,
+button.music-now-action[data-burst] > svg,
+button[data-music-dock-like][data-burst] > svg {
+  animation: dock-like-pop 300ms ease-in-out both;
 }
-@media (prefers-reduced-motion: reduce) {
-  [data-like-burst][data-burst] > svg {
-    animation: none;
-  }
-}
-
 @keyframes dock-like-pop {
-  0% {
-    transform: scale(0.2);
-  }
-  40% {
-    transform: scale(1.6);
-  }
-  60% {
-    transform: scale(1);
-  }
-  80% {
-    transform: scale(1.06);
-  }
-  100% {
-    transform: scale(1);
-  }
+  0%, 100% { transform: scale(1); }
+  35% { transform: scale(.94); }
+  65% { transform: scale(1.08); }
 }
 .dock-like-burst {
   position: absolute;
@@ -43,83 +27,25 @@
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 34px;
-  height: 34px;
+  width: 28px;
+  height: 28px;
   border-radius: 999px;
-  border: 2px solid var(--music-art-accent, var(--color-accent));
-  animation: dock-like-ring 1.1s cubic-bezier(0, 0.06, 0.29, 1) both;
+  border: 1px solid var(--music-art-accent, var(--color-accent));
+  /* Callers use this animation's end event to release their one-shot state. */
+  animation: dock-like-ring 360ms ease-out both;
 }
 @keyframes dock-like-ring {
-  from,
-  to {
-    opacity: 0;
-  }
-  50%,
-  80% {
-    opacity: 0.4;
-  }
-  from {
-    transform: translate(-50%, -50%) scale(0);
-  }
-  to {
-    transform: translate(-50%, -50%) scale(1.45);
-  }
+  from { opacity: .24; transform: translate(-50%, -50%) scale(.75); }
+  to { opacity: 0; transform: translate(-50%, -50%) scale(1.15); }
 }
-.dock-like-dot {
-  position: absolute;
-  width: 4px;
-  height: 4px;
-  animation: dock-like-move 0.65s cubic-bezier(0.63, -0.01, 0.29, 1) var(--d, 0s) both;
-}
-.dock-like-dot::before {
-  content: "";
-  display: block;
-  width: 100%;
-  height: 100%;
-  border-radius: 999px;
-  background: var(--music-art-accent, var(--color-accent));
-  animation:
-    dock-like-in 0.4s ease-out var(--d, 0s) both,
-    dock-like-out 0.4s ease-out calc(0.5s + var(--d, 0s)) forwards;
-}
-@keyframes dock-like-move {
-  from {
-    transform: rotate(var(--rotate, 0deg)) translateY(0);
-  }
-  to {
-    transform: rotate(var(--rotate, 0deg)) translateY(var(--translate-y, -20px));
-  }
-}
-@keyframes dock-like-in {
-  from {
-    transform: scale(0);
-  }
-  to {
-    transform: scale(1);
-  }
-}
-@keyframes dock-like-out {
-  from {
-    transform: scale(1);
-  }
-  to {
-    transform: scale(0);
-  }
-}
-.dock-like-dot:nth-child(2n) {
-  --d: 0.06s;
-}
-.dock-like-dot:nth-child(3n) {
-  --d: 0.12s;
-}
+.dock-like-dot { display: none; }
 @media (prefers-reduced-motion: reduce) {
-  [data-music-dock-like][data-burst] > svg,
-  .dock-like-ring,
-  .dock-like-dot,
-  .dock-like-dot::before {
+  [data-like-burst][data-burst] > svg,
+  button.music-now-action[data-burst] > svg,
+  button[data-music-dock-like][data-burst] > svg {
     animation: none;
   }
-  .dock-like-burst {
-    display: none;
-  }
+  .dock-like-burst { visibility: hidden; }
+  /* Release the one-shot state even if motion is re-enabled later. */
+  .dock-like-ring { animation-duration: 1ms; }
 }

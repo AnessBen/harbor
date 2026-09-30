@@ -88,6 +88,8 @@ mod taskbar;
 mod modal_overlay;
 #[cfg(desktop)]
 mod mpv;
+#[cfg(desktop)]
+mod playback_cache;
 #[cfg(target_os = "linux")]
 mod mpv_render_linux;
 #[cfg(target_os = "macos")]
@@ -98,6 +100,7 @@ mod multiview;
 mod music;
 #[cfg(desktop)]
 mod pip;
+mod pip_window;
 #[cfg(target_os = "macos")]
 mod pip_mac;
 #[cfg(desktop)]
@@ -738,6 +741,7 @@ pub fn run() {
         });
     let mpv_state = mpv::MpvState::new();
     let pip_state = pip::PipState::new();
+    let pip_window_state = pip_window::PipWindowState::default();
     let fullscreen_state = fullscreen::FullscreenState::new();
     let thumbs_state = thumbs::ThumbsState::new();
     let dvr_state = dvr::DvrState::new();
@@ -791,6 +795,7 @@ pub fn run() {
         .manage(mpv_state)
         .manage(music::MusicState::new())
         .manage(pip_state)
+        .manage(pip_window_state)
         .manage(fullscreen_state)
         .manage(thumbs_state)
         .manage(dvr_state)
@@ -1087,6 +1092,8 @@ pub fn run() {
             music::music_export_m3u,
             music::music_play_track,
             music::music_engine_pause,
+            music::music_paused_for_video,
+            music::music_resume_after_video,
             music::music_engine_seek,
             music::music_deck_loop,
             music::music_deck_scratch,
@@ -1200,6 +1207,10 @@ pub fn run() {
             pip::pip_publish_state,
             pip::window_pip_enter,
             pip::window_pip_exit,
+            pip_window::pip_window_enter,
+            pip_window::pip_window_exit,
+            pip_window::pip_window_fit,
+            pip_window::pip_window_active,
             fullscreen::window_fullscreen_enter,
             fullscreen::window_fullscreen_exit,
             browser::browser_open,

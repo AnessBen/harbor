@@ -1,3 +1,4 @@
+import { useMusicSourceRequest, musicSourceRequestMatches } from "@/lib/music/source-request";
 import { useRef, useState, type CSSProperties, type MouseEvent, type ReactNode } from "react";
 import { GripVertical, Heart, LoaderCircle, MoreHorizontal, Pause, Play } from "@/components/icons/music-icons";
 import { MusicTrackMenu, useMusicTrackMenuItems } from "./music-track-menu";
@@ -69,8 +70,11 @@ export function MusicTrackRow({
   className?: string;
 }) {
   const t = useT();
+  const request = useMusicSourceRequest();
+  loading = loading || musicSourceRequestMatches(request, track);
   const tracked = useMusicTrackLiked(track);
   const saved = liked ?? tracked;
+  const rowBadge = badge?.kind === "connector" ? { ...badge, itemId: track.id } : badge;
   const save = onToggleFavorite ?? (() => toggleMusicLiked(track));
   const anchorRef = useRef<HTMLButtonElement | null>(null);
   const [open, setOpen] = useState(false);
@@ -105,7 +109,7 @@ export function MusicTrackRow({
             {String(index).padStart(2, "0")}
           </span>
         ) : null)}
-      <div onContextMenu={openMenu} className="flex h-14 min-w-0 flex-1 items-center text-start">
+      <div onContextMenu={openMenu} className="music-track-details flex h-14 min-w-0 flex-1 items-center text-start">
         <button
           type="button"
           onClick={nowPlaying ? toggleMusicPlayback : onPlay}
@@ -163,9 +167,7 @@ export function MusicTrackRow({
             >
               {track.title}
             </button>
-            {badge && <MusicCardBadgeChip badge={badge} />}
-            {!showDuration && <MusicMediaBadge kind={track.mediaKind} compact />}
-            {!showDuration && <MusicTrackLabels track={track} />}
+            {showDuration && rowBadge && <MusicCardBadgeChip badge={rowBadge} />}
           </span>
           <span className="flex min-w-0 items-center gap-2">
             <MusicArtistLink
@@ -176,6 +178,13 @@ export function MusicTrackRow({
             <MusicTrackPlaylistChip track={track} />
           </span>
         </span>
+        {!showDuration && (
+          <span className="music-track-badges ms-2 inline-flex shrink-0 items-center gap-[5px]">
+            {rowBadge && <MusicCardBadgeChip badge={rowBadge} />}
+            <MusicMediaBadge kind={track.mediaKind} compact />
+            <MusicTrackLabels track={track} />
+          </span>
+        )}
       </div>
       {showDuration && (
         <span data-music-duration className="ms-4 inline-flex shrink-0 items-center gap-3 text-xs tabular-nums text-ink-muted">

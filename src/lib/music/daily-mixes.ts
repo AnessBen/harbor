@@ -1,3 +1,4 @@
+import { backingTrackVersion } from "./source-version";
 import { artistCreditParts } from "./search-artists";
 import { musicTrackIdentity } from "./track-identity";
 import type { ListeningAffinity } from "./listening-affinity";
@@ -13,8 +14,6 @@ export type DailyMix = {
 
 const MAX_MIXES = 6;
 const ARTISTS_PER_MIX = 3;
-const MIN_ARTISTS = 2;
-const MIN_SEEDS = 2;
 const NEIGHBOUR_WINDOW = 5;
 const MIX_SIZE = 50;
 
@@ -47,11 +46,11 @@ export function planDailyMixes(
   liked: readonly MusicTrack[],
   affinity: ListeningAffinity,
   now = Date.now(),
-  sources: { extra?: readonly MusicTrack[]; playlists?: readonly MusicPlaylist[] } = {},
+  sources: { extra?: readonly MusicTrack[]; playlists?: readonly MusicPlaylist[]; artistGenres?: Record<string, string[]> } = {},
 ): DailyMix[] {
   const likedKeys = new Set(liked.map(musicTrackIdentity));
   const pool = [...recents, ...liked, ...(sources.extra ?? [])].filter(
-    (track) => track.mediaKind !== "video" && track.artist.trim() && track.title.trim(),
+    (track) => !backingTrackVersion(track) && track.mediaKind !== "video" && track.artist.trim() && track.title.trim(),
   );
 
   const artists = new Map<string, { label: string; score: number; tracks: MusicTrack[] }>();
@@ -72,9 +71,14 @@ export function planDailyMixes(
     }
   });
 
+  const compatible = (left: string, right: string) => {
+    const tags = sources.artistGenres?.[left] ?? [];
+    const other = sources.artistGenres?.[right] ?? [];
+    return tags.some(tag => other.includes(tag));
+  };
   const near = new Map<string, Map<string, number>>();
   const tie = (left: string, right: string, weight: number) => {
-    if (!left || !right || left === right) return;
+    if (!left || !right || left === right || !compatible(left, right)) return;
     for (const [from, to] of [
       [left, right],
       [right, left],
@@ -129,30 +133,12 @@ export function planDailyMixes(
       .sort((left, right) => right[1] - left[1]);
     for (const [other] of neighbours) {
       if (group.length >= ARTISTS_PER_MIX) break;
+      if (!group.every(member => compatible(member, other))) continue;
       group.push(other);
       used.add(other);
     }
-    if (group.length < MIN_ARTISTS) {
-      // Pad from artists that actually sit near someone already in the group, never from
-      // whatever merely scored highest: two artists being played a lot is not a reason to put
-      // them in one mix, and that is how unrelated genres ended up sharing a Daily Mix.
-      const related = new Map<string, number>();
-      for (const member of group) {
-        for (const [other, weight] of near.get(member) ?? new Map<string, number>()) {
-          if (used.has(other) || !artists.has(other)) continue;
-          related.set(other, (related.get(other) ?? 0) + weight);
-        }
-      }
-      const byTie = [...related].sort((left, right) => right[1] - left[1]);
-      for (const [other] of byTie) {
-        if (group.length >= MIN_ARTISTS) break;
-        group.push(other);
-        used.add(other);
-      }
-    }
-    if (group.length < MIN_ARTISTS) continue;
+    // Keep a focused Daily Mix when genre metadata cannot safely connect artists.
     const seeds = group.flatMap((entry) => artists.get(entry)?.tracks.slice(0, 4) ?? []);
-    if (seeds.length < MIN_SEEDS) continue;
     const artwork: string[] = [];
     for (const track of seeds) {
       const art = track.artwork?.trim();
@@ -160,7 +146,7 @@ export function planDailyMixes(
       if (artwork.length === 4) break;
     }
     mixes.push({
-      id: `mix:daily:${mixes.length + 1}`,
+      id: `mix:daily:v2:${group.slice().sort().map(encodeURIComponent).join("|")}`,
       index: mixes.length + 1,
       artists: group.flatMap((entry) => artists.get(entry)?.label ?? []),
       seeds,
@@ -174,25 +160,36 @@ export async function loadDailyMixTracks(
   mix: DailyMix,
   skip: readonly MusicTrack[] = [],
 ): Promise<MusicTrack[]> {
-  const { loadPlaylistLikeThis } = await import("./radio");
-  return loadPlaylistLikeThis(mix.seeds, MIX_SIZE, skip).catch((cause) => {
-    const heard = new Set(skip.map(musicTrackIdentity));
-    const byArtist = new Map<string, MusicTrack[]>();
-    for (const track of mix.seeds) {
-      const identity = musicTrackIdentity(track);
-      if (heard.has(identity)) continue;
-      heard.add(identity);
-      const key = mixArtistKey(track);
-      const lane = byArtist.get(key) ?? [];
-      lane.push({ ...track, mediaKind: "audio" });
-      byArtist.set(key, lane);
+  const { hydrateMusicContextTracks, heldMusicContextTracks, rememberMusicContextTracks } = await import("./recent-context");
+  await hydrateMusicContextTracks();
+  const heard = new Set(skip.map(musicTrackIdentity));
+  const allowed = new Set(mix.artists.map(name => name.trim().toLocaleLowerCase()));
+  const cached = heldMusicContextTracks("similar", mix.id);
+  if (cached?.length) {
+    const coherent = cached.filter(track => !backingTrackVersion(track) && allowed.has(mixArtistKey(track)));
+    if (coherent.length) return coherent.filter(track => !heard.has(musicTrackIdentity(track)));
+  }
+  const { resolveArtist } = await import("./artist-authority");
+  const { artistTop } = await import("./catalog");
+  const pages = await Promise.all(mix.artists.map(async name => {
+    const ref = (await resolveArtist(name).catch(() => null))?.canonical;
+    return ref ? artistTop(ref).catch(() => []) : [];
+  }));
+  const lanes = mix.artists.map(name => [...mix.seeds, ...pages.flat()].filter(track => mixArtistKey(track) === name.trim().toLocaleLowerCase()));
+  const out: MusicTrack[] = [];
+  const seen = new Set<string>();
+  for (let index = 0; lanes.some(lane => lane[index]) && out.length < MIX_SIZE; index++) {
+    for (const lane of lanes) {
+      const track = lane[index];
+      if (!track || track.mediaKind === "video" || backingTrackVersion(track)) continue;
+      const key = musicTrackIdentity(track);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push({ ...track, mediaKind: "audio" });
+      if (out.length === MIX_SIZE) break;
     }
-    const lanes = [...byArtist.values()];
-    const out: MusicTrack[] = [];
-    for (let at = 0; lanes.some((lane) => lane[at]); at += 1) {
-      for (const lane of lanes) if (lane[at]) out.push(lane[at]);
-    }
-    if (!out.length) throw cause;
-    return out;
-  });
+  }
+  if (!out.length) throw new Error("music.radio.error");
+  rememberMusicContextTracks("similar", mix.id, out);
+  return out.filter(track => !heard.has(musicTrackIdentity(track)));
 }

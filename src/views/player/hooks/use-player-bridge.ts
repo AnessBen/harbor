@@ -146,6 +146,7 @@ export function usePlayerBridge(params: {
         macEdr:
           isMacDesktop() && embedActive && settings.playerMacEdr && !settings.playerHdrToSdr,
         fullDownload: settings.torrentFullDownload,
+        cacheDir: settings.playbackCacheDir,
         extraOptions: [mergeMpvOptions(settings, svpOn), shaderCompanionOptions(settings)]
           .filter(Boolean)
           .join("\n"),

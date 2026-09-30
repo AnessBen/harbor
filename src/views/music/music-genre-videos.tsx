@@ -5,7 +5,7 @@ import { useT } from "@/lib/i18n";
 import type { MusicArtistRef, MusicTrack } from "@/lib/music/types";
 import type { MusicDiscoveryGenre } from "@/lib/music/genre-catalog";
 import { musicVideoQuery } from "@/lib/music/video-discovery";
-import { firstGenreArtistCursor, loadGenreArtistPage } from "@/lib/music/genre-artists";
+import { loadGenreArtistRoster } from "@/lib/music/genre-artist-roster";
 import { HIP_HOP_ARTIST_SEEDS } from "@/lib/music/genre-artist-seeds";
 import { resolveArtist } from "@/lib/music/artist-authority";
 
@@ -38,7 +38,7 @@ export function MusicGenreVideos({ genre, artists, active, onWatch }: {
   const [artist, setArtist] = useState<string | null>(null);
   const [choices, setChoices] = useState(() => genre.slug === "hip-hop" ? HIP_HOP_ARTIST_SEEDS.map(name => artists.find(item => item.name.toLowerCase() === name.toLowerCase()) ?? { id: `scene:${name}`, name, connectorId: "catalog" }) : artists);
   const [busy, setBusy] = useState(false), [failed, setFailed] = useState(false), [ended, setEnded] = useState(false);
-  const cursor = useRef(firstGenreArtistCursor(genre.id)), loading = useRef(false), alive = useRef(true);
+  const cursor = useRef(0), loading = useRef(false), alive = useRef(true);
   const rail = useRef<HTMLDivElement>(null);
   const [edges, setEdges] = useState({ start: true, end: false });
   useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
@@ -46,10 +46,10 @@ export function MusicGenreVideos({ genre, artists, active, onWatch }: {
     if (loading.current || ended) return;
     loading.current = true; setBusy(true); setFailed(false);
     try {
-      const page = await loadGenreArtistPage(genre.id, cursor.current, choices.map(item => item.id));
+      const page = await loadGenreArtistRoster(genre.id, cursor.current);
       if (!alive.current) return;
       setChoices(previous => { const names = new Set(previous.map(item => item.name.toLowerCase())); return [...previous, ...page.artists.filter(item => { const name = item.name.toLowerCase(); if (names.has(name)) return false; names.add(name); return true; })]; });
-      if (page.next) cursor.current = page.next; else setEnded(true);
+      if (page.next !== null) cursor.current = page.next; else setEnded(true);
     } catch { if (alive.current) setFailed(true); }
     finally { loading.current = false; if (alive.current) setBusy(false); }
   }, [choices, ended, genre.id]);
@@ -60,7 +60,7 @@ export function MusicGenreVideos({ genre, artists, active, onWatch }: {
   }, []);
   useEffect(() => { measure(); const observer = new ResizeObserver(measure); if (rail.current) observer.observe(rail.current); return () => observer.disconnect(); }, [choices, measure]);
   const move = (step: number) => { const el = rail.current; if (el) el.scrollBy({ left: (getComputedStyle(el).direction === "rtl" ? -1 : 1) * step * el.clientWidth * .8, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" }); };
-  return <MusicVideoDiscovery kinds={["videos", "concerts", "interviews"]} subject={artist ?? genre.name}
+  return <MusicVideoDiscovery kinds={["videos", "concerts", "interviews"]} subject={artist ?? genre.name} filterSubject={artist ?? ""}
     queryForKind={kind => !artist && kind === "interviews" ? `${genre.name} artists full interview` : musicVideoQuery(kind, artist ?? genre.name)}
     active={active} onWatch={onWatch} headerContent={
       <div className="music-genre-artist-picker">

@@ -1,4 +1,6 @@
 const settingsRefinements: Record<string, string> = {
+  "Playback cache folder": "播放缓存文件夹",
+  "Temporary video buffering, including debrid streams. Applies when playback restarts; existing files stay in their current folder.": "用于视频临时缓冲，包括 debrid 流。重新开始播放时生效；现有文件保留在当前文件夹中。",
   "1 option formatted correctly": "1 个选项的格式正确",
   "1. Open Movies\n2. Select a title\n3. Press Play\n4. Describe what happens": "1. 打开“电影”\n2. 选择一部影片\n3. 按“播放”\n4. 描述发生的情况",
   "3 to 24 letters, numbers, or underscores.": "3 至 24 个字母、数字或下划线。",

@@ -58,6 +58,10 @@ import bpSports from "./ru/bp-sports";
 import nytTv from "./ru/nyt-tv";
 
 const ru: Record<string, string> = {
+  "Translations": "Переводы",
+  "Translating…": "Перевод…",
+  "Showing {lang}": "Показано: {lang}",
+  "Show all": "Показать все",
   ...mediaStart,
   ...spooktober,
   ...videoCast,

@@ -1,4 +1,5 @@
-import { scheduleMusicBrainzRequest } from "./recording-profile";
+import { MUSICBRAINZ_HEADERS, scheduleMusicBrainzRequest } from "./recording-profile";
+import { rememberArtistGenres } from "./artist-genre-cache";
 import { safeFetch } from "@/lib/safe-fetch";
 import { artistIdentityKey } from "./artist-authority";
 import { musicSourceLink } from "./source-link";
@@ -68,7 +69,7 @@ async function json(url: string, signal?: AbortSignal): Promise<Obj> {
     try {
       const response = await safeFetch(url, {
         signal: controller.signal,
-        headers: { Accept: "application/json" },
+        headers: url.startsWith("https://musicbrainz.org/") ? MUSICBRAINZ_HEADERS : { Accept: "application/json" },
       });
       if (!response.ok) throw new Error("Artist metadata is unavailable");
       const value = object(await response.json());
@@ -265,6 +266,7 @@ export async function loadArtistProfile(
   );
   const profile = parseArtistProfile(data, id);
   if (!profile) return null;
+  rememberArtistGenres(ref.name, profile.genres);
   if (!biography) return profile;
   const wiki = array(data.relations)
     .map((rel) => publicUrl(object(rel.url).resource))

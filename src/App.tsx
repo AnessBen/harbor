@@ -1,7 +1,9 @@
 import { useSportsEnabled } from "@/lib/sports/enabled";
 import { SportsAccessGate } from "@/views/sports/access-gate";
+import { SportsEventSkeleton } from "@/views/sports/sports-skeletons";
 import { SportsReminderLoop } from "@/components/sports-reminder-loop";
-import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazyView as lazy } from "@/lib/lazy-view";
 import { startIdleAway } from "@/lib/social/idle-away";
 import { FloatingBack } from "@/chrome/floating-back";
 import { ensureStaticHeroArt } from "@/lib/providers/anime-hero-art-static";
@@ -163,7 +165,10 @@ import { BigPictureEntryButton } from "@/views/big-picture/bp-entry-button";
 import { releaseBigPictureFullscreen } from "@/views/big-picture/use-bp-fullscreen";
 import { getNavFocusTarget } from "@/lib/keyboard-navigation/geometry";
 import { SFX } from "@/lib/sfx";
-import { startMusicTaskbarButtons, syncMusicTaskbarArtwork } from "@/lib/music/taskbar-buttons";
+import {
+  startMusicTaskbarButtons,
+  syncMusicTaskbarArtwork,
+} from "@/lib/music/taskbar-buttons";
 import { resetMusicForProfile } from "@/lib/music/player";
 import { startMediaSessionWindowTracking } from "@/lib/media-session";
 
@@ -1588,7 +1593,7 @@ function Shell({ onReady }: { onReady?: () => void }) {
           {addonsAlive && (
             <div {...layerProps(addonsTop)}>
               <Suspense fallback={null}>
-                <AddonsView />
+                <AddonsView active={addonsTop} />
               </Suspense>
             </div>
           )}
@@ -1864,7 +1869,18 @@ function Shell({ onReady }: { onReady?: () => void }) {
           )}
           {matchDetailAlive && matchDetailGame && (
             <div className={layer(matchDetailTop)}>
-              <Suspense fallback={null}>
+              <Suspense
+                fallback={
+                  <SportsEventSkeleton
+                    shellBackAvailable={
+                      canGoBack &&
+                      !chromeHidden &&
+                      !immersive &&
+                      (themeHasTopbar || layout === "minui")
+                    }
+                  />
+                }
+              >
                 <SportsAccessGate active={matchDetailTop}>
                   <MatchDetailView
                     key={`match-${matchDetailGame.id}`}

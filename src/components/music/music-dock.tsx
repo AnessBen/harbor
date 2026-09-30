@@ -44,6 +44,7 @@ import { MusicQualityBadge } from "./music-quality-badge";
 import { useMusicTrackContextMenu } from "./music-track-menu";
 import { useMusicDockLayout } from "@/lib/music/dock-layout";
 import { MusicDockVisualizer } from "./music-dock-visualizer";
+import { MusicLikeButton } from "./music-like-button";
 import { MusicMikuVisualizer } from "./music-miku-visualizer";
 import { MusicGifVisualizer } from "./music-gif-visualizer";
 import { MusicDockOverflow, type MusicDockAction } from "./music-dock-overflow";
@@ -56,7 +57,6 @@ import { musicSourceName } from "@/lib/music/recovery";
 import { musicVolumeCeiling, useMusicAudioSettings } from "@/lib/music/audio-settings";
 import { getMusicSpeakerState, subscribeMusicSpeakerState } from "@/lib/music/casting";
 import "./music-dock.css";
-import "./music-like-burst.css";
 
 const DOCK_HEIGHT = 76;
 const TAB_HEIGHT = 48;
@@ -69,7 +69,6 @@ const MUSIC_TIME_FONT = {
 
 const ICON_BUTTON =
   "music-dock-icon grid h-11 w-11 shrink-0 place-items-center text-ink-muted transition-colors duration-200 ease-out";
-const DOCK_LIKE_SPOKES = [0, 45, 90, 135, 180, 225, 270, 315];
 const ICON_BUTTON_ON = `${ICON_BUTTON} music-dock-icon-on`;
 
 function timeLabel(seconds: number): string {
@@ -141,7 +140,6 @@ export function MusicDock() {
   const { topKind, setView } = useView();
   const dockRef = useRef<HTMLElement | null>(null);
   const sourceButton = useRef<HTMLButtonElement | null>(null);
-  const [burst, setBurst] = useState(0);
   const [skipIn, setSkipIn] = useState<number | null>(null);
   const [stayed, setStayed] = useState("");
   const [queueOpen, setQueueOpen] = useState(false);
@@ -693,44 +691,14 @@ export function MusicDock() {
                 }}
               />
             </div>
-            <button
-              data-music-dock-like
-              data-burst={burst || undefined}
-              type="button"
-              onClick={() => {
-                if (!liked) setBurst((n) => n + 1);
-                toggleMusicLiked();
-              }}
-              aria-pressed={liked}
-              aria-label={liked ? t("music.unsaveTrack") : t("music.saveTrack")}
+            <MusicLikeButton
+              key={`${current.connectorId}:${current.sourceId ?? current.id}`}
+              dock
+              liked={liked}
+              onToggle={() => toggleMusicLiked()}
+              size={18}
               className={`${dockParts.like ? "" : "hidden"} ${ICON_BUTTON}`}
-            >
-              <MusicGlyph name={liked ? "heart-filled" : "heart"} size={18} aria-hidden="true" />
-              {burst > 0 && liked && (
-                <span
-                  key={burst}
-                  className="dock-like-burst"
-                  aria-hidden="true"
-                  onAnimationEnd={(event) => {
-                    if (event.animationName === "dock-like-ring") setBurst(0);
-                  }}
-                >
-                  <span className="dock-like-ring" />
-                  {DOCK_LIKE_SPOKES.map((rotate, i) => (
-                    <span
-                      key={i}
-                      className="dock-like-dot"
-                      style={
-                        {
-                          "--rotate": `${rotate}deg`,
-                          "--translate-y": i % 2 ? "-16px" : "-21px",
-                        } as CSSProperties
-                      }
-                    />
-                  ))}
-                </span>
-              )}
-            </button>
+            />
             <MusicDockVisualizer
               track={current}
               enabled={appearance.dockVisualizer}

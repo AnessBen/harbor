@@ -15,15 +15,17 @@ type DanceRepertoire = {
 };
 
 export const MIKU_DANCE = {
-  columns: 9, rows: [19, 19, 25], frameWidths: [288, 288, 384], reachFrames: 41, loopFrames: [64, 64, 76], exitFrames: 41,
+  columns: 9, rows: [19, 25], frameWidths: [288, 384], reachFrames: 41, loopFrames: [64, 76], exitFrames: 41,
   prepareMs: 240, enterMs: 1100, leaveMs: 1000, recoverMs: 320,
-  loopBeats: [2, 4, 8], minimumEnergy: 0.5,
-  firstWaitMs: 8000, breaksMs: [16000, 20000, 18000], minimumTrackBeats: 16,
-  minimumDanceBeats: 8, maximumDanceMs: 60000, defaultPeriodMs: 500,
+  loopBeats: [2, 8], minimumEnergy: 0.5,
+  firstWaitMs: 8000, breaksMs: [16000, 18000], minimumTrackBeats: 16,
+  minimumDanceBeats: 8, minimumDanceMs: 20000, maximumDanceMs: 60000, defaultPeriodMs: 500,
+  sectionLossGraceMs: 700, sectionLossGraceBeats: 1, quietEnergy: .35,
+  quietGraceMs: 1400, quietGraceBeats: 4,
   stopLoopMs: 900, lowerMs: 680, entryRestFrame: 24, exitRestFrame: 19,
   phaseRecoveryMs: 700, maximumPhaseCorrection: 0.12,
   minimumDanceFit: .72, continuingDanceFit: .55,
-  stopExits: [{ everyBeats: 1, frameOffsets: [105, 146], frames: 20 }, { everyBeats: 2, frameOffsets: [105, 146], frames: 20 }, { everyBeats: 2, frameOffsets: [117, 158, 178, 198], frames: 20 }] as readonly (DanceStops | null)[],
+  stopExits: [{ everyBeats: 1, frameOffsets: [105, 146], frames: 20 }, { everyBeats: 2, frameOffsets: [117, 158, 178, 198], frames: 20 }] as readonly (DanceStops | null)[],
 } as const;
 
 // The approved Classic MMD hands use the shared complete dance atlas layout.
@@ -57,6 +59,7 @@ export function createMikuDance(initial: number | ReturnType<typeof createMikuDa
   let changingTrack = false;
   let performedSection = false;
   let performBeats = 16;
+  let danceMs = 0, sectionLostMs = 0, quietMs = 0, sectionExitBeats: number | null = null;
   let prepareBeats = 0.28, enterBeats = 1.72, leaveBeats = 1, recoverBeats = 0.28;
   const rememberDance = () => {
     // Cycle the approved routines, including across track changes.
@@ -69,7 +72,7 @@ export function createMikuDance(initial: number | ReturnType<typeof createMikuDa
   const reset = () => {
     stage = "listening"; kind = memory.next; elapsed = listened = frame = opacity = 0;
     previous = null; listening = 1; stopping = false; stopRate = 1; stopExit = null;
-    performedSection = false; changingTrack = false;
+    performedSection = false; changingTrack = false; danceMs = sectionLostMs = quietMs = 0; sectionExitBeats = null;
   };
   return {
     get next() { return kind; },
@@ -112,7 +115,9 @@ export function createMikuDance(initial: number | ReturnType<typeof createMikuDa
         const error = difference - Math.round(difference);
         const correction = error * (1 - Math.exp(-ms / MIKU_DANCE.phaseRecoveryMs));
         const limit = expected * MIKU_DANCE.maximumPhaseCorrection;
-        delta += Math.max(-limit, Math.min(limit, correction));
+        // The incoming beat may already be correcting its phase. Bound the
+        // total adjustment, rather than adding another speed change to it.
+        delta = expected + Math.max(-limit, Math.min(limit, delta + correction - expected));
       }
       previous = beat;
       const driving = active && pulse.locked;
@@ -121,7 +126,7 @@ export function createMikuDance(initial: number | ReturnType<typeof createMikuDa
       const fitThreshold = stage === "listening" ? MIKU_DANCE.minimumDanceFit : MIKU_DANCE.continuingDanceFit;
       const suitable = pulse.danceFit === undefined || pulse.danceFit >= fitThreshold;
       const highlight = pulse.highlight === true && suitable;
-      if (!highlight) performedSection = false;
+      if (!highlight && stage === "listening") performedSection = false;
       let resting = false;
       const lower = (to: number) => {
         lowerFrom = frame; lowerTo = to; elapsed = 0; stage = "lowering";
@@ -164,7 +169,7 @@ export function createMikuDance(initial: number | ReturnType<typeof createMikuDa
           // measured drum pulse rather than starting a separate local clock.
           stage = "preparing"; elapsed = beat % 4;
           handoffPeriod = period;
-          performedSection = true;
+          performedSection = true; danceMs = sectionLostMs = quietMs = 0; sectionExitBeats = null;
           // Whole loops keep the hands aligned with the outgoing transition.
           // The arrangement chooses the exit; the cap prevents one unchanging
           // loud recording from turning into an entire song of dancing.
@@ -197,14 +202,26 @@ export function createMikuDance(initial: number | ReturnType<typeof createMikuDa
           }
         }
         if (stage === "dancing") {
-          if (!highlight && elapsed >= MIKU_DANCE.minimumDanceBeats && !stopping) {
-            const loop = repertoire.loopBeats[kind];
-            performBeats = Math.min(performBeats, Math.ceil(elapsed / loop) * loop);
+          if (!stopping) {
+            // Classifier/fit fluctuations get a full bout. Sustained quiet
+            // percussion can still end it early; transport stops bypass this.
+            danceMs += wallMs;
+            sectionLostMs = highlight ? 0 : sectionLostMs + wallMs;
+            quietMs = excitement <= MIKU_DANCE.quietEnergy ? quietMs + wallMs : 0;
+            const grace = Math.max(MIKU_DANCE.sectionLossGraceMs, period * MIKU_DANCE.sectionLossGraceBeats);
+            const quietGrace = Math.max(MIKU_DANCE.quietGraceMs, period * MIKU_DANCE.quietGraceBeats);
+            const ending = quietMs >= quietGrace || (danceMs >= MIKU_DANCE.minimumDanceMs && sectionLostMs >= grace);
+            if (ending && elapsed >= MIKU_DANCE.minimumDanceBeats) {
+              const loop = repertoire.loopBeats[kind];
+              sectionExitBeats ??= Math.ceil(elapsed / loop) * loop;
+            } else sectionExitBeats = null;
           }
+          const endBeats = stopping ? performBeats : Math.min(performBeats, sectionExitBeats ?? Infinity);
           const cycle = (elapsed / repertoire.loopBeats[kind]) % 1;
           frame = MIKU_DANCE.reachFrames + Math.floor(cycle * repertoire.loopFrames[kind]);
-          if (elapsed >= performBeats) {
-            elapsed -= performBeats; stopRate = 1;
+          if (elapsed >= endBeats) {
+            if (!stopping && sectionExitBeats !== null) performedSection = false;
+            elapsed -= endBeats; stopRate = 1;
             stage = stopExit === null ? "leaving" : "disengaging";
             handoffPeriod = period;
             leaveBeats = Math.max(1, Math.round(MIKU_DANCE.leaveMs / handoffPeriod));

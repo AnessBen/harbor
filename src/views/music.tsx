@@ -1,10 +1,15 @@
+import { HoverTooltip } from "@/components/hover-tooltip";
+import { MusicQuickListenIcon } from "@/components/music/music-quick-listen-icon";
+import { MusicSurpriseButton } from "@/components/music/music-surprise-button";
+import "@/components/music/music-quick-listen.css";
 import "./music/music-page-system.css";
+import { reopenMusicMix } from "@/lib/music/recent-context";
 import { MusicBillboardPage } from "@/components/music/music-billboard-page";
 import { MusicGenres, type MusicGenreEntry } from "./music/music-genres";
 import { MusicBillboardCharts } from "@/components/music/music-discovery-charts";
 import { MusicAudioSettings } from "@/components/music/music-audio-settings";
 import { MusicSpeakers } from "@/components/music/music-speakers";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, LoaderCircle, Music2, X } from "@/components/icons/music-icons";
 import { BackToTop } from "@/components/back-to-top";
 import { MusicGlyph } from "@/components/icons/music-glyph";
@@ -84,6 +89,9 @@ import { useScrollMemory } from "@/lib/view";
 import { resetMusicScroll, useMusicScrollContinuity } from "@/lib/music/scroll-continuity";
 import { useSectionBack } from "@/lib/section-back";
 import { MusicBandStack } from "./music/music-band-stack";
+import { MusicPlaylistPage } from "./music/music-playlist-page";
+import { MusicTrackCollectionPage } from "./music/music-track-collection-page";
+import type { MusicCollectionEntry } from "@/lib/music/library-collections";
 import { gateBand, scrobbleShelf } from "./music/music-band-gates";
 import { tracksOf, type MusicBand, type MusicBandContext } from "./music/music-band-types";
 import { catalogBands } from "./music/music-catalog-bands";
@@ -95,6 +103,7 @@ import { personalBands } from "./music/music-personal-bands";
 import { spotifyBands } from "./music/music-spotify-band";
 import { MusicTopPlaylists } from "./music/music-top-playlists";
 import { MusicSearchPanel } from "./music/music-search-panel";
+import { rememberMusicSearchItem } from "@/lib/music/search-history";
 import { useMusicData } from "./music/use-music-data";
 
 import { MusicDetail, type MusicDetailState } from "./music/music-detail";
@@ -113,6 +122,8 @@ type SearchState = {
 };
 
 type Notice = { kind: "busy" | "info" | "error"; text: string };
+
+const MusicQuickListen = lazy(() => import("@/components/music/music-quick-listen").then(module => ({ default: module.MusicQuickListen })));
 
 export function MusicView({ active }: { active: boolean; shellBackAvailable?: boolean }) {
   return (
@@ -216,6 +227,8 @@ function MusicViewContent({ active }: { active: boolean }) {
       });
     }
   }, [connectionsPage]);
+  const [quickListen, setQuickListen] = useState<MusicTrack[] | null>(null);
+  useEffect(() => { if (!active) setQuickListen(null); }, [active]);
   const [tab, setTab] = useState<MusicTabId>("forYou");
   const [search, setSearch] = useState<SearchState | null>(null);
   const [searching, setSearching] = useState(false);
@@ -235,7 +248,19 @@ function MusicViewContent({ active }: { active: boolean }) {
     if (watchFromVideos.current) setDiscoveryPage(null);
     setWatch({ track, queue });
   };
-  const closeSimilar = useCallback(() => setSimilar(null), []);
+  const closeSimilar = useCallback(() => {
+    similarRun.current += 1;
+    setSimilar(null);
+  }, []);
+  const [collectionPage, setCollectionPage] = useState<{
+    kind: "playlist" | "liked" | "recent";
+    id: string;
+  } | null>(null);
+  const closeCollectionPage = useCallback(() => setCollectionPage(null), []);
+  const openCollection = useCallback((entry: MusicCollectionEntry) => {
+    if (entry.kind === "playlist" || entry.kind === "liked" || entry.kind === "recent")
+      setCollectionPage({ kind: entry.kind, id: entry.id });
+  }, []);
   const closeWatch = () => {
     setWatch(null);
     if (watchFromVideos.current) {
@@ -247,6 +272,7 @@ function MusicViewContent({ active }: { active: boolean }) {
   const detailRef = useRef(detail);
   detailRef.current = detail;
   const resolveGeneration = useRef(0);
+  const [openingDetail, setOpeningDetail] = useState<number | null>(null);
   const loadPendingDetail = useCallback((snapshot: MusicDetailState, generation: number) => {
     if (snapshot.loading)
       void loadDetailTracks(snapshot.item)
@@ -475,7 +501,7 @@ function MusicViewContent({ active }: { active: boolean }) {
           : similar
             ? `similar:${similar.seed.id}`
             : detail
-              ? `detail:${detailTrail.current.length}|${detail.item.kind}:${detail.item.id}`
+              ? `detail:${detailTrail.current.length}|${detail.item.connectorId ?? ""}:${detail.item.kind}:${detail.item.id}`
               : search
                 ? `search:${search.mode ?? "search"}:${search.query}`
                 : discoveryPage
@@ -497,10 +523,21 @@ function MusicViewContent({ active }: { active: boolean }) {
 
   const openItem = useCallback(
     (item: MusicCatalogItem, _siblings: MusicCatalogItem[], remember = true) => {
-      setSimilar(null);
-      if (item.kind === "track" && item.mediaKind === "video") {
-        watchFromVideos.current = false;
+      similarRun.current += 1;
+      searchGeneration.current += 1;
+      const generation = ++resolveGeneration.current;
+      const leaveSource = () => {
+        setSimilar(null);
+        setSearch(null);
+        setCollectionPage(null);
         setDiscoveryPage(null);
+        setYtm(false);
+        setWatch(null);
+        setOpeningDetail(null);
+      };
+      if (item.kind === "track" && item.mediaKind === "video") {
+        leaveSource();
+        watchFromVideos.current = false;
         const queue = _siblings.filter(
           (entry): entry is Extract<MusicCatalogItem, { kind: "track" }> =>
             entry.kind === "track" && entry.mediaKind === "video",
@@ -508,15 +545,9 @@ function MusicViewContent({ active }: { active: boolean }) {
         setWatch({ track: item, queue: queue.length ? queue : [item] });
         return;
       }
-      if (remember) {
-        const trigger = document.activeElement;
-        detailTrail.current.push({
-          detail: detailRef.current,
-          label: trigger?.getAttribute("aria-label") ?? null,
-          text: trigger?.textContent ?? null,
-        });
-      }
-      const generation = ++resolveGeneration.current;
+      const trigger = document.activeElement;
+      const label = trigger?.getAttribute("aria-label") ?? null;
+      const text = trigger?.textContent ?? null;
       const view =
         !remember && detailRef.current?.item.id === item.id ? detailRef.current.view : undefined;
       const snapshot: MusicDetailState = {
@@ -529,17 +560,23 @@ function MusicViewContent({ active }: { active: boolean }) {
         rowsError: "",
         view,
       };
-      setDetail(snapshot);
+      const commit = (resolved: MusicDetailState) => {
+        if (generation !== resolveGeneration.current) return;
+        if (remember) detailTrail.current.push({ detail: detailRef.current, label, text });
+        leaveSource();
+        setDetail(resolved);
+        loadPendingDetail(resolved, generation);
+      };
       if (item.kind === "artist" && item.connectorId !== "local") {
+        // Keep the current page intact until identity is settled. Painting the raw provider
+        // record first briefly mixes two artist heroes and their local component state.
+        setOpeningDetail(generation);
         void identityForRef(item)
           .then((artist) => {
-            if (generation !== resolveGeneration.current) return;
-            const resolved = { ...snapshot, item: { ...artist, kind: "artist" as const } };
-            setDetail(resolved);
-            loadPendingDetail(resolved, generation);
+            commit({ ...snapshot, item: { ...artist, kind: "artist" as const } });
           })
-          .catch(() => loadPendingDetail(snapshot, generation));
-      } else loadPendingDetail(snapshot, generation);
+          .catch(() => commit(snapshot));
+      } else commit(snapshot);
     },
     [loadPendingDetail],
   );
@@ -645,7 +682,15 @@ function MusicViewContent({ active }: { active: boolean }) {
   // Clicking a playlist has to land on that playlist, not on whatever tab the library
   // happened to open on last time.
   const openLibrary = useCallback((target?: { view?: string; playlistId?: string; spotifyKind?: "playlists" | "liked" }) => {
+    similarRun.current += 1;
     setLibraryTarget(target ?? null);
+    setCollectionPage(target?.playlistId
+      ? { kind: "playlist", id: target.playlistId }
+      : target?.view === "saved" || target?.view === "liked"
+        ? { kind: "liked", id: "liked" }
+        : target?.view === "recent"
+          ? { kind: "recent", id: "recent" }
+          : null);
     setTab("library");
     setDetail(null);
     setSearch(null);
@@ -956,6 +1001,32 @@ function MusicViewContent({ active }: { active: boolean }) {
     playTrack,
     openItem,
     openLibrary,
+    openMix: async (recent, load) => {
+      if (!recent.seed) return;
+      const run = ++similarRun.current;
+      setDetail(null);
+      setSearch(null);
+      setCollectionPage(null);
+      setDiscoveryPage(null);
+      setWatch(null);
+      setYtm(false);
+      setSimilar({ seed: recent.seed, tracks: [], state: "loading", label: recent.name, contextId: recent.id });
+      try {
+        if (load) {
+          const tracks = await load();
+          if (!tracks.length) throw new Error("Music mix unavailable");
+          if (similarRun.current === run) setSimilar({ seed: recent.seed, tracks, state: "ready", label: recent.name, contextId: recent.id });
+          return;
+        }
+        await reopenMusicMix(recent, (request) => {
+          if (similarRun.current !== run) return;
+          setSimilar({ seed: request.track, tracks: request.queue ?? [], state: "ready", label: request.label, contextId: request.contextId });
+        });
+      } catch {
+        if (similarRun.current === run)
+          setSimilar({ seed: recent.seed, tracks: [], state: "error", label: recent.name, contextId: recent.id });
+      }
+    },
     searchArtist: (name) => navigate.goToArtist(name),
     openConnections,
   };
@@ -1025,6 +1096,7 @@ function MusicViewContent({ active }: { active: boolean }) {
     catalog: true,
     render: () => (
       <MusicVideoDiscovery
+        controlsInHeader
         active={active}
         query={
           player.recents[0]?.artist ? `${player.recents[0].artist} music videos` : "music videos"
@@ -1049,7 +1121,7 @@ function MusicViewContent({ active }: { active: boolean }) {
   });
   bands.push(...catalog.extras);
   const scrobble = scrobbleShelf(context, catalog.scrobble);
-  if (scrobble && data.lastfm?.connected) bands.push(scrobble);
+  if (scrobble) bands.push(scrobble);
 
   const gated = bands.map((band) => gateBand(band, context));
   const visible = gated;
@@ -1064,6 +1136,8 @@ function MusicViewContent({ active }: { active: boolean }) {
       <main
         ref={scrollCb}
         data-music-view
+        data-music-opening={openingDetail === resolveGeneration.current || undefined}
+        aria-busy={openingDetail === resolveGeneration.current || undefined}
         // A WS_CHILD webview is not clipped by a scrolling ancestor, so while YouTube Music is
         // mounted the page must not scroll: otherwise the child slides out over the sidebar
         // and title bar.
@@ -1149,6 +1223,7 @@ function MusicViewContent({ active }: { active: boolean }) {
               />
             ) : detail ? (
               <MusicDetail
+                key={layerKey}
                 onVideo={openVideo}
                 onViewChange={(view) =>
                   setDetail((current) => (current ? { ...current, view } : current))
@@ -1179,8 +1254,8 @@ function MusicViewContent({ active }: { active: boolean }) {
                 searching={searching}
                 onRetry={search.retry ?? (() => runSearch(search.query, search.connector))}
                 onClear={clearSearch}
-                onOpenItem={openItem}
-                onPlayTrack={playTrack}
+                onOpenItem={(item, siblings) => { rememberMusicSearchItem(item); openItem(item, siblings); }}
+                onPlayTrack={(track, queue) => { rememberMusicSearchItem({ ...track, kind: "track" }); playTrack(track, queue); }}
               />
             ) : discoveryPage === "tastes" ? (
               <MusicTastes
@@ -1188,6 +1263,10 @@ function MusicViewContent({ active }: { active: boolean }) {
                 onSave={(ids) => {
                   setTastes(ids);
                   closeDiscovery();
+                  if (tab === "library") {
+                    setTab("forYou");
+                    scrollRef.current?.scrollTo({ top: 0 });
+                  }
                 }}
                 onBack={closeDiscovery}
               />
@@ -1202,13 +1281,43 @@ function MusicViewContent({ active }: { active: boolean }) {
                 initialChart={billboardChart}
                 onChartChange={setBillboardChart}
               />
+            ) : collectionPage?.kind === "playlist" ? (
+              <MusicPlaylistPage
+                key={collectionPage.id}
+                playlistId={collectionPage.id}
+                active={active}
+                onBack={closeCollectionPage}
+              />
+            ) : collectionPage ? (
+              <MusicTrackCollectionPage
+                key={collectionPage.kind}
+                kind={collectionPage.kind}
+                active={active}
+                onBack={closeCollectionPage}
+              />
             ) : null}
-            {(!(connectionsPage || ytm || watch || similar || detail || search || discoveryPage) ||
+            {(!(
+              connectionsPage ||
+              ytm ||
+              watch ||
+              similar ||
+              detail ||
+              search ||
+              discoveryPage ||
+              collectionPage
+            ) ||
               tab === "library") && (
               <div
                 style={{
                   display:
-                    connectionsPage || ytm || watch || similar || detail || search || discoveryPage
+                    connectionsPage ||
+                    ytm ||
+                    watch ||
+                    similar ||
+                    detail ||
+                    search ||
+                    discoveryPage ||
+                    collectionPage
                       ? "none"
                       : "contents",
                 }}
@@ -1218,6 +1327,13 @@ function MusicViewContent({ active }: { active: boolean }) {
                   className="music-navigation flex flex-wrap items-center justify-between gap-3"
                 >
                   <MusicTabs className="min-w-0 flex-1" value={tab} onChange={setTab} />
+                  {tab === "forYou" && <HoverTooltip label={t("music.quickListen.title")}>
+                    <button type="button" className="music-quick-entry" aria-label={t("music.quickListen.title")} onClick={() => setQuickListen([
+                      ...(player.current ? [player.current] : []), ...player.recents, ...player.likedTracks,
+                      ...data.homeRows.flatMap(row => row.items.filter((item): item is MusicCatalogItem & MusicTrack => item.kind === "track")),
+                    ])}><MusicQuickListenIcon /></button>
+                  </HoverTooltip>}
+                  {tab === "forYou" && <MusicSurpriseButton genres={tastes} homeRows={data.homeRows} spotifyConnected={connections.some(connection => connection.id === "spotify" && connection.status === "connected")} onChooseTastes={() => openDiscovery("tastes")} />}
                   {tab === "forYou" && (
                     <CatalogCustomizeBar
                       editMode={pageRows.editMode}
@@ -1275,12 +1391,14 @@ function MusicViewContent({ active }: { active: boolean }) {
                           similar ||
                           detail ||
                           search ||
-                          discoveryPage
+                          discoveryPage ||
+                          collectionPage
                         )
                       }
                       onOpen={openItem}
+                      onCollection={openCollection}
+                      onTastes={() => openDiscovery("tastes")}
                       initialView={libraryTarget?.view}
-                      initialPlaylistId={libraryTarget?.playlistId}
                       initialSpotifyKind={libraryTarget?.spotifyKind}
                     />
                   ) : tab === "explore" ? null : stalled ? (
@@ -1303,6 +1421,7 @@ function MusicViewContent({ active }: { active: boolean }) {
           />
         </ScrollRootContext.Provider>
       </main>
+      {active && quickListen && <Suspense fallback={null}><MusicQuickListen seeds={quickListen} onClose={() => setQuickListen(null)} /></Suspense>}
     </MusicNavigateProvider>
   );
 }

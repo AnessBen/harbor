@@ -32,7 +32,12 @@ test("real measured drums earn a sustained drop dance; a loud vocal cannot exten
         routines.push(state.kind);
       }
       if (state.stage === "leaving" && previous === "dancing" && !firstEnd) firstEnd = now;
-      if (now > 50000 && now < 70000) assert.equal(state.stage, "listening");
+      // The established exit-start bound remains 49.5 s below. At the
+      // slowest 650 ms beat, the authored return rounds to 2 beats (1.3 s),
+      // then recovers for 320 ms: 49.5 + 1.3 + .32 = 51.12 s (+ a sample).
+      // The 50 s assertion checks choreography has ended; 52 s checks rest.
+      if (now > 50000 && now < 70000) assert.notEqual(state.stage, "dancing");
+      if (now > 52000 && now < 70000) assert.equal(state.stage, "listening");
       previous = state.stage;
     }
     assert.ok(firstStart >= 12000 && firstStart < 18500, `${period}ms: dance joins the stronger phrase at ${firstStart}`);

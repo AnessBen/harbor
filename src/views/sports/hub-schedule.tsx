@@ -1,4 +1,5 @@
 import { TeamProfileLink, teamIdentity } from "./team-profile-link";
+import { SportsFixturesSkeleton, SportsScheduleSkeleton } from "./sports-skeletons";
 import "./team-links.css";
 import { LeagueGuideLauncher } from "./league-guide-launcher";
 import { useEffect, useRef, useState, type ReactNode } from "react";
@@ -14,6 +15,20 @@ import { scheduleEvents } from "@/lib/sports/fight-card";
 import { LeagueLogo } from "./league-logo";
 import { FightCard } from "./fight-card";
 import { PillRail } from "./pill-rail";
+import { EsportsImage } from "./esports-image";
+import { fetchEsportsTeamLogos } from "@/lib/sports/esports-profiles";
+
+function searchableNames(game: SportsGame): string {
+  const sides = [game.home, game.away, ...(game.field ?? [])];
+  const people = sides.flatMap((side) => [
+    side.name,
+    ...(side.members ?? []).map((member) => member.name),
+  ]);
+  return [...people, game.context?.name || "", hubLeague(game.league)?.labelEn || ""]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+}
 
 export function HubSchedule({
   games,
@@ -39,6 +54,24 @@ export function HubSchedule({
   const [collapsed, setCollapsed] = useState<string[]>([]);
   const [sport, setSport] = useState("all");
   const [leagueFilter, setLeagueFilter] = useState("all");
+  const [dotaLogos, setDotaLogos] = useState<Map<string, string>>(() => new Map());
+  const needsDotaLogos =
+    (sport === "all" || sport === "esports") &&
+    (leagueFilter === "all" || leagueFilter === "DOTA2") &&
+    !collapsed.includes("DOTA2") &&
+    games.some((game) => game.league === "DOTA2" && (!game.home.logo || !game.away.logo));
+  useEffect(() => {
+    if (!needsDotaLogos) return;
+    const controller = new AbortController();
+    // One shared, cached directory request for the board, never one request per row.
+    void fetchEsportsTeamLogos(controller.signal)
+      .then((logos) => {
+        if (!controller.signal.aborted) setDotaLogos(logos);
+      })
+      .catch(() => {});
+    return () => controller.abort();
+  }, [needsDotaLogos]);
+  if (!games.length && loading) return <SportsScheduleSkeleton />;
   const sports = HUB_GROUPS.filter((group) =>
     games.some((game) => hubLeague(game.league)?.group === group.key),
   );
@@ -56,9 +89,7 @@ export function HubSchedule({
       (liveOnly
         ? game.state === "in" && game.savedAt === undefined
         : filter === "all" || game.state === filter) &&
-      `${game.home.name} ${game.away.name} ${game.context?.name || ""} ${hubLeague(game.league)?.labelEn || ""}`
-        .toLowerCase()
-        .includes(search.toLowerCase()),
+      searchableNames(game).includes(search.toLowerCase()),
   );
   const tags = [...new Set(filtered.map((game) => game.league))].sort(
     (a, b) =>
@@ -231,7 +262,7 @@ export function HubSchedule({
                     <button
                       className="sh-event-open"
                       onClick={() => onOpen(game)}
-                      aria-label={`${t("Match center")} · ${game.context?.name || `${game.away.name} · ${game.home.name}`}`}
+                      aria-label={`${t("Match center")} · ${game.context?.name || `${game.away.name} · ${game.home.name}`}${league?.group === "esports" ? ` · ${game.home.name} · ${game.away.name}` : ""}`}
                     />
                     <span className="sh-fixture-time">
                       {game.state === "in" && !stale ? (
@@ -240,7 +271,7 @@ export function HubSchedule({
                           {game.detail || t("Live")}
                         </>
                       ) : game.state === "post" ? (
-                        t("Final")
+                        game.detail || t("Final")
                       ) : (
                         time
                       )}
@@ -249,9 +280,26 @@ export function HubSchedule({
                       </small>
                     </span>
                     {event ? (
-                      <span className="sh-fixture-event">
-                        <strong>{game.context?.name || game.home.name}</strong>
-                        <small>{game.context?.venue || game.detail}</small>
+                      <span
+                        className={`sh-fixture-event ${league?.group === "esports" ? "sh-fixture-esports" : ""}`}
+                      >
+                        {league?.group === "esports" && (
+                          <span className="sh-fixture-esports-logos">
+                            {[game.home, game.away].filter((side) => side.name).map((side, index) => (
+                              <span key={index} title={side.name}>
+                                <EsportsImage
+                                  src={side.logo || undefined}
+                                  fallback={game.league === "DOTA2" ? dotaLogos.get(side.id) : undefined}
+                                  name={side.name}
+                                />
+                              </span>
+                            ))}
+                          </span>
+                        )}
+                        <span className="sh-fixture-event-copy">
+                          <strong>{game.context?.name || game.home.name}</strong>
+                          <small>{game.context?.venue || game.detail}</small>
+                        </span>
                       </span>
                     ) : (
                       <span className="sh-fixture-match">
@@ -297,13 +345,7 @@ export function HubSchedule({
           </ScheduleLeague>
         );
       })}
-      {!filtered.length && loading && (
-        <div className="sh-board-skeleton" role="status" aria-label={t("Loading schedules…")}>
-          {Array.from({ length: 4 }, (_, i) => (
-            <i key={i} />
-          ))}
-        </div>
-      )}
+      {!filtered.length && loading && <SportsFixturesSkeleton />}
       {!filtered.length && !loading && (
         <div className="sh-empty" role="status">
           <h2>

@@ -10,13 +10,19 @@ import type { LibraryItem } from "../src/lib/stremio";
 const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 
 // Run the real dismissal module with isolated storage and no cloud/network writes.
-function harness(seed?: string) {
+function harness(seed?: string, onChange = () => {}) {
   const data = new Map<string, string>();
   if (seed) data.set("harbor.cw.dismissed.v1", seed);
   const resume = new Map<string, { ms: number; t: number }>();
   const key = (id: string, s?: number, e?: number) => `${id}|${s}|${e}`;
   const mocks: Record<string, unknown> = {
-    react: { useSyncExternalStore: () => 0 },
+    "./cw-profile": { privateCwProfileId: () => null },
+    react: {
+      useSyncExternalStore: (subscribe: (notify: () => void) => () => void) => {
+        subscribe(onChange);
+        return 0;
+      },
+    },
     "./resume": {
       readResumeEntry: (id: string, s?: number, e?: number) => resume.get(key(id, s, e)),
       clearResume: (id: string, s?: number, e?: number) => resume.delete(key(id, s, e)),
@@ -127,6 +133,78 @@ test("a different episode resurfaces and legacy dismissal records remain readabl
   assert.equal(h.api.isCwDismissed(value), false);
 });
 
+// Keep the real hook's stored advancement results across renders. Episode fetching
+// is deliberately idle: dismissing a visible card must not wait for another fetch.
+function advanceHarness(
+  api: typeof import("../src/lib/cw-dismiss"),
+  advanced: Map<string, LibraryItem>,
+  extra: LibraryItem[],
+) {
+  const state = [{ privacyOwner: null, profileId: null, simklSession: null, simklEnabled: false },
+    advanced, extra, new Set<string>(), 0];
+  let slot = 0;
+  const mocks: Record<string, unknown> = {
+    "@/lib/profiles": { useProfiles: () => ({ activeProfile: null, profiles: [] }) },
+    react: {
+      useState: () => [state[slot++], () => {}],
+      useRef: (current: unknown) => ({ current }),
+      useEffect: () => {},
+      useSyncExternalStore: () => null,
+    },
+    "@/lib/cw-dismiss": api,
+    "@/lib/settings": { useSettings: () => ({ settings: { cwHideCaughtUp: false, cwSources: { simkl: false } } }) },
+    "@/lib/providers/jikan": { franchiseDedupKey: (name: string) => name.toLowerCase() },
+  };
+  const output = ts.transpileModule(read("src/views/home/hooks/use-cw-advance.ts"), {
+    compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS },
+  }).outputText;
+  const module = { exports: {} };
+  new Function("require", "module", "exports", output)(
+    (name: string) => mocks[name] ?? {},
+    module,
+    module.exports,
+  );
+  const hook = (module.exports as typeof import("../src/views/home/hooks/use-cw-advance"))
+    .useCwAdvance;
+  return (items: LibraryItem[]) => {
+    slot = 0;
+    return hook(items, "", true);
+  };
+}
+
+for (const kind of ["advanced", "resurfaced"] as const) {
+  test(`dismissing the ${kind} up-next card hides the displayed episode immediately`, () => {
+    let updates = 0;
+    const h = harness(undefined, () => updates++);
+    const previous = item();
+    const visible: LibraryItem = {
+      ...previous,
+      upNext: true,
+      state: { ...previous.state!, episode: 3, video_id: "tt-test:1:3", timeOffset: 0 },
+    };
+    const advanced = new Map<string, LibraryItem>();
+    const extra: LibraryItem[] = [];
+    if (kind === "advanced") advanced.set(visible._id, visible);
+    else extra.push(visible);
+    const render = advanceHarness(h.api, advanced, extra);
+    const inputs = kind === "advanced" ? [previous] : [];
+    assert.deepEqual(render(inputs), [visible]);
+
+    h.api.dismissCw(visible, null);
+    assert.equal(h.api.isCwDismissed(previous), true, "an older source cannot undo the dismissal");
+    assert.deepEqual(render(inputs), [], "stored display results must respect dismissal");
+    assert.ok(updates > 0, "the row subscribes to dismissal changes");
+
+    h.setResume(visible, 100, Date.now() + 1000);
+    assert.deepEqual(render(inputs), [visible], "new playback can restore the same episode");
+    h.api.dismissCw(visible, null);
+    const newer = { ...visible, state: { ...visible.state!, episode: 4, video_id: "tt-test:1:4" } };
+    if (kind === "advanced") advanced.set(newer._id, newer);
+    else extra[0] = newer;
+    assert.deepEqual(render(inputs), [newer], "a later episode is not permanently hidden");
+  });
+}
+
 test("external backfills preserve dismissals and save true remote progress only when newer", async () => {
   for (const provider of ["trakt", "simkl"]) {
     const source = read(`src/lib/${provider}/playback.ts`);
@@ -141,7 +219,6 @@ test("external backfills preserve dismissals and save true remote progress only 
           {
             progress: 45,
             paused_at: new Date(remoteTime).toISOString(),
-            watched_at: new Date(remoteTime).toISOString(),
             movie: { title: "Fixture", ids: { imdb: "tt123456" } },
           },
         ],

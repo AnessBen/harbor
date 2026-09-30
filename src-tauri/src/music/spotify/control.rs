@@ -58,6 +58,10 @@ impl SpotifyState {
         Ok(())
     }
 
+    pub fn paused_for_video(&self) -> bool {
+        self.paused_for_video.load(Ordering::SeqCst)
+    }
+
     pub async fn pause_for_video(&self) -> Result<bool, String> {
         if self.paused.load(Ordering::SeqCst) {
             return Ok(false);

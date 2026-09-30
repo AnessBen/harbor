@@ -1,5 +1,5 @@
 import { useDragScroll } from "@/lib/use-drag-scroll";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { useT, useUiLanguage } from "@/lib/i18n";
 
 const DAYS_BACK = 7;
@@ -43,8 +43,6 @@ export function SportsDateBar({
   const lang = useUiLanguage();
   const locale = lang;
   const activeRef = useRef<HTMLButtonElement>(null);
-  const rowRef = useRef<HTMLDivElement>(null);
-  const [marker, setMarker] = useState<{ x: number; w: number } | null>(null);
   const { ref, handlers } = useDragScroll<HTMLDivElement>();
 
   useEffect(() => {
@@ -55,30 +53,13 @@ export function SportsDateBar({
         button.offsetLeft - rail.offsetLeft - (rail.clientWidth - button.clientWidth) / 2;
   }, [selected]);
 
-  useEffect(() => {
-    const button = activeRef.current;
-    if (!button || !rowRef.current) return;
-    const place = () => setMarker({ x: button.offsetLeft, w: button.offsetWidth });
-    place();
-    const observer = new ResizeObserver(place);
-    observer.observe(button);
-    return () => observer.disconnect();
-  }, [selected, days]);
-
   return (
     <div
       ref={ref}
       {...handlers}
       className="cursor-grab select-none overflow-x-auto px-6 pb-3.5 pt-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
     >
-      <div ref={rowRef} className="relative flex w-max min-w-full items-center justify-center gap-1">
-        {marker && (
-          <span
-            aria-hidden="true"
-            className="sports-day-marker pointer-events-none absolute bottom-0 h-[2px] rounded-full bg-accent"
-            style={{ transform: `translateX(${marker.x}px)`, width: marker.w }}
-          />
-        )}
+      <div className="relative flex w-max min-w-full items-center justify-center gap-1">
         {days.map((day) => {
           const active = day.key === selected;
           const isToday = day.key === today;

@@ -1,3 +1,6 @@
+import { beginMusicSourceRequest } from "@/lib/music/source-request";
+import { cancelMusicQueueAutomation } from "@/lib/music/queue-automation";
+import { MusicSourceSearchMotion } from "./music-source-search-motion";
 import {
   createContext,
   useCallback,
@@ -9,7 +12,7 @@ import {
   type ReactNode,
   type RefObject,
 } from "react";
-import { Check, ExternalLink, LoaderCircle, Music2, Unplug, X } from "@/components/icons/music-icons";
+import { Check, ExternalLink, Music2, Unplug, X } from "@/components/icons/music-icons";
 import { ModalShell, useModalExit } from "@/components/modal-shell";
 import { MusicSourceRow } from "@/components/music/music-source-row";
 import { useT } from "@/lib/i18n";
@@ -60,11 +63,18 @@ export function MusicSourcePickerProvider({ children, active = true }: { childre
 
 function MusicSourcePickerRoot({ children, active }: { children: ReactNode; active: boolean }) {
   const t = useT();
-  const [resolving, setResolving] = useState<MusicTrack | null>(null);
+  const [resolving, setResolvingState] = useState<MusicTrack | null>(null);
+  const release = useRef<() => void>(() => {});
+  const setResolving = useCallback((track: MusicTrack | null) => {
+    release.current();
+    release.current = track ? beginMusicSourceRequest(track) : () => {};
+    setResolvingState(track);
+  }, []);
   const generation = useRef(0);
   useEffect(
     () => () => {
       generation.current += 1;
+      release.current();
     },
     [],
   );
@@ -78,9 +88,10 @@ function MusicSourcePickerRoot({ children, active }: { children: ReactNode; acti
   const openSourcePicker = useCallback(
     (track: MusicTrack, queue = [track], onReady?: PlaybackReady, forceChoice = false) => {
       if (!active) return;
+      cancelMusicQueueAutomation();
       const current = ++generation.current;
       if (track.mediaKind === "video" && !onReady && !forceChoice) {
-            setResolving(null);
+        setResolving(null);
         requestMusicExplore({
           kind: "watch",
           track,
@@ -93,13 +104,15 @@ function MusicSourcePickerRoot({ children, active }: { children: ReactNode; acti
       };
       const preferred = readMusicPreference(SOURCE_KEY);
       if (track.playbackUrl && !forceChoice) {
-            void playMusic(track, queue)
+        setResolving(track);
+        void playMusic(track, queue)
           .then(() => ready(track, queue))
-          .catch(() => {});
+          .catch(() => {})
+          .finally(() => { if (generation.current === current) setResolving(null); });
         return;
       }
       if (!forceChoice) {
-            setResolving(track);
+        setResolving(track);
         void getMusicSourceCandidates(track)
           .then(async (candidates) => {
             if (generation.current !== current) return;
@@ -134,7 +147,6 @@ function MusicSourcePickerRoot({ children, active }: { children: ReactNode; acti
         return;
       }
       setResolving(null);
-      setResolving(null);
       window.dispatchEvent(new Event("harbor:music-playback-source-required"));
     },
     [active],
@@ -153,7 +165,7 @@ function MusicSourcePickerRoot({ children, active }: { children: ReactNode; acti
           }}
           className="fixed bottom-24 end-6 z-[90] flex max-w-[calc(100vw-3rem)] items-center gap-3 rounded-lg bg-elevated p-4 text-ink"
         >
-          <LoaderCircle size={18} className="animate-spin motion-reduce:animate-none" />
+          <MusicSourceSearchMotion />
           <span className="min-w-0">
             <strong className="block truncate text-sm">{resolving.title}</strong>
             <small className="text-ink-muted">{t("music.source.loading")}</small>
@@ -240,6 +252,7 @@ export function MusicSourcePicker({
   const [pending, setPending] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const loadGeneration = useRef(0);
+  const releaseSearch = useRef<() => void>(() => {});
   const preferred = readMusicPreference(SOURCE_KEY);
   const failedTrack = request.failedTrack ?? request.track;
   const failedSource = request.failure ? failedTrack.connectorId : undefined;
@@ -249,6 +262,9 @@ export function MusicSourcePicker({
     const generation = ++loadGeneration.current;
     setLoading(true);
     setError(null);
+    releaseSearch.current();
+    const finish = beginMusicSourceRequest(request.track);
+    releaseSearch.current = finish;
     void Promise.all([
       getMusicSourceCandidates(request.track),
       getSpotifyStatus().catch(() => null),
@@ -264,6 +280,7 @@ export function MusicSourcePicker({
         }
       })
       .finally(() => {
+        finish();
         if (loadGeneration.current === generation) setLoading(false);
       });
   }, [request.track]);
@@ -272,6 +289,7 @@ export function MusicSourcePicker({
     load();
     return () => {
       loadGeneration.current += 1;
+      releaseSearch.current();
     };
   }, [load]);
 
@@ -398,7 +416,7 @@ export function MusicSourcePicker({
         {!loading && spotify?.connected && (
           <div className="mx-2 flex items-center justify-between border-b border-edge-soft py-3 font-mono text-[9px] uppercase tracking-[0.12em] text-ink-subtle">
             <span className="inline-flex items-center gap-2">
-              <Check size={12} />{" "}
+              <MusicServiceLogo source="spotify" size={13} fallback={<Check size={12} />} />{" "}
               {t("music.spotify.connectedAs", { username: spotify.username ?? "Spotify" })}
             </span>
             <span>{t("music.spotify.premium")}</span>
@@ -406,19 +424,8 @@ export function MusicSourcePicker({
         )}
 
         {loading ? (
-          <div className="grid gap-px py-2" aria-label={t("music.source.loading")}>
-            {[0, 1, 2].map((item) => (
-              <div
-                key={item}
-                className="grid h-16 grid-cols-[44px_minmax(0,1fr)] items-center gap-3 px-4"
-              >
-                <span className="harbor-shimmer size-10 rounded-md" />
-                <span className="grid gap-1.5">
-                  <span className="harbor-shimmer block h-3 w-1/3 rounded" />
-                  <span className="harbor-shimmer block h-2.5 w-3/5 rounded" />
-                </span>
-              </div>
-            ))}
+          <div className="flex min-h-36 items-center justify-center gap-3 text-sm text-ink-muted" role="status">
+            <MusicSourceSearchMotion /><span>{t("music.source.loading")}</span>
           </div>
         ) : (
           ordered.map((candidate) => (

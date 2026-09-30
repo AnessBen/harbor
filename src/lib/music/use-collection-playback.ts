@@ -1,3 +1,4 @@
+import { useMusicSourceRequest, musicSourceRequestMatches } from "./source-request";
 import { toggleMusicPlayback, useMusicPlayer } from "./player";
 import { useMusicTransport } from "@/components/music/music-queue";
 import type { MusicTrack } from "./types";
@@ -10,6 +11,7 @@ export function useCollectionPlayback(
   onPlay: (track: MusicTrack, queue: MusicTrack[]) => void,
 ): { playing: boolean; busy: boolean; play: () => void } {
   const player = useMusicPlayer();
+  const sourceRequest = useMusicSourceRequest();
   const transport = useMusicTransport();
   const sameQueue =
     tracks.length > 0 &&
@@ -21,7 +23,7 @@ export function useCollectionPlayback(
       tracks.some((track) => identity(track) === identity(player.current!)),
   );
   const playing = selected && player.phase === "playing";
-  const busy = selected && player.phase === "resolving";
+  const busy = (selected && player.phase === "resolving") || tracks.some(track => musicSourceRequestMatches(sourceRequest, track));
   const play = () => {
     if (selected && (player.phase === "playing" || player.phase === "paused")) {
       toggleMusicPlayback();

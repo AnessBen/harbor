@@ -539,10 +539,6 @@ function Stat({ label, value }: { label: string; value: string }) {
 
 function upsizeTmdb(url?: string, full = false): string | undefined {
   if (!url) return url;
-  const hi =
-    full &&
-    typeof window !== "undefined" &&
-    (window.screen?.height ?? 0) * (window.devicePixelRatio || 1) >= 2000;
-  const size = hi ? "original" : "w1280";
+  const size = full ? "original" : "w1280";
   return url.replace(/\/t\/p\/(w\d+|original)\//, `/t/p/${size}/`);
 }

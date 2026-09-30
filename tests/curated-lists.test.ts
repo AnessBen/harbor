@@ -123,9 +123,40 @@ test("the detail page can look a NYT rank up without loading a chunk", () => {
     seed.rowCount >= snap.count,
     "awards-block reads the eager head synchronously, so the head must be the whole list",
   );
-  const block = read("src/components/awards-block.tsx");
-  assert.match(block, /curatedList\("nyt-tv-100"\)/);
-  assert.match(block, /rankInItems\(nytList\.head, seriesImdbId\)/);
+  const canon = read("src/lib/curated/canon.ts");
+  assert.match(canon, /if \(!eligible\(list, kind\) \|\| !complete\(list\)\) continue;/);
+  assert.match(canon, /canonInItems\(list, list\.head, imdbId\)/);
+  assert.match(read("src/components/awards-block.tsx"), /useCanon\(imdbId, kind\)/);
+});
+
+test("Criterion membership never pulls its snapshot", () => {
+  const canon = read("src/lib/curated/canon.ts");
+  assert.match(
+    canon,
+    /list\.id !== CRITERION_LIST_ID/,
+    "the spine file answers Criterion, so the 125KB snapshot stays unloaded",
+  );
+  const spine = JSON.parse(read("src/data/criterion-spine.json")) as {
+    count: number;
+    spines: Record<string, number>;
+  };
+  assert.equal(spine.spines["tt0033467"], 1104);
+  assert.ok(spine.count > 1000, "the spine file carries the whole collection");
+});
+
+test("the canon lists a viewer names are complete on disk even when the index head is short", () => {
+  for (const id of ["sight-and-sound-2022", "afi-100-1998", "national-film-registry"]) {
+    const seed = LIST_SEEDS.find((s) => s.id === id);
+    assert.ok(seed, `${id} is a known list`);
+    const snap = snapshotOf(id);
+    const entry = index.lists.find((l) => l.id === id);
+    assert.ok(entry, `${id} is indexed`);
+    assert.ok(
+      entry.head.length < snap.count,
+      `${id} is the partial case the lazy load exists for`,
+    );
+    assert.equal(snap.items.length, snap.count, `${id} snapshot holds every item`);
+  }
 });
 
 test("the Criterion snapshot is in spine order with sparse slots", () => {

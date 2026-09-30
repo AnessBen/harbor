@@ -716,20 +716,18 @@ export async function openManualDownload(): Promise<void> {
     const beta =
       selectedUpdateChannel() === "beta" ||
       (!readChannelPreference() && (await runningPrerelease()));
-    const res = await safeFetch(
-      `${HARBOR_API_BASE}/updates/latest.json`,
-      beta ? BETA_HEADERS : undefined,
-    );
-    const manifest = (await res.json()) as { platforms?: Record<string, { url?: string }> };
-    const platforms = manifest.platforms ?? {};
-    const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
-    const want = ua.includes("Windows") ? "windows" : ua.includes("Mac") ? "darwin" : "linux";
-    const key =
-      Object.keys(platforms).find((k) => k.toLowerCase().startsWith(want)) ??
-      Object.keys(platforms)[0];
-    const url = key ? platforms[key]?.url : undefined;
-    if (typeof url === "string" && url) {
-      target = url.endsWith(".app.tar.gz") ? `${url.slice(0, -".app.tar.gz".length)}.dmg` : url;
+    const [res, probe] = await Promise.all([
+      safeFetch(`${HARBOR_API_BASE}/updates/latest.json`, beta ? BETA_HEADERS : undefined),
+      probeHandoff(),
+    ]);
+    if (res.ok && probe) {
+      const manifest = (await res.json()) as { platforms?: Record<string, { url?: string }> };
+      // The probe reports OS and architecture even where installer handoff is unsupported.
+      // A missing build must not fall back to a different processor or operating system.
+      const url = manifest.platforms?.[probe.platformKey]?.url;
+      if (typeof url === "string" && url) {
+        target = url.endsWith(".app.tar.gz") ? `${url.slice(0, -".app.tar.gz".length)}.dmg` : url;
+      }
     }
   } catch {
     /* fall back to the site download */

@@ -129,11 +129,30 @@
   align-items: center;
   gap: 8px;
 }
-.sh-status-dot {
-  width: 6px;
-  height: 6px;
+.sh-status-spin {
+  flex: none;
+  width: 11px;
+  height: 11px;
   border-radius: 50%;
-  background: var(--color-accent);
+  border: 1.5px solid color-mix(in oklch, var(--color-accent) 20%, transparent);
+  border-top-color: var(--color-accent);
+  animation: sh-status-spin 900ms ease-in-out infinite;
+}
+@keyframes sh-status-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(180deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sh-status-spin {
+    animation: none;
+  }
 }
 .sh-hero {
   isolation: isolate;
@@ -568,6 +587,53 @@
   font-size: 12px;
   color: var(--color-ink-muted);
   margin-top: 7px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sh-card-serving {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-inline-end: 6px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  vertical-align: middle;
+}
+.sh-card-sets {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-top: 3px;
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  color: var(--color-ink-subtle);
+}
+.sh-card-sets b {
+  font-weight: 600;
+}
+.sh-card-sets b[data-won] {
+  color: var(--color-ink);
+}
+.sh-card-sets sup {
+  margin-inline-start: 1px;
+  font-size: 9px;
+  vertical-align: super;
+}
+.sh-card-sets em {
+  margin-inline-start: 2px;
+  padding-inline: 5px;
+  border-radius: 4px;
+  background: color-mix(in oklch, var(--color-accent) 18%, transparent);
+  color: var(--color-ink);
+  font-style: normal;
+  font-weight: 600;
+}
+.sh-card-records {
+  margin-top: 3px;
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-ink-subtle);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1240,42 +1306,24 @@
   filter: drop-shadow(0 3px 20px #0008);
 }
 .sh-carousel-bottom {
+  position: relative;
   display: flex;
   align-items: stretch;
   min-height: 78px;
-  background: var(--color-surface);
-  border-top: 1px solid var(--color-edge-soft);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--color-surface) 55%, var(--color-canvas)) 0%,
+    var(--color-canvas) 100%
+  );
 }
 .sh-carousel-picks {
   display: flex;
   flex: 1;
+  gap: 4px;
+  padding: 9px 10px;
   overflow: auto;
   scrollbar-width: none;
   min-width: 0;
-}
-.sh-carousel-picks > button {
-  position: relative;
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  min-width: 200px;
-  max-width: 230px;
-  padding: 15px 20px;
-  text-align: start;
-  flex: 1;
-  color: var(--color-ink-muted);
-  border-inline-end: 1px solid var(--color-edge-soft);
-}
-.sh-carousel-picks > button[aria-pressed="true"] {
-  color: var(--color-ink);
-  background: var(--color-elevated);
-}
-.sh-carousel-picks > button[aria-pressed="true"]:before {
-  content: "";
-  position: absolute;
-  inset: 0 0 auto;
-  height: 2px;
-  background: var(--color-accent);
 }
 .sh-carousel-picks strong {
   display: -webkit-box;
@@ -1306,22 +1354,30 @@
 }
 .sh-carousel-controls {
   display: flex;
-  gap: 6px;
+  gap: 4px;
   align-items: center;
-  padding: 12px 16px;
-  border-inline-start: 1px solid var(--color-edge-soft);
+  padding: 12px 14px;
 }
 .sh-carousel-controls > span {
   font-size: 11px;
-  color: #9fa5af;
-  margin-inline-end: 8px;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-ink-subtle);
+  margin-inline-end: 6px;
   white-space: nowrap;
 }
 .sh-carousel-controls .sh-icon {
-  background: #ffffff09;
-  color: #fff;
   width: 30px;
-  height: 34px;
+  height: 30px;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-ink-muted);
+  transition:
+    background-color 160ms ease-out,
+    color 160ms ease-out;
+}
+.sh-carousel-controls .sh-icon:hover {
+  background: color-mix(in srgb, var(--color-ink) 8%, transparent);
+  color: var(--color-ink);
 }
 .sh-card-artwork {
   width: 100%;
@@ -1404,10 +1460,6 @@
   }
   .sh-carousel-controls {
     padding: 8px;
-  }
-  .sh-carousel-picks > button {
-    min-width: 175px;
-    padding: 12px;
   }
   .sh-carousel-controls .sh-icon {
     width: 28px;
@@ -1560,6 +1612,7 @@
 .sh-fixture-time {
   width: 76px;
   flex: none;
+  overflow-wrap: anywhere;
   font-size: 12px;
   font-weight: 600;
   color: var(--color-ink-muted);
@@ -1654,6 +1707,33 @@
   font-size: 12px;
   color: var(--color-ink-muted);
   margin-top: 4px;
+}
+.sh-fixture-esports {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.sh-fixture-esports-logos {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+}
+.sh-fixture-esports-logos > span {
+  display: flex;
+}
+.sh-fixture-esports-logos .ea-image {
+  width: 32px;
+  height: 32px;
+}
+.sh-fixture-event-copy {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+@container (max-width: 650px) {
+  .sh-fixture-esports { gap: 10px; }
+  .sh-fixture-esports-logos { gap: 4px; }
+  .sh-fixture-esports-logos .ea-image { width: 26px; height: 26px; }
 }
 .sh-sport-tabs {
   padding-block: 18px 14px;
@@ -1875,7 +1955,8 @@
   overflow: auto;
   background: var(--color-canvas);
   color: var(--color-ink);
-  padding: 94px 32px 42px;
+  padding: 94px 32px calc(42px + var(--harbor-dock-gap, 0px));
+  scroll-padding-bottom: var(--harbor-dock-gap, 0px);
   container-type: inline-size;
 }
 .sh-pill-rail {
@@ -2697,7 +2778,7 @@
 }
 .sh-back-top {
   position: fixed;
-  bottom: 24px;
+  bottom: calc(24px + var(--harbor-music-dock, 0px) + var(--harbor-viewport-bottom, 0px));
   inset-inline-end: 24px;
   z-index: 35;
   display: flex;
@@ -3158,10 +3239,10 @@
   -webkit-user-drag: none;
 }
 .sh-carousel .sh-hero {
-  animation: sh-hero-arrive 420ms ease-out;
+  animation: sh-hero-arrive 560ms cubic-bezier(0, 0, 0.2, 1) both;
 }
 .sh-carousel .sh-hero-copy {
-  animation: sh-copy-arrive 480ms cubic-bezier(0.2, 0.7, 0.2, 1);
+  animation: sh-copy-arrive 620ms 90ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
 }
 .sh-hero-skeleton {
   display: flex;
@@ -3211,7 +3292,7 @@
 }
 @keyframes sh-hero-arrive {
   from {
-    opacity: 0.25;
+    opacity: 0;
   }
   to {
     opacity: 1;
@@ -3287,7 +3368,7 @@
   }
 }
 
-/* The selected day is told by weight and one travelling rule, not a boxed outline. */
+/* Selection stays on the date itself through its fill and type weight. */
 .sports-day {
   transition:
     background-color 180ms ease-out,
@@ -3298,15 +3379,9 @@
     font-size 220ms cubic-bezier(0.22, 0.61, 0.36, 1),
     color 180ms ease-out;
 }
-.sports-day-marker {
-  transition:
-    transform 320ms cubic-bezier(0.22, 0.61, 0.36, 1),
-    width 320ms cubic-bezier(0.22, 0.61, 0.36, 1);
-}
 @media (prefers-reduced-motion: reduce) {
   .sports-day,
-  .sports-day-num,
-  .sports-day-marker {
+  .sports-day-num {
     transition: none;
   }
 }

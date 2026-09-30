@@ -9,6 +9,7 @@ import type {
 } from "@/lib/music/types";
 import type { MusicData } from "./use-music-data";
 import type { MusicHomeSlots } from "./music-home-rows";
+import type { MusicRecentContext } from "@/lib/music/recent-context";
 
 export type MusicBand = {
   key: string;
@@ -36,6 +37,7 @@ export type MusicBandContext = {
   playTrack: (track: MusicTrack, queue: MusicTrack[]) => void;
   openItem: (item: MusicCatalogItem, siblings: MusicCatalogItem[]) => void;
   openLibrary: (target?: MusicLibraryTarget) => void;
+  openMix: (context: MusicRecentContext, load?: () => Promise<MusicTrack[]>) => Promise<void>;
   searchArtist: (name: string) => void;
   openConnections: (id?: string) => void;
 };

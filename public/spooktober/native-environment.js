@@ -43,6 +43,7 @@ export function createSpooktoberEnvironment({root,scroller,body,overlay,onIntent
   get title(){return title},set title(value){title=value},
  };
  function remember(){if(active&&body.getClientRects().length){savedScroll=scroller.scrollTop;if(root.activeElement)savedFocus=root.activeElement}}
+ function forget(){savedScroll=0;savedFocus=null;scroller.scrollTop=0}
  function back(){
   if(disposed||!active)return false;
   const menu=document.querySelector('[role="menu"]:not([hidden]),[role="listbox"]:not([hidden])');
@@ -95,5 +96,5 @@ export function createSpooktoberEnvironment({root,scroller,body,overlay,onIntent
   if(active){scroller.scrollTop=savedScroll;if(savedFocus?.isConnected)savedFocus.focus({preventScroll:true});measure();for(const timer of timers.values())if(!timer.handle)scheduleTimer(timer);for(const frame of frames.values())if(!frame.handle)scheduleFrame(frame);scroller.dispatchEvent(new Event('scroll'))}
  }
  function dispose(){if(disposed)return;setActive(false);disposed=true;abort.abort();for(const [target,type,listener,options] of listeners)target.removeEventListener(type,listener,options);observers.forEach(observer=>observer.disconnect());timers.forEach(timer=>nativeWindow.clearTimeout(timer.handle));frames.forEach(frame=>nativeWindow.cancelAnimationFrame(frame.handle));timers.clear();frames.clear();restores.reverse().forEach(restore=>restore());body.querySelectorAll('audio,video').forEach(media=>media.pause());if(root.contains(body))root.replaceChildren()}
- return {api,setActive,back,dispose};
+ return {api,setActive,forget,back,dispose};
 }

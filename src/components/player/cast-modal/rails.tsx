@@ -32,18 +32,26 @@ export function RailSection({
 }
 
 const RAIL =
-  "flex gap-3 overflow-x-auto px-0.5 py-2 [scrollbar-width:none] [scroll-snap-type:x_proximity] [&::-webkit-scrollbar]:hidden";
+  "flex gap-3 overflow-x-auto px-2 -mx-2 py-3 -my-1 scroll-px-2 [scrollbar-width:none] [scroll-snap-type:x_proximity] [&::-webkit-scrollbar]:hidden";
+const RAIL_GAP = 12;
+const RAIL_PAD = 16;
+const RAIL_MIN_CELL = 116;
 
 function ScrollRail({ children }: { children: React.ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
   const [canLeft, setCanLeft] = useState(false);
   const [canRight, setCanRight] = useState(false);
+  const [cell, setCell] = useState(RAIL_MIN_CELL);
 
   const update = () => {
     const el = ref.current;
     if (!el) return;
     setCanLeft(el.scrollLeft > 4);
     setCanRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+    const inner = el.clientWidth - RAIL_PAD;
+    if (inner <= 0) return;
+    const perView = Math.max(2, Math.floor((inner + RAIL_GAP) / (RAIL_MIN_CELL + RAIL_GAP)));
+    setCell(Math.floor((inner - RAIL_GAP * (perView - 1)) / perView));
   };
 
   useEffect(() => {
@@ -62,7 +70,12 @@ function ScrollRail({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="group/rail relative">
-      <div ref={ref} onScroll={update} className={RAIL}>
+      <div
+        ref={ref}
+        onScroll={update}
+        className={RAIL}
+        style={{ "--rail-cell": `${cell}px` } as React.CSSProperties}
+      >
         {children}
       </div>
       {canLeft && <RailArrow dir="left" onClick={() => nudge(-1)} />}
@@ -170,7 +183,7 @@ function PosterCard({
     <button
       type="button"
       onClick={() => onOpen(meta)}
-      className={`group flex flex-col gap-1.5 text-start ${grid ? "w-full" : "w-[116px] shrink-0 [scroll-snap-align:start]"}`}
+      className={`group flex flex-col gap-1.5 text-start ${grid ? "w-full" : "w-[var(--rail-cell,116px)] shrink-0 [scroll-snap-align:start]"}`}
     >
       <div className="relative aspect-[2/3] w-full overflow-hidden rounded-xl bg-white/[0.06] ring-1 ring-white/10 transition duration-200 group-hover:scale-[1.04] group-hover:ring-white/25">
         {src ? (

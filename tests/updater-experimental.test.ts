@@ -23,10 +23,8 @@ function load<T>(
   mocks: Record<string, unknown>,
   globals: Record<string, unknown>,
 ): T {
-  const source = readFileSync(new URL(`../${path}`, import.meta.url), "utf8").replaceAll(
-    "import.meta.env.DEV",
-    String(globals.__DEV__ === true),
-  );
+  const source = readFileSync(new URL(`../${path}`, import.meta.url), "utf8")
+    .replaceAll("import.meta.env.DEV", String(globals.__DEV__ === true));
   const { outputText } = ts.transpileModule(source, {
     compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS },
   });
@@ -159,13 +157,7 @@ function deferred<T>() {
 }
 
 function harness(
-  options: {
-    beta?: boolean;
-    managed?: boolean;
-    platform?: string;
-    version?: string;
-    dev?: boolean;
-  } = {},
+  options: { beta?: boolean; managed?: boolean; platform?: string; version?: string; dev?: boolean } = {},
 ) {
   const localStorage = storage();
   localStorage.setItem("harbor.settings", JSON.stringify({ betaUpdates: !!options.beta }));
@@ -181,6 +173,7 @@ function harness(
     launch: 0,
     relaunch: 0,
     manual: 0,
+    manualUrls: [] as string[],
     backup: 0,
   };
   const config = {
@@ -196,6 +189,7 @@ function harness(
     signatureFailure: false,
     backupFailure: false,
     launchFailure: false,
+    probeMissing: false,
   };
   const recovery = {
     setItemWithRecovery: (key: string, value: string) => {
@@ -237,6 +231,7 @@ function harness(
   };
   const handoff = {
     async probeHandoff() {
+      if (config.probeMissing) return null;
       return {
         supported: !options.platform || options.platform.startsWith("windows"),
         managed: options.managed !== false,
@@ -283,7 +278,7 @@ function harness(
         },
       },
       "@/lib/safe-fetch": {
-        async safeFetch(url: string, init: { headers?: unknown }) {
+        async safeFetch(url: string, init: { headers?: unknown } = {}) {
           calls.fetchUrls.push(url);
           calls.fetchHeaders.push(init.headers);
           if (config.nativeWait) await config.nativeWait;
@@ -328,8 +323,9 @@ function harness(
         },
       },
       "@/lib/window": {
-        openUrl() {
+        openUrl(url: string) {
           calls.manual++;
+          calls.manualUrls.push(url);
         },
       },
     },
@@ -337,6 +333,7 @@ function harness(
       __DEV__: options.dev,
       localStorage,
       window: { __TAURI_INTERNALS__: {}, addEventListener() {}, setInterval() {} },
+      navigator: { userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)" },
       fetch: async (url: string, init: { headers?: unknown }) => {
         calls.fetchUrls.push(url);
         calls.fetchHeaders.push(init.headers);
@@ -371,14 +368,11 @@ test("development builds leave installed-release update and recovery state untou
     await h.updater.prepareBetaReturn("0.9.122");
     await h.updater.downloadUpdate();
     await h.updater.installUpdate();
-    await new Promise((resolve) => setImmediate(resolve));
+    await new Promise(resolve => setImmediate(resolve));
     assert.deepEqual(h.calls.headers, []);
     assert.deepEqual(h.calls.fetchUrls, []);
     assert.deepEqual(h.calls.nativeFetchUrls, []);
-    assert.equal(
-      h.calls.download + h.calls.install + h.calls.stage + h.calls.launch + h.calls.relaunch,
-      0,
-    );
+    assert.equal(h.calls.download + h.calls.install + h.calls.stage + h.calls.launch + h.calls.relaunch, 0);
     assert.equal(h.updater.useUpdate().status, "idle");
     assert.equal(h.localStorage.getItem("harbor.update.pending"), pending);
   }
@@ -715,6 +709,51 @@ test("same or older experimental builds are not offered as downgrades", async ()
     await h.updater.checkForUpdate();
     assert.equal(h.updater.useUpdate().status, "uptodate");
     assert.equal(h.calls.headers.length, 0);
+  }
+});
+
+test("manual Mac download selects the native architecture regardless of manifest order", async () => {
+  const h = harness({ beta: true, platform: "darwin-x86_64" });
+  const raw = manifest();
+  h.config.raw = {
+    ...raw,
+    platforms: {
+      ...raw.platforms,
+      "darwin-x86_64": { url: "https://example.test/Harbor_x64.app.tar.gz" },
+    },
+  };
+  await h.updater.openManualDownload();
+  assert.deepEqual(h.calls.manualUrls, ["https://example.test/Harbor_x64.dmg"]);
+  assert.equal(h.calls.download + h.calls.install + h.calls.launch, 0);
+});
+
+test("missing native platform opens the download site instead of another architecture or OS", async () => {
+  for (const platform of ["darwin-x86_64", "windows-aarch64", "linux-x86_64"]) {
+    const h = harness({ beta: true, platform });
+    await h.updater.openManualDownload();
+    assert.deepEqual(h.calls.manualUrls, ["https://example.test"], platform);
+  }
+});
+
+test("manual download uses the native platform rather than the WebView user agent", async () => {
+  const h = harness({ beta: true, platform: "windows-x86_64" });
+  await h.updater.openManualDownload();
+  assert.deepEqual(h.calls.manualUrls, [manifest().platforms["windows-x86_64"].url]);
+});
+
+test("manual Apple Silicon download keeps the matching DMG conversion", async () => {
+  const h = harness({ beta: true, platform: "darwin-aarch64" });
+  await h.updater.openManualDownload();
+  assert.deepEqual(h.calls.manualUrls, ["https://example.test/0.9.123/Harbor.dmg"]);
+});
+
+test("unknown device and failed manifest do not choose an installer", async () => {
+  for (const failure of ["device", "response"] as const) {
+    const h = harness({ beta: true, platform: "darwin-aarch64" });
+    if (failure === "device") h.config.probeMissing = true;
+    else h.config.status = 503;
+    await h.updater.openManualDownload();
+    assert.deepEqual(h.calls.manualUrls, ["https://example.test"], failure);
   }
 });
 

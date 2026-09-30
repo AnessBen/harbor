@@ -10,6 +10,7 @@ import { favoriteArtists } from "@/lib/music/sources";
 import type { MusicArtistRef, MusicCatalogItem, MusicTrack } from "@/lib/music/types";
 import { localRow, trackItem, type MusicBand, type MusicBandContext } from "./music-band-types";
 import { recentContextsBand } from "./music-recent-contexts-band";
+import { MusicFreshRow } from "./music-fresh-row";
 
 function artistRefs(ctx: MusicBandContext): MusicArtistRef[] {
   const t = ctx.t;
@@ -197,20 +198,12 @@ function freshBand(ctx: MusicBandContext): MusicBand | null {
     };
   }
   if (ctx.player.recents.length === 0) return null;
-  const items = ctx.data.fresh.map(trackItem);
   return {
     key: "fresh",
     title: t("music.row.fresh"),
     catalog: false,
     render: (title) => (
-      <MusicCatalogRow
-        row={localRow("fresh", title, t("music.row.freshSubtitle"), "trackGrid", items)}
-        status={ctx.data.freshStatus}
-        error={ctx.data.freshError}
-        onRetry={ctx.data.reload}
-        count={9}
-        onOpen={(item) => ctx.openItem(item, items)}
-      />
+      <MusicFreshRow title={title} data={ctx.data} onOpen={ctx.openItem} />
     ),
   };
 }

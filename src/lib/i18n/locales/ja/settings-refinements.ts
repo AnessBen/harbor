@@ -1,4 +1,6 @@
 const settingsRefinements: Record<string, string> = {
+  "Playback cache folder": "再生キャッシュフォルダー",
+  "Temporary video buffering, including debrid streams. Applies when playback restarts; existing files stay in their current folder.": "debrid ストリームを含む動画の一時バッファーです。再生を再開すると適用され、既存のファイルは現在のフォルダーに残ります。",
   "1 option formatted correctly": "1個のオプションの書式が正しいです",
   "1. Open Movies\n2. Select a title\n3. Press Play\n4. Describe what happens": "1.「映画」を開く\n2. 作品を選ぶ\n3.「再生」を押す\n4. 起きたことを説明する",
   "3 to 24 letters, numbers, or underscores.": "3～24文字の英数字またはアンダースコア。",

@@ -5,23 +5,70 @@ import { MusicMixCover } from "@/components/music/music-mix-cover";
 import { MusicSectionHead } from "@/components/music/music-track-grid";
 import { Row } from "@/components/row";
 import { activeProfileId } from "@/lib/active-profile-id";
+import { loadMadeForYou, readMadeForYouShelf, type MadeForYouMix } from "@/lib/music/made-for-you";
+import { useLikedArtists } from "@/lib/music/liked-artists";
 import { readListeningAffinity } from "@/lib/music/listening-affinity";
-import { cachedTastePool, loadTastePool } from "@/lib/music/taste-pool";
-import { loadDailyMixTracks, planDailyMixes, type DailyMix } from "@/lib/music/daily-mixes";
-import { requestMusicExplore } from "@/lib/music/navigation";
+import { loadTastePool } from "@/lib/music/taste-pool";
+import { filterBlockedTracks } from "@/lib/music/artist-blocks";
+import { dailyDayKey } from "@/lib/music/daily-discovery-selection";
 import { playMusic } from "@/lib/music/player";
 import { recordMusicSimilarPlayback } from "@/lib/music/playback-origin";
 import "@/components/music/music-cover-card.css";
 import "./music-made-for-you-band.css";
 import type { MusicBand, MusicBandContext } from "./music-band-types";
 
+type Mix = MadeForYouMix;
 type Translate = MusicBandContext["t"];
 
-function mixName(mix: DailyMix, t: Translate): string {
-  return t("music.madeForYou.mix", { index: mix.index });
+function mixName(mix: Mix, t: Translate): string {
+  return mix.kind === "daily" ? t("music.madeForYou.mix", { index: mix.index }) : t("music.madeForYou.namedMix", { name: mix.name });
 }
 
-function MadeForYouRow({ mixes, t, title }: { mixes: DailyMix[]; t: Translate; title: string }) {
+function MadeForYouRow({ player, t, title, openMix }: { player: MusicBandContext["player"]; t: Translate; title: string; openMix: MusicBandContext["openMix"] }) {
+  const followed = useLikedArtists();
+  const inputs = useRef({ player, followed });
+  inputs.current = { player, followed };
+  const [loadingPersonal, setLoadingPersonal] = useState(true);
+  const [mixes, setMixes] = useState<Mix[]>([]);
+  const [day, setDay] = useState(dailyDayKey);
+  const [retry, setRetry] = useState(0);
+  const hasTaste = !!(player.likedTracks.length || player.recents.length || followed.length);
+  const profile = activeProfileId();
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
+    const checkDay = () => {
+      clearTimeout(timer);
+      const now = new Date();
+      setDay(dailyDayKey(now));
+      const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+      timer = setTimeout(checkDay, midnight.getTime() - now.getTime() + 100);
+    };
+    checkDay();
+    window.addEventListener("focus", checkDay);
+    document.addEventListener("visibilitychange", checkDay);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("focus", checkDay);
+      document.removeEventListener("visibilitychange", checkDay);
+    };
+  }, []);
+  useEffect(() => {
+    let live = true;
+    setMixes([]);
+    setLoadingPersonal(true);
+    void readMadeForYouShelf(day, profile, hasTaste).then(async held => {
+      if (held.length) return held;
+      const pool = await loadTastePool().catch(() => ({ tracks: [], playlists: [] }));
+      const { player, followed } = inputs.current;
+      return loadMadeForYou({ recents: player.recents, liked: player.likedTracks, followed,
+        library: [...pool.tracks, ...pool.playlists.flatMap(value => value.tracks)], affinity: readListeningAffinity(profile) },
+        day, profile, value => { if (live) setMixes(value); });
+    })
+      .then(value => { if (live) setMixes(value); })
+      .catch(() => { if (live) setMixes([]); })
+      .finally(() => { if (live) setLoadingPersonal(false); });
+    return () => { live = false; };
+  }, [hasTaste, day, profile, retry]);
   const [busy, setBusy] = useState<string | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
   const request = useRef(0);
@@ -32,29 +79,23 @@ function MadeForYouRow({ mixes, t, title }: { mixes: DailyMix[]; t: Translate; t
     [],
   );
 
-  const open = async (mix: DailyMix, play = false) => {
+  const open = async (mix: Mix, play = false) => {
+    if (!play) {
+      await openMix({ kind: "similar", id: mix.id, name: mixName(mix, t), artwork: mix.artwork, at: Date.now(), seed: mix.seeds[0] }, async () => filterBlockedTracks(filterBlockedTracks(mix.tracks, "show"), "play"));
+      return;
+    }
     const generation = ++request.current;
     setBusy(mix.id);
     setFailed(null);
     try {
-      const tracks = await loadDailyMixTracks(mix);
+      const tracks = filterBlockedTracks(filterBlockedTracks(mix.tracks, "show"), "play");
       if (request.current !== generation) return;
       if (!tracks.length) throw new Error("music.radio.error");
-      if (play) {
-        recordMusicSimilarPlayback(tracks[0], tracks, {
-          id: mix.id,
-          name: mixName(mix, t),
-        });
-        await playMusic(tracks[0], tracks);
-        return;
-      }
-      requestMusicExplore({
-        kind: "similar",
-        track: tracks[0],
-        queue: tracks,
-        label: mixName(mix, t),
-        contextId: mix.id,
+      recordMusicSimilarPlayback(tracks[0], tracks, {
+        id: mix.id,
+        name: mixName(mix, t),
       });
+      await playMusic(tracks[0], tracks);
     } catch {
       if (request.current === generation) setFailed(mix.id);
     } finally {
@@ -63,10 +104,14 @@ function MadeForYouRow({ mixes, t, title }: { mixes: DailyMix[]; t: Translate; t
   };
 
   return (
-    <section className="flex min-w-0 flex-col gap-3">
+    <section className="flex min-w-0 flex-col gap-3" aria-busy={loadingPersonal}>
       <MusicSectionHead title={title} subtitle={t("music.madeForYou.subtitle")} />
+      {!loadingPersonal && !mixes.length && <div className="flex items-center gap-3 py-4 text-sm text-ink-muted" role="status">
+        <span>{t("music.action.error")}</span>
+        <button type="button" className="rounded-md bg-elevated px-3 py-2 text-ink" onClick={() => setRetry(value => value + 1)}>{t("common.retry")}</button>
+      </div>}
       <Row shape="square" min={MUSIC_SHELF_MIN} scrollKey="music:madeForYou" alwaysActive>
-        {mixes.map((mix) => (
+        {loadingPersonal && !mixes.length ? Array.from({ length: 6 }, (_, index) => <div key={index} aria-hidden="true" className="aspect-square rounded-md bg-elevated animate-pulse motion-reduce:animate-none" />) : mixes.map((mix) => (
           <div key={mix.id} className="music-mix-card music-cover-card group">
             <div className="relative">
               <button
@@ -78,7 +123,9 @@ function MadeForYouRow({ mixes, t, title }: { mixes: DailyMix[]; t: Translate; t
                 <MusicMixCover
                   artwork={mix.artwork}
                   index={mix.index}
-                  label={t("music.madeForYou.badge")}
+                  label={mix.kind === "daily" ? t("music.madeForYou.badge") : mixName(mix, t)}
+                  numbered={mix.kind === "daily"}
+                  portrait={mix.kind === "artist"}
                   seed={mix.id}
                 />
                 <span className="mt-[9px] truncate text-[13px] font-semibold text-ink">
@@ -120,21 +167,10 @@ function MadeForYouRow({ mixes, t, title }: { mixes: DailyMix[]; t: Translate; t
 }
 
 export function madeForYouBand(ctx: MusicBandContext): MusicBand | null {
-  const affinity = readListeningAffinity(activeProfileId());
-  const pool = cachedTastePool();
-  void loadTastePool().catch(() => {});
-  const mixes = planDailyMixes(
-    ctx.player.recents,
-    ctx.player.likedTracks,
-    affinity,
-    Date.now(),
-    { extra: pool.tracks, playlists: pool.playlists },
-  );
-  if (!mixes.length) return null;
   return {
     key: "madeForYou",
     title: ctx.t("music.madeForYou.title"),
     catalog: false,
-    render: (title) => <MadeForYouRow mixes={mixes} t={ctx.t} title={title} />,
+    render: (title) => <MadeForYouRow player={ctx.player} openMix={ctx.openMix} t={ctx.t} title={title} />,
   };
 }

@@ -368,7 +368,9 @@ function parseStoredSettings(raw: string | null): Settings {
           : DEFAULT.fullscreenClockEnabled,
       controllerCursor: sanitizeControllerCursor(parsed.controllerCursor),
       screensaverStyle:
-        parsed.screensaverStyle === "catBoat" || parsed.screensaverStyle === "custom"
+        parsed.screensaverStyle === "catBoat" ||
+        parsed.screensaverStyle === "halloween" ||
+        parsed.screensaverStyle === "custom"
           ? parsed.screensaverStyle
           : "ambient",
       screensaverMedia: sanitizeScreensaverMedia(parsed.screensaverMedia),
