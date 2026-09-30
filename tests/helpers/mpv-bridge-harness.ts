@@ -81,10 +81,26 @@ export function mpvBridgeHarness(prefs = { volume: 0.35, muted: false }) {
         return () => handlers.delete(name);
       },
     },
-    "@/lib/subtitles/prepare": { prepareSubtitle: (input: { url: string }) => prepare(input) },
+    "@/lib/subtitles/prepare": {
+      prepareSubtitle: (input: { url: string }) => prepare(input),
+      SubtitlePreparationError: class SubtitlePreparationError extends Error {
+        reason: string;
+        constructor(reason: string, message: string) {
+          super(message);
+          this.name = "SubtitlePreparationError";
+          this.reason = reason;
+        }
+      },
+    },
     "@/lib/subtitles/provider-auth": { subtitleTrackDownloadHeaders: () => undefined },
     "@/lib/subtitles/prepared-registry": { takePreparedSubtitle: () => null },
     "@/lib/subtitles/limit-signal": { markLimitReached() {} },
+    "@/lib/subtitles/pending-subs": {
+      markPendingSub() {},
+      clearPendingSub() {},
+      wasPendingSub: () => false,
+    },
+    "@/lib/subtitles/translation-jobs": { registerTranslationJob() {} },
     "./mpv-failure": failures,
     "@/lib/platform": {
       isWindowsDesktop: () => true,

@@ -1189,6 +1189,7 @@ pub fn run() {
             hdr_overlay::hdr_overlay_emit_props,
             hdr_overlay::hdr_overlay_emit_action,
             mpv::mpv_sub_add,
+            mpv::mpv_sub_remove,
             mpv::sub_download,
             mpv::mpv_stop,
             mpv::mpv_release_media,

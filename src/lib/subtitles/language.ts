@@ -279,6 +279,17 @@ export function isKnownLanguage(code?: string | null): boolean {
   return !!code && Object.hasOwn(NAMES, normalizeLang(code));
 }
 
+/**
+ * True when a "language" value is really a generated display label — a translating
+ * addon's on-demand variant such as "Make Hindi" — rather than a language code or name.
+ * Real codes and names never contain whitespace, and unknown single tokens (e.g. "spl")
+ * are excluded.
+ */
+export function isGeneratedLangLabel(raw?: string | null): boolean {
+  const lang = raw?.trim() ?? "";
+  return lang.length > 0 && !isKnownLanguage(lang) && /\s/.test(lang);
+}
+
 export function trackLanguageName(lang?: string | null, title?: string | null): string {
   const base = normalizeLang(lang ?? "");
   if (title) {
