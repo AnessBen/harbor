@@ -610,9 +610,9 @@ function RemoteOrLocalDetail({
       if (carried) {
         const manifest =
           (carried.manifest as ResolvedAddon["manifest"] | null) ??
-          ((await fetchManifestAt(carried.manifestUrl).catch(
-            () => null,
-          )) as ResolvedAddon["manifest"] | null);
+          ((await fetchManifestAt(carried.manifestUrl).catch(() => null)) as
+            | ResolvedAddon["manifest"]
+            | null);
         if (cancelled) return;
         if (manifest) {
           setRemote({

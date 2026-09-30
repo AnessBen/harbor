@@ -1026,7 +1026,11 @@ function NativePlayerView({ src }: { src: PlayerSrc }) {
     const unsub = subscribePlaybackClock(() => {
       const livePos = getPlaybackPosition();
       const currentSnap = snapRef.current;
-      if (currentSnap.status === "idle" || currentSnap.status === "ended" || currentSnap.status === "error") {
+      if (
+        currentSnap.status === "idle" ||
+        currentSnap.status === "ended" ||
+        currentSnap.status === "error"
+      ) {
         clearMediaControls();
         return;
       }
