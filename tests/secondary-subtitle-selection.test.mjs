@@ -20,6 +20,7 @@ function select(choice, tracks, lang = "en") {
     react: { useEffect: (effect) => effects.push(effect), useRef: (current) => ({ current }) },
     "@/lib/player/secondary-sub": { resetSecondarySub() {}, useSecondarySubChoice: () => choice },
     "@/lib/player/sub-format": formats,
+    "@/lib/player/sub-style": { applySecondarySubNative: async () => {} },
     "@/lib/subtitles/language": { pickBestTrack },
   };
   const module = { exports: {} };

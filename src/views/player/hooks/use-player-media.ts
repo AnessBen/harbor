@@ -274,6 +274,11 @@ export function usePlayerMedia(params: {
     snap,
     sourceUrl: src.url,
     lang: settings.secondarySubLang,
+    nativeReady: engine === "mpv" && bridgeReady && mpvMediaReadyForStyle,
+    nativeRender: hdrNativeSurface && !captionsPopout,
+    bridgeKey,
+    placement: settings.subSecondaryPlacement,
+    marginY: settings.subMarginY,
   });
   useEffect(() => {
     clearImportedSubs();

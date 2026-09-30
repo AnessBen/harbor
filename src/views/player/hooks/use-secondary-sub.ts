@@ -3,6 +3,8 @@ import type { PlayerBridge, PlayerSnapshot, TrackInfo } from "@/lib/player/bridg
 import { resetSecondarySub, useSecondarySubChoice } from "@/lib/player/secondary-sub";
 import { pickBestTrack } from "@/lib/subtitles/language";
 import { canBeSecondarySub } from "@/lib/player/sub-format";
+import { applySecondarySubNative } from "@/lib/player/sub-style";
+import type { Settings } from "@/lib/settings";
 
 function autoPick(tracks: TrackInfo[], lang: string, primaryId: string | null): string | null {
   if (!lang.trim()) return null;
@@ -15,14 +17,32 @@ export function useSecondarySub({
   snap,
   sourceUrl,
   lang,
+  nativeReady,
+  nativeRender,
+  bridgeKey,
+  placement,
+  marginY,
 }: {
   bridgeRef: RefObject<PlayerBridge | null>;
   snap: PlayerSnapshot;
   sourceUrl: string;
   lang: string;
+  nativeReady: boolean;
+  nativeRender: boolean;
+  bridgeKey: string | number;
+  placement: Settings["subSecondaryPlacement"];
+  marginY: number;
 }): void {
   const choice = useSecondarySubChoice();
   const appliedRef = useRef<string | null | undefined>(undefined);
+
+  useEffect(() => {
+    if (!nativeReady) return;
+    void applySecondarySubNative(nativeRender, placement, marginY);
+    return () => {
+      void applySecondarySubNative(false, placement, marginY);
+    };
+  }, [nativeReady, nativeRender, bridgeKey, sourceUrl, placement, marginY]);
 
   useEffect(() => {
     appliedRef.current = undefined;
