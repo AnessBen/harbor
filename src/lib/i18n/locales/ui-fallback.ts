@@ -1,5 +1,12 @@
 // Newly introduced UI copy remains usable until each locale provides an override.
 const uiFallback: Record<string, string> = {
+  "A source couldn't be reached": "A source couldn't be reached",
+  "{n} sources couldn't be reached": "{n} sources couldn't be reached",
+  "blocked by the network policy": "blocked by the network policy",
+  "timed out": "timed out",
+  "returned an error": "returned an error",
+  "couldn't be reached": "couldn't be reached",
+  "{ok} updated · {failed} failed": "{ok} updated · {failed} failed",
   "Added · refresh for updates": "Added · refresh for updates",
   "Refresh subtitle": "Refresh subtitle",
   "Translating… try again in a minute": "Translating… try again in a minute",
