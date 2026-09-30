@@ -107,6 +107,13 @@ export function LocalTab({ scrollRef }: { scrollRef?: RefObject<HTMLElement | nu
   }, [selected, exitSelect, t]);
 
   const { settings } = useSettings();
+  const swept = useRef(false);
+  const autoScan = scan.autoScan;
+  useEffect(() => {
+    if (!libraryReady || swept.current || !settings.localAutoScan) return;
+    swept.current = true;
+    void autoScan();
+  }, [libraryReady, settings.localAutoScan, autoScan]);
 
   const bulkExport = useCallback(async () => {
     const list = items.filter((i) => selected.has(i.id) && i.tmdbId != null);

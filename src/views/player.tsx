@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SportsDockControls } from "./sports/dock-controls";
+import { useDockDrag } from "./sports/use-dock-drag";
 import { EmbeddedBroadcastPlayer } from "./sports/embedded-broadcast-player";
 import { resolveChromeTheme } from "@/lib/theme";
 import { useBigPicture } from "@/lib/big-picture";
@@ -128,6 +129,7 @@ function NativePlayerView({ src }: { src: PlayerSrc }) {
     exitPlayback,
     replacePlayerSrc,
     exitPlayer,
+    setPipDocked,
     picker,
   } = useView();
   const docked = !!src.sportsDocked;
@@ -184,6 +186,8 @@ function NativePlayerView({ src }: { src: PlayerSrc }) {
     hostSource,
   } = useTogether();
   const stageRef = useRef<HTMLDivElement>(null);
+  const refreshDockGeometry = useCallback(() => window.dispatchEvent(new Event("harbor:mpv-refresh-geom")), []);
+  const dockDrag = useDockDrag(stageRef, docked, refreshDockGeometry);
   const videoMountRef = useRef<HTMLDivElement>(null);
   const bridgeRef = useRef<PlayerBridge | null>(null);
   const selfFrameReadyRef = useRef(false);
@@ -246,7 +250,14 @@ function NativePlayerView({ src }: { src: PlayerSrc }) {
   );
   const [hasStarted, setHasStarted] = useState(false);
   const [now, setNow] = useState(() => Date.now());
-  const { pipMode, togglePipMode, exitPip } = usePipMode({ bridgeRef, setChromeHidden });
+  // Detached PiP keeps this view mounted so the session survives, and only yields the
+  // page underneath, the way a docked sports broadcast already does.
+  const { pipMode, togglePipMode, exitPip } = usePipMode({
+    bridgeRef,
+    setChromeHidden,
+    onDetach: () => setPipDocked(true),
+    onReattach: () => setPipDocked(false),
+  });
   const { slowLoad, transcodedUrl, sourceError, clearSourceError } = useAutoRetry({
     bridgeRef,
     src,
@@ -801,7 +812,7 @@ function NativePlayerView({ src }: { src: PlayerSrc }) {
 
   const videoFill = useVideoFill(bridgeRef, src.url, playing);
   useLivePictureEq(bridgeRef, src.url);
-  const anime4k = useAnime4k(bridgeRef, src.url, src, snap.videoWidth);
+  const anime4k = useAnime4k(bridgeRef, src.url, src, snap.videoWidth, bridgeReady);
   const [mouseHoldSpeedActive, setMouseHoldSpeedActive] = useState(false);
   const mouseHoldRef = useRef<{
     pointerId: number | null;
@@ -1026,11 +1037,7 @@ function NativePlayerView({ src }: { src: PlayerSrc }) {
     const unsub = subscribePlaybackClock(() => {
       const livePos = getPlaybackPosition();
       const currentSnap = snapRef.current;
-      if (
-        currentSnap.status === "idle" ||
-        currentSnap.status === "ended" ||
-        currentSnap.status === "error"
-      ) {
+      if (currentSnap.status === "idle" || currentSnap.status === "ended" || currentSnap.status === "error") {
         clearMediaControls();
         return;
       }
@@ -1459,7 +1466,7 @@ function NativePlayerView({ src }: { src: PlayerSrc }) {
       data-audio-only={docked && dockMinimized}
       dir="ltr"
       className={`fixed z-[100] overflow-hidden ${docked ? "sports-player-dock" : "inset-0"} ${stageBg}`}
-      style={screenLocked ? { cursor: "default" } : cursorStyle}
+      style={{ ...(screenLocked ? { cursor: "default" } : cursorStyle), ...dockDrag.style }}
       onMouseMove={wakeChrome}
       onMouseEnter={wakeChrome}
     >
@@ -1535,6 +1542,7 @@ function NativePlayerView({ src }: { src: PlayerSrc }) {
       />
       {docked && (
         <SportsDockControls
+          dragHandlers={dockDrag.handlers}
           src={src}
           snap={snap}
           bridge={bridgeRef.current}

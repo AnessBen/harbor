@@ -356,7 +356,7 @@ function BroadcastPlayer({
             <span>{t("Chat")}</span>
           </button>
         )}
-        {!detached && "__TAURI_INTERNALS__" in window && (
+        {!detached && embed && "__TAURI_INTERNALS__" in window && (
           <button
             type="button"
             onClick={() => void popOut()}

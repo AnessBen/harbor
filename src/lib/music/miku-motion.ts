@@ -11,6 +11,7 @@ export const MIKU_TIMING = {
   stale: 700,
   meterGrace: 1800,
   beatGap: 180,
+  maximumPhaseCorrection: 0.08,
 } as const;
 
 /** Reject outgoing-track samples, missing taps and silence before driving the character. */
@@ -50,7 +51,7 @@ export function createMikuGroove() {
   let noise = 0, kickNoise = 0, snareNoise = 0, hatNoise = 0, lastSample = 0, lastBeat = -Infinity;
   let position = 0, velocity = 0, sway = 0, swayVelocity = 0;
   let energy = 0, clock = 0, period: number | null = null, phase = 0, correction = 0, mix = 0;
-  let estimatedAt = 0, confirmedAt = 0;
+  let estimatedAt = 0, confirmedAt = 0, pulseOrigin = 0;
   let proposedPeriod = 0, proposedAt = 0, proposedSince = 0, proposedCount = 0;
   let punch = 0, excitement = 0;
   let percussion = 0, highlight = false;
@@ -60,6 +61,11 @@ export function createMikuGroove() {
   const danceSuitability = createMikuDanceFit();
   let danceFit = 0;
   return {
+    suspend() {
+      // The transport can unsubscribe before an inactive meter sample arrives.
+      // Keep the outgoing pose, but learn fresh drums when playback resumes.
+      interrupted = true; energy = 0;
+    },
     sample(state: MusicAudioMeterState, trackId: string, connectorId: string | null, now: number) {
       energy = mikuEnergy(state, trackId, connectorId); clock = now;
       if (energy <= 0) {
@@ -72,7 +78,7 @@ export function createMikuGroove() {
         // pre-seek onsets otherwise dilute a fresh rhythm for the whole window.
         bands = null; rhythm.reset(); period = null; correction = 0;
         noise = kickNoise = snareNoise = hatNoise = punch = percussion = 0;
-        estimatedAt = confirmedAt = 0; lastBeat = -Infinity;
+        estimatedAt = confirmedAt = pulseOrigin = 0; lastBeat = -Infinity;
         proposedPeriod = proposedAt = proposedSince = proposedCount = 0;
         highlight = false; section.reset(); danceSuitability.reset(); danceFit = 0;
         interrupted = false;
@@ -117,10 +123,13 @@ export function createMikuGroove() {
         estimatedAt = now;
         const estimate = rhythm.estimate(period);
         let accepted = !!estimate;
+        const octave = !!estimate && period !== null &&
+          (Math.abs(estimate.period / period - 0.5) < 0.08 || Math.abs(estimate.period / period - 2) < 0.12);
         if (estimate && period !== null && Math.abs(estimate.period - period) > period * 0.12 &&
-            estimate.confidence < 0.48 && !("votes" in estimate && Number(estimate.votes) >= 3)) {
+            (octave || (estimate.confidence < 0.48 && !("votes" in estimate && Number(estimate.votes) >= 3)))) {
           // One weak alternate lag must not pull a known drum pulse toward
-          // an unrelated tempo. Require repeated support for a real change.
+          // an unrelated tempo. Half/double-time aliases can correlate very
+          // strongly too; require repeated support before changing octaves.
           const agrees = proposedCount > 0 && now - proposedAt < 1200 &&
             Math.abs(estimate.period - proposedPeriod) < estimate.period * 0.06;
           if (!agrees) { proposedCount = 0; proposedSince = now; }
@@ -135,10 +144,12 @@ export function createMikuGroove() {
             const error = fraction - ((phase % 1 + 1) % 1);
             correction = error - Math.round(error);
           }
-          const octave = period !== null && (Math.abs(estimate.period / period - 0.5) < 0.08 || Math.abs(estimate.period / period - 2) < 0.12);
           // Correct a confirmed half/double-time reading directly. Averaging
           // the two would spend seconds moving at a tempo the song never had.
           period = period === null || octave ? estimate.period : period + (estimate.period - period) * 0.2;
+          // Classify the drums on their measured grid, independent of how
+          // gently the visible head catches up with that grid.
+          pulseOrigin = now - fraction * period;
           confirmedAt = now;
         }
       }
@@ -184,7 +195,13 @@ export function createMikuGroove() {
         mix += ((locked ? 1 : 0) - mix) * Math.min(1, dt * 5);
         // Keep the learned clock through short gaps; confidence still gates
         // visible motion. A missed meter frame must not restart a dance phrase.
-        if (period && clock - confirmedAt < 6000) phase += dt * 1000 / period + correction * dt;
+        if (period && clock - confirmedAt < 6000) {
+          // Correct alignment gently. An offbeat accent must not make the
+          // continuous clock race or drag while its tempo is unchanged.
+          const rate = 1000 / period;
+          const limit = rate * MIKU_TIMING.maximumPhaseCorrection;
+          phase += dt * (rate + Math.max(-limit, Math.min(limit, correction)));
+        }
         correction *= Math.exp(-dt * 2);
         punch *= Math.exp(-dt / 0.8);
         percussion *= Math.exp(-dt / 1.4);
@@ -219,13 +236,14 @@ export function createMikuGroove() {
         remaining -= dt;
       }
       if (Math.abs(position) < 0.001 && Math.abs(velocity) < 0.01) position = velocity = 0;
-      danceFit = danceSuitability.advance(elapsed, clock, phase, period, driving && mix > .8);
+      const measuredBeat = period ? (clock - pulseOrigin) / period : 0;
+      danceFit = danceSuitability.advance(elapsed, clock, measuredBeat, period, driving && mix > .8);
       return { bob: position, sway, period, locked: mix > 0.8, excitement, beat: phase, highlight, danceFit };
     },
     reset(preservePose = false) {
       bands = null; noise = kickNoise = snareNoise = hatNoise = 0; lastSample = 0; lastBeat = -Infinity;
       if (!preservePose) position = velocity = sway = swayVelocity = 0;
-      energy = clock = phase = correction = mix = estimatedAt = confirmedAt = 0; period = null; rhythm.reset();
+      energy = clock = phase = correction = mix = estimatedAt = confirmedAt = pulseOrigin = 0; period = null; rhythm.reset();
       proposedPeriod = proposedAt = proposedSince = proposedCount = 0;
       punch = excitement = 0;
       percussion = 0; highlight = false; section.reset();

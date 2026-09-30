@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Bundle Homebrew libmpv and its non-system dependencies for macOS.
+"""Bundle Homebrew libmpv, the thumbnail mpv CLI and their macOS dependencies.
 
 The prepare command runs before `tauri build`. It recursively collects the
-dynamic libraries reachable from libmpv, rewrites their install names to use
-the application Frameworks directory, and writes a small Tauri overlay config
+dynamic libraries reachable from libmpv and the mpv CLI, rewrites their install
+names to use the application Frameworks directory, stages the CLI as a sidecar,
+and writes a small Tauri overlay config
 whose minimumSystemVersion is raised to the highest minos in that closure. A
 closure that raises it past HIGHEST_ALLOWED_MINIMUM_MAJOR fails the build
 instead, because that is Homebrew moving its bottle to a newer macOS and
@@ -110,14 +111,30 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def collect(start: Path, destination: Path) -> dict[Path, Path]:
+def find_mpv() -> Path:
+    prefix = Path(run("pkg-config", "--variable=prefix", "mpv").strip())
+    binary = prefix / "bin" / "mpv"
+    if not binary.is_file():
+        raise RuntimeError(f"The thumbnail mpv executable was not found at {binary}")
+    return binary.resolve()
+
+
+def collect(
+    start: Path, destination: Path, executables: Iterable[Path] = ()
+) -> dict[Path, Path]:
     prefixes = brew_prefixes()
-    queue = [(start.resolve(), start.name)]
+    queue = [(start.resolve(), start.name, start)]
+    for executable in executables:
+        for load in dylib_loads(executable):
+            if not is_system(load):
+                dependency = resolve_load(load, executable, executable, prefixes)
+                queue.append((dependency, Path(load).name, executable))
     collected: dict[Path, Path] = {}
     names: dict[str, Path] = {}
+    contexts: dict[Path, Path] = {}
 
     while queue:
-        source, target_name = queue.pop(0)
+        source, target_name, executable = queue.pop(0)
         source = source.resolve()
         if source in collected:
             continue
@@ -131,13 +148,14 @@ def collect(start: Path, destination: Path) -> dict[Path, Path]:
         shutil.copy2(source, target)
         target.chmod(target.stat().st_mode | 0o200)
         collected[source] = target
+        contexts[source] = executable
 
         for load in dylib_loads(source):
             if is_system(load):
                 continue
-            dependency = resolve_load(load, source, start, prefixes)
+            dependency = resolve_load(load, source, executable, prefixes)
             if dependency not in collected:
-                queue.append((dependency, Path(load).name))
+                queue.append((dependency, Path(load).name, executable))
 
     # Rewrite only after collection, so every replacement is guaranteed to exist.
     for source, target in collected.items():
@@ -145,7 +163,7 @@ def collect(start: Path, destination: Path) -> dict[Path, Path]:
         for load in dylib_loads(source):
             if is_system(load):
                 continue
-            dependency = resolve_load(load, source, start, prefixes)
+            dependency = resolve_load(load, source, contexts[source], prefixes)
             replacement = collected.get(dependency)
             if replacement is None:
                 raise RuntimeError(f"Dependency was not collected: {dependency}")
@@ -163,13 +181,46 @@ def collect(start: Path, destination: Path) -> dict[Path, Path]:
     return collected
 
 
-def write_config(config_path: Path, frameworks: Iterable[Path], minimum: str) -> None:
+def stage_mpv(source: Path, target: Path, libraries: dict[Path, Path], triple: str) -> None:
+    architecture = {"aarch64-apple-darwin": "arm64", "x86_64-apple-darwin": "x86_64"}[triple]
+    run("lipo", str(source), "-verify_arch", architecture)
+    for library in libraries.values():
+        run("lipo", str(library), "-verify_arch", architecture)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(source, target)
+    target.chmod(target.stat().st_mode | 0o700)
+    prefixes = brew_prefixes()
+    for load in dylib_loads(source):
+        if is_system(load):
+            continue
+        dependency = resolve_load(load, source, source, prefixes)
+        replacement = libraries.get(dependency)
+        if replacement is None:
+            raise RuntimeError(f"mpv requires an unbundled dependency: {dependency}")
+        run(
+            "install_name_tool", "-change", load, f"@rpath/{replacement.name}",
+            str(target), capture=False,
+        )
+    normalize_rpaths(target)
+    for value in rpaths(target):
+        run("install_name_tool", "-delete_rpath", value, str(target), capture=False)
+    run("install_name_tool", "-add_rpath", "@executable_path/../Frameworks", str(target), capture=False)
+
+
+def write_config(
+    config_path: Path,
+    frameworks: Iterable[Path],
+    minimum: str,
+    external_bins: Iterable[str],
+    triple: str,
+) -> None:
     identity = os.environ.get("APPLE_SIGNING_IDENTITY") or os.environ.get("APPLE_CERTIFICATE")
     config = {
         "build": {
-            "beforeBundleCommand": "python3 scripts/macos-bundle-libmpv.py finalize"
+            "beforeBundleCommand": f"python3 scripts/macos-bundle-libmpv.py finalize --target {triple}"
         },
         "bundle": {
+            "externalBin": list(dict.fromkeys([*external_bins, "binaries/mpv"])),
             "macOS": {
                 "frameworks": [str(path.resolve()) for path in sorted(frameworks)],
                 "minimumSystemVersion": minimum,
@@ -248,13 +299,20 @@ def prepare(args: argparse.Namespace) -> None:
         shutil.rmtree(destination)
     destination.mkdir(parents=True)
     source = find_libmpv()
-    collected = collect(source, destination)
-    minimum, raised_by = bundle_minimum(root, collected.values())
+    mpv = find_mpv()
+    collected = collect(source, destination, [mpv])
+    staged_mpv = root / "src-tauri" / "binaries" / f"mpv-{args.target}"
+    stage_mpv(mpv, staged_mpv, collected, args.target)
+    minimum, raised_by = bundle_minimum(root, [*collected.values(), staged_mpv])
     verify_supported_minimum(minimum, raised_by or "the collected library closure")
-    write_config(args.config.resolve(), collected.values(), version_text(minimum))
+    base = json.loads((root / "src-tauri" / "tauri.conf.json").read_text(encoding="utf-8"))
+    write_config(
+        args.config.resolve(), collected.values(), version_text(minimum),
+        base["bundle"].get("externalBin", []), args.target,
+    )
     print(
         f"[macos-bundle] collected {len(collected)} dynamic libraries from {source.resolve()} "
-        f"into {destination}"
+        f"into {destination}; staged thumbnail helper {staged_mpv}"
     )
     if raised_by:
         print(f"[macos-bundle] {raised_by} raises minimumSystemVersion to {version_text(minimum)}")
@@ -266,11 +324,15 @@ def finalize(args: argparse.Namespace) -> None:
     root = Path(__file__).resolve().parents[1]
     frameworks_dir = Path(os.environ["HARBOR_MACOS_FRAMEWORKS_DIR"]).resolve()
     binary = release_binary(root)
+    mpv = root / "src-tauri" / "binaries" / f"mpv-{args.target}"
+    if not mpv.is_file():
+        raise RuntimeError(f"The staged thumbnail mpv executable is missing: {mpv}")
     rewrite_executable(binary, frameworks_dir)
     normalize_rpaths(binary)
-    advertised, _ = bundle_minimum(root, frameworks_dir.glob("*.dylib"))
+    advertised, _ = bundle_minimum(root, [*frameworks_dir.glob("*.dylib"), mpv])
     verify_supported_minimum(advertised, "the staged library closure")
-    verify_closure(binary, frameworks_dir, advertised)
+    verify_closure(binary, frameworks_dir, advertised, [mpv])
+    verify_macho(mpv, frameworks_dir)
     print(f"[macos-bundle] finalized {binary} for macOS {version_text(advertised)} or newer")
 
 
@@ -284,16 +346,22 @@ def verify_app(args: argparse.Namespace) -> None:
         raise RuntimeError(f"Frameworks directory is missing from {app}")
     if not any(frameworks_dir.glob("libmpv*.dylib")):
         raise RuntimeError(f"libmpv is missing from {frameworks_dir}")
+    mpv = executable.parent / "mpv"
+    if not mpv.is_file():
+        raise RuntimeError(f"The thumbnail mpv executable is missing from {mpv.parent}")
     shipped = sidecars(executable)
     advertised = advertised_minimum(app)
     verify_supported_minimum(advertised, f"the {app.name} Info.plist")
     libraries = verify_closure(executable, frameworks_dir, advertised, shipped)
-    searched = [
-        expand_special(value, executable, executable).resolve() for value in rpaths(executable)
-    ]
-    if frameworks_dir.resolve() not in searched:
-        raise RuntimeError(f"{executable} carries no LC_RPATH that reaches {frameworks_dir}")
+    verify_macho(mpv, frameworks_dir)
+    for binary in [executable, mpv]:
+        searched = [
+            expand_special(value, binary, binary).resolve() for value in rpaths(binary)
+        ]
+        if frameworks_dir.resolve() not in searched:
+            raise RuntimeError(f"{binary} carries no LC_RPATH that reaches {frameworks_dir}")
     run("codesign", "--verify", "--deep", "--strict", str(app), capture=False)
+    run(str(mpv), "--no-config", "--version")
     summary = (
         f"{len(libraries)} bundled libraries, {len(shipped)} sidecar executables, "
         f"macOS {version_text(advertised)} or newer"
@@ -307,8 +375,11 @@ def parser() -> argparse.ArgumentParser:
     prepare_parser = commands.add_parser("prepare")
     prepare_parser.add_argument("--frameworks", type=Path, required=True)
     prepare_parser.add_argument("--config", type=Path, required=True)
+    targets = ("aarch64-apple-darwin", "x86_64-apple-darwin")
+    prepare_parser.add_argument("--target", choices=targets, required=True)
     prepare_parser.set_defaults(handler=prepare)
     finalize_parser = commands.add_parser("finalize")
+    finalize_parser.add_argument("--target", choices=targets, required=True)
     finalize_parser.set_defaults(handler=finalize)
     verify_parser = commands.add_parser("verify-app")
     verify_parser.add_argument("--app", type=Path, required=True)

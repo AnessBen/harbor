@@ -56,6 +56,26 @@ pub async fn music_engine_pause(
     }
 }
 
+/// Only true when a video silenced the music, so the offer to resume is never shown to
+/// someone who paused it themselves.
+#[tauri::command]
+pub async fn music_paused_for_video(state: tauri::State<'_, MusicState>) -> Result<bool, String> {
+    Ok(match state.active_engine() {
+        ACTIVE_SPOTIFY => state.spotify.paused_for_video(),
+        ACTIVE_STREAM => state.engine.paused_for_video(),
+        _ => false,
+    })
+}
+
+#[tauri::command]
+pub async fn music_resume_after_video(state: tauri::State<'_, MusicState>) -> Result<(), String> {
+    match state.active_engine() {
+        ACTIVE_SPOTIFY => state.spotify.set_paused(false).await,
+        ACTIVE_STREAM => state.engine.resume_after_video().await,
+        _ => Ok(()),
+    }
+}
+
 #[tauri::command]
 pub async fn music_engine_seek(
     state: tauri::State<'_, MusicState>,

@@ -351,7 +351,7 @@ export function EmptyState({ onClose, onOpenGuide }: { onClose: () => void; onOp
   }
 
   return (
-    <div className="flex flex-col gap-10 pt-1">
+    <div className="harbor-search-cascade flex flex-col gap-10 pt-1">
       {recent.length > 0 && (
         <section>
           <div className="mb-3.5 flex items-center justify-between gap-3">

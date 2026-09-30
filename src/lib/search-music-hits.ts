@@ -1,6 +1,7 @@
 import type { searchTyped } from "@/lib/music/catalog";
 import type { MusicSearchHit } from "@/lib/search";
 import { artistIdentityKey } from "@/lib/music/artist-authority";
+import { audienceValue, SUBSTANTIVE_AUDIENCE } from "@/lib/music/artist-popularity";
 
 const first = (value: string | string[] | undefined): string | undefined =>
   Array.isArray(value) ? value[0] : value;
@@ -40,6 +41,10 @@ export function personMusicHits(
   const wanted = artistIdentityKey(name);
   if (!wanted) return [];
   const mine = (credit: string) => artistIdentityKey(credit) === wanted;
+  const recognised = results.artists.some(
+    (artist) => mine(artist.name) && audienceValue(artist.subtitle) >= SUBSTANTIVE_AUDIENCE,
+  );
+  if (!recognised) return [];
   return [
     ...results.albums.filter((album) => mine(album.artist)).map((album) => ({
       id: `album:${album.connectorId ?? ""}:${album.id}`,

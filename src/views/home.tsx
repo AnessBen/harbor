@@ -109,6 +109,7 @@ import {
   mergeRows,
 } from "./home/home-rows";
 import type { HomeRow } from "./home/home-types";
+import { mergeLoadedHomeRows } from "./home/merge-loaded-rows";
 import { RowSkeleton } from "./home/row-skeleton";
 import { AddSourceModal } from "@/components/add-source-modal";
 import type { SourceRow } from "@/lib/custom-sources";
@@ -172,24 +173,24 @@ export function Home({
   const { isConnected: anilistConnected } = useAnilist();
   const letterboxd = useLetterboxd();
   const rowsRef = useRef<HomeRow[]>([]);
-  const loadingRef = useRef<Set<string>>(new Set());
+  const loadingRef = useRef(new Map<string, NonNullable<HomeRow["fetcher"]>>());
   useEffect(() => {
     rowsRef.current = rows;
   }, [rows]);
 
   const loadMore = useCallback((rowKey: string) => {
-    if (loadingRef.current.has(rowKey)) return;
     const row = rowsRef.current.find((r) => r.key === rowKey);
     if (!row || !row.fetcher || !row.hasMore || row.metas.length === 0) return;
+    if (loadingRef.current.get(rowKey) === row.fetcher) return;
     if (row.metas.length >= MAX_PER_ROW) return;
-    loadingRef.current.add(rowKey);
+    loadingRef.current.set(rowKey, row.fetcher);
     const next = row.page + 1;
     row
       .fetcher(next)
       .then((more) => {
         setRows((rs) =>
           rs.map((r) => {
-            if (r.key !== rowKey) return r;
+            if (r.key !== rowKey || r.fetcher !== row.fetcher) return r;
             const ids = new Set(r.metas.map((m) => m.id));
             const fresh = more.filter((m) => !ids.has(m.id));
             const combined = [...r.metas, ...fresh];
@@ -205,7 +206,7 @@ export function Home({
       })
       .catch(() => {})
       .finally(() => {
-        loadingRef.current.delete(rowKey);
+        if (loadingRef.current.get(rowKey) === row.fetcher) loadingRef.current.delete(rowKey);
       });
   }, []);
 
@@ -250,7 +251,9 @@ export function Home({
       if (cancelled) return;
       let degraded = (built.failed ?? 0) > 0;
       const commitRows = (next: HomeRow[]) =>
-        setRows((prev) => (degraded && next.length === 0 && prev.length > 0 ? prev : next));
+        setRows((prev) =>
+          degraded && next.length === 0 && prev.length > 0 ? prev : mergeLoadedHomeRows(prev, next),
+        );
       commitRows(mergeRows(built.rows, []));
       if (!degraded || built.hero.length > 0) setHeroPool(built.hero);
       setHeroReady(true);
@@ -590,12 +593,13 @@ export function Home({
   }, [items]);
   const localCwItems = useMemo<LibraryItem[]>(() => {
     void localCwVer;
-    return listLocalCw().map((e) => ({
+    return listLocalCw(hideSharedCw).map((e) => ({
       _id: e.id,
       type: e.type,
       name: e.name,
       poster: e.poster,
       background: e.background,
+      isAnime: e.isAnime,
       state: {
         timeOffset: e.positionMs,
         duration: e.durationMs,
@@ -613,7 +617,7 @@ export function Home({
       _mtime: new Date(e.t).toISOString(),
       local: true,
     }));
-  }, [localCwVer]);
+  }, [localCwVer, hideSharedCw, activeProfile?.id]);
   const continueWatching = useMemo(() => {
     const cwBase = hideSharedCw
       ? []

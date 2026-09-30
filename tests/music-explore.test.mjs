@@ -12,6 +12,23 @@ const track=(id,title='Song',artist='Artist')=>({id,title,artist,artwork:'https:
 const entry=(id,rank=10)=>({id,title:`Song ${id}`,rank,duration:180,artist:{id:4,name:'Artist',picture_big:'https://example.com/artist.jpg'},album:{id:55,title:'Album',cover_big:'https://example.com/cover.jpg'}});
 const discovery=(fetch)=>load('discovery',{'@/lib/safe-fetch':{safeFetch:fetch},'./genre-catalog':genres});
 const response=data=>({ok:true,json:async()=>data});
+
+test('genre artist roster follows tagged artists beyond the first page and retries failed pages',async()=>{
+ const calls=[];let fail=true;
+ const api=load('genre-artist-roster',{'./genre-catalog':genres,'./recording-profile':{scheduleMusicBrainzRequest:fn=>fn()},'@/lib/safe-fetch':{safeFetch:async url=>{
+  const params=new URL(url).searchParams,offset=Number(params.get('offset'));calls.push(offset);
+  assert.match(params.get('query'),/tag:"hip-hop"/);assert.match(params.get('query'),/tag:"rap"/);
+  if(offset===24&&fail){fail=false;throw Error('offline')}
+  return response({count:60,artists:Array.from({length:Math.min(24,60-offset)},(_,i)=>({id:`00000000-0000-0000-0000-${String(offset+i).padStart(12,'0')}`,name:`Tagged rapper ${offset+i}`}))});
+ }}});
+ const one=await api.loadGenreArtistRoster(116);assert.equal(one.artists.length,24);assert.equal(one.next,24);
+ await assert.rejects(api.loadGenreArtistRoster(116,one.next),/offline/);
+ const two=await api.loadGenreArtistRoster(116,one.next);assert.equal(two.next,48);
+ const three=await api.loadGenreArtistRoster(116,two.next);assert.equal(three.next,null);
+ assert.equal(new Set([...one.artists,...two.artists,...three.artists].map(a=>a.id)).size,60);
+ assert.ok(one.artists.every(a=>a.connectorId==='catalog'&&a.musicBrainzId));
+ await api.loadGenreArtistRoster(116);assert.deepEqual(calls,[0,24,24,48]);
+});
 test('shared catalog preserves all legacy taste IDs and adds the requested specific scenes',()=>{
  const legacy=[132,116,122,152,113,165,85,186,106,466,144,129,84,67,65,98,173,464,169,2,16,153,75,71,81,95,197];
  assert.equal(genres.MUSIC_GENRES.length,134);assert.equal(new Set(genres.MUSIC_GENRES.map(g=>g.id)).size,134);
@@ -39,7 +56,7 @@ test('provider failures surface instead of pretending the genre is empty',async(
  const api=discovery(async()=>({ok:false,status:503}));await assert.rejects(api.loadMusicGenreSelection(genres.MUSIC_GENRES.find(g=>g.slug==='pagode').id));
 });
 const identity=t=>`${t.title}|${t.artist}`;
-const listen=()=>load('listening-affinity',{'./preferences':{readMusicPreference:()=>null,writeMusicPreference(){}},'./track-identity':{musicTrackIdentity:identity},'./search-artists':{artistCreditParts:n=>n.split(/ & |, /)}});
+const listen=()=>load('listening-affinity',{'./local-store':{cachedLocalJson:()=>null,readLocalJson:async()=>null,writeLocalJson(){}},'./preferences':{readMusicPreference:()=>null,writeMusicPreference(){}},'./track-identity':{musicTrackIdentity:identity},'./search-artists':{artistCreditParts:n=>n.split(/ & |, /)}});
 test('repeat affinity counts actual listening once, ignoring seek jumps and paused time',()=>{
  let time=0,plays=0;const observe=listen().createListeningObserver(()=>plays++,()=>time);
  const state={current:track('a'),phase:'playing',currentTime:0,duration:180};
@@ -72,7 +89,7 @@ test('recommendation shelf recovers from an unresolvable upload using another li
  assert.equal(result.seed.artist,'Known');assert.equal(result.tracks.length,6);assert.ok(result.tracks.every(t=>t.artwork));
 });
 test('unknown artist counts stay unknown; real listeners and plays stay separate from fans',async()=>{
- const stats=load('genre-insights',{'@/lib/safe-fetch':{safeFetch:async url=>response(url.includes('deezer')?{nb_fan:1500}:{artist:{stats:{listeners:'2400',playcount:'12345'}}})},'@/lib/secret-store':{loadSecrets:async()=>{},getSecret:()=> 'test-key'},'./lastfm':{LASTFM_API_KEY:'key'}});
+ const stats=load('genre-insights',{'./artist-authority':{resolveArtist:async()=>null},'@/lib/safe-fetch':{safeFetch:async url=>response(url.includes('deezer')?{nb_fan:1500}:{artist:{stats:{listeners:'2400',playcount:'12345'}}})},'@/lib/secret-store':{loadSecrets:async()=>{},getSecret:()=> 'test-key'},'./lastfm':{LASTFM_API_KEY:'key'}});
  assert.equal(stats.realCount(undefined),undefined);assert.equal(stats.realCount(''),undefined);assert.equal(stats.realCount('0'),0);assert.equal(stats.realCount('1.5M'),undefined);
  const [result]=await stats.loadGenreArtistStats([{id:'deezer:artist:4',connectorId:'catalog',name:'Artist'}]);assert.equal(result.fans,1500);assert.equal(result.listeners,2400);assert.equal(result.plays,12345);
 });
@@ -118,7 +135,7 @@ test('niche artists follow provider track pagination and retry failed pages with
  assert.equal(two.next,null);
 });
 test('artist statistics enrich every artist and preserve the browsing order',async()=>{
- const stats=load('genre-insights',{'@/lib/safe-fetch':{safeFetch:async url=>response({nb_fan:Number(url.split('/').at(-1))})},'@/lib/secret-store':{loadSecrets:async()=>{},getSecret:()=>null},'./lastfm':{LASTFM_API_KEY:'key'}});
+ const stats=load('genre-insights',{'./artist-authority':{resolveArtist:async()=>null},'@/lib/safe-fetch':{safeFetch:async url=>response({nb_fan:Number(url.split('/').at(-1))})},'@/lib/secret-store':{loadSecrets:async()=>{},getSecret:()=>null},'./lastfm':{LASTFM_API_KEY:'key'}});
  const artists=Array.from({length:25},(_,i)=>({id:`deezer:artist:${i+1}`,connectorId:'catalog',name:`Artist ${i+1}`}));
  const result=await stats.loadGenreArtistStats(artists);assert.equal(result.length,25);assert.deepEqual(result.map(r=>r.artist.id),artists.map(a=>a.id));assert.equal(result.at(-1).fans,25);
 });

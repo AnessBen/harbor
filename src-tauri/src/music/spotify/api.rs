@@ -292,9 +292,11 @@ pub async fn playlist_items(
     token: &str,
     playlist: &str,
     limit: usize,
+    offset: usize,
     market: &str,
 ) -> Result<Value, ApiError> {
     let mut query = page(limit);
+    query.push(("offset", offset.to_string()));
     query.push(("market", market.to_string()));
     query.push(("additional_types", "track".to_string()));
     match get(http, token, &format!("/playlists/{playlist}/items"), &query).await {

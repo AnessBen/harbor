@@ -103,6 +103,18 @@ impl MusicEngine {
         Ok(paused)
     }
 
+    pub fn paused_for_video(&self) -> bool {
+        self.deck().paused_for_video()
+    }
+
+    /// Starts the music again after a video paused it, for the viewer who wants both.
+    pub async fn resume_after_video(&self) -> Result<(), String> {
+        if !self.paused_for_video() {
+            return Ok(());
+        }
+        self.set_paused(false).await
+    }
+
     pub async fn set_paused(&self, paused: bool) -> Result<(), String> {
         self.deck().set_paused(paused).await?;
         self.broadcast.mirror_paused(paused).await;

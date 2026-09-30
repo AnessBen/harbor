@@ -20,3 +20,10 @@ test('failed video pages can be retried and repeated cursors end pagination',asy
  await assert.rejects(pages.searchMusicVideoPage('rap',false,'repeat'),/offline/);
  const result=await pages.searchMusicVideoPage('rap',false,'repeat');assert.equal(result.tracks.length,1);assert.equal(result.next,null);assert.equal(calls,2);
 });
+test('artist identity filters apply on every video page without hiding the provider continuation',async()=>{
+ const calls=[];const pages=api(async(_command,args)=>{calls.push(args);return{tracks:[{...track('aaaaaaaaaaa','Song'),artist:'Nas'},{...track('bbbbbbbbbbb','Unrelated'),artist:'Shakira'}],next:args.cursor?null:'more'};});
+ const one=await pages.searchMusicVideoPage('Nas music videos',false,null,false,'Nas');
+ assert.deepEqual(one.tracks.map(t=>t.artist),['Nas']);assert.equal(one.next,'more');
+ const two=await pages.searchMusicVideoPage('Nas music videos',false,one.next,false,'Nas');
+ assert.deepEqual(two.tracks.map(t=>t.artist),['Nas']);assert.equal(calls.length,2);
+});

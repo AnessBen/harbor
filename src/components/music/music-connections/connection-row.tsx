@@ -12,6 +12,7 @@ import {
 import { MusicServiceLogo } from "../music-service-logo";
 import { SpotifyPlaybackTarget } from "./spotify-devices";
 import { SpotifySetupFields } from "./spotify-setup";
+import { MusicLastFm } from "@/components/music/music-lastfm";
 import { useT } from "@/lib/i18n";
 import { connectSource, disconnectSource, scanLocalFolder } from "@/lib/music/catalog";
 import {
@@ -83,6 +84,9 @@ export function MusicConnectionRow({
   const [failure, setFailure] = useState<string | null>(null);
   const [scanned, setScanned] = useState<number | null>(null);
   const spotifySetup = connection.id === "spotify";
+  // The connector never implements connect or disconnect, so the generic buttons only ever raise
+  // "does not support sign in". The panel below owns the real Last.fm handshake.
+  const lastFm = connection.id === "lastfm";
   const displayError = (message: string) => {
     const key = spotifySetup ? spotifySetupErrorKey(message) : null;
     return key ? t(key) : message;
@@ -229,14 +233,24 @@ export function MusicConnectionRow({
             </span>
           )}
         </span>
-        <RowAction
-          connection={connection}
-          busy={busy}
-          open={open}
-          onConnect={() => (connection.needs.length > 0 ? setOpen(true) : connect({}))}
-          onDisconnect={disconnect}
-        />
+        {lastFm ? (
+          <span />
+        ) : (
+          <RowAction
+            connection={connection}
+            busy={busy}
+            open={open}
+            onConnect={() => (connection.needs.length > 0 ? setOpen(true) : connect({}))}
+            onDisconnect={disconnect}
+          />
+        )}
       </div>
+
+      {lastFm && (
+        <div className="border-t border-edge-soft px-3 py-3">
+          <MusicLastFm />
+        </div>
+      )}
 
       {connection.id === "spotify" && connection.status === "connected" && (
         <SpotifyPlaybackTarget />

@@ -76,6 +76,8 @@ export type PlayEpisode = {
 export type PlayerSrc = {
   /** true: corner preview; false: expanded preview (Back restores it); absent: regular player. */
   sportsDocked?: boolean;
+  /** The video moved to its own window, so the player keeps the session but yields the page. */
+  pipDocked?: boolean;
   /** Official provider iframe; handled separately from native/media stream playback. */
   officialBroadcast?: import("./sports/esports-streams").EsportsStream;
   meta: Meta;
@@ -147,6 +149,8 @@ export type GridSpec = {
   title: string;
   fetcher: (page: number, loaded?: number) => Promise<Meta[]>;
   initial?: Meta[];
+  /** Last complete page in initial; use 0 for a capped/filtered row preview. */
+  initialPage?: number;
   kidsHero?: { grad: string; art: string; name: string };
 };
 
@@ -356,6 +360,7 @@ type ViewValue = {
   canGoForward: boolean;
   goForward: () => void;
   exitPlayback: () => void;
+  setPipDocked: (docked: boolean) => void;
   exitPickerToDetail: (m: Meta) => void;
   exitPlayer: () => void;
   rememberScroll: (key: string, snap: ScrollSnapshot) => void;
@@ -542,7 +547,9 @@ export function ViewProvider({ children }: { children: ReactNode }) {
 
   const playbackTop = stack[stack.length - 1];
   const top =
-    playbackTop.kind === "player" && playbackTop.src.sportsDocked && stack.length > 1
+    playbackTop.kind === "player" &&
+    (playbackTop.src.sportsDocked || playbackTop.src.pipDocked) &&
+    stack.length > 1
       ? withoutTrailingPlayers(stack).at(-1)!
       : playbackTop;
   const rootFrame = stack[0];
@@ -712,6 +719,23 @@ export function ViewProvider({ children }: { children: ReactNode }) {
     }, false);
   }, [setNavStack]);
 
+  /** Detached PiP yields the page without ending playback, so the frame stays on the
+   *  stack and only stops being the one on screen. */
+  const setPipDocked = useCallback(
+    (docked: boolean) => {
+      setNavStack((s) => {
+        const at = s.length - 1;
+        const frame = s[at];
+        if (!frame || frame.kind !== "player") return s;
+        if (!!frame.src.pipDocked === docked) return s;
+        const next = s.slice();
+        next[at] = { ...frame, src: { ...frame.src, pipDocked: docked } };
+        return next;
+      }, false);
+    },
+    [setNavStack],
+  );
+
   const exitPickerToDetail = useCallback(
     (m: Meta) => {
       setNavStack((s) => {
@@ -803,9 +827,8 @@ export function ViewProvider({ children }: { children: ReactNode }) {
           return [{ kind: "wrapped" }];
         }
         if (v === "downloads") {
-          scrollMem.current.clear();
-          rowScrollMem.current.clear();
-          return [{ kind: "downloads" }];
+          if (t.kind === "downloads") return s;
+          return pushFrame(s, { kind: "downloads" });
         }
         if (v === "movies") {
           scrollMem.current.clear();
@@ -945,8 +968,16 @@ export function ViewProvider({ children }: { children: ReactNode }) {
         setNavStack((cur) => {
           const t = cur[cur.length - 1];
           if (t.kind === "meta" && t.meta.id === target.id) return cur;
+          const returningToSeries = t.kind === "episode-detail" && t.seriesId === target.id;
+          if (returningToSeries) {
+            // The episode's series link returns to its parent, not another history entry.
+            for (let i = cur.length - 2; i >= 0; i--) {
+              const frame = cur[i];
+              if (frame.kind === "meta" && frame.meta.id === target.id) return cur.slice(0, i + 1);
+            }
+          }
           trackEvent(target.id, "open", profileFromMeta(target));
-          return pushFrame(cur, {
+          return pushFrame(returningToSeries ? cur.slice(0, -1) : cur, {
             kind: "meta",
             meta: target,
             liveContext: opts?.liveContext,
@@ -1393,6 +1424,7 @@ export function ViewProvider({ children }: { children: ReactNode }) {
       canGoForward,
       goForward,
       exitPlayback,
+      setPipDocked,
       exitPickerToDetail,
       exitPlayer,
       rememberScroll,
@@ -1472,6 +1504,7 @@ export function ViewProvider({ children }: { children: ReactNode }) {
       pop,
       goForward,
       exitPlayback,
+      setPipDocked,
       exitPickerToDetail,
       exitPlayer,
       rememberScroll,

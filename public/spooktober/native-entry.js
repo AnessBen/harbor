@@ -21,6 +21,6 @@ export async function mountSpooktober({root,scroller,onIntent}){
   mount.dispose=()=>{environment.dispose();rejectReady(new DOMException('Spooktober was unmounted.','AbortError'));if(mounts.get(root)===mount)mounts.delete(root)};
   await loadFonts(fontRecords);if(mounts.get(root)!==mount)throw new DOMException('A newer Spooktober mount replaced this one.','AbortError');startSpooktoberRuntime(environment.api);
   let timeout;await Promise.race([ready,new Promise((_,reject)=>timeout=globalThis.setTimeout(()=>reject(Error('Spooktober catalog did not become ready')),30000))]).finally(()=>globalThis.clearTimeout(timeout));
-  return {setActive:environment.setActive,back:environment.back,dispose:mount.dispose};
+  return {setActive:environment.setActive,forget:environment.forget,back:environment.back,dispose:mount.dispose};
  }catch(error){environment.dispose();throw error}
 }

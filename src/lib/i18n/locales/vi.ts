@@ -51,6 +51,10 @@ import bpSports from "./vi/bp-sports";
 import nytTv from "./vi/nyt-tv";
 
 const vi: Record<string, string> = {
+  "Translations": "Bản dịch",
+  "Translating…": "Đang dịch…",
+  "Showing {lang}": "Đang hiển thị {lang}",
+  "Show all": "Hiển thị tất cả",
   ...mediaStart,
   ...spooktober,
   ...videoCast,

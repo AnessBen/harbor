@@ -91,3 +91,27 @@ main::after {display:none}
 
 .hero .moon-disc{display:none}
 .hero .cinema-foreground,.hero .cinema-tree-stage .hero-depth{transform:none!important;will-change:auto!important}
+
+/* Featured now: flat cards, no rule beneath. The active one is a filled tile, not an underline. */
+.feature-selector > i { display: none; }
+.feature-selector {
+  border-radius: 10px;
+  padding: 10px 10px;
+  background: transparent;
+  transition:
+    background-color 200ms ease-in-out,
+    color 200ms ease-in-out;
+}
+.feature-selector > img { border-radius: 6px; }
+.feature-selector[aria-pressed="true"],
+.feature-selector:is(.intent-active, :focus-visible) {
+  background: color-mix(in srgb, var(--color-elevated) 82%, transparent);
+  color: var(--color-ink);
+}
+.feature-selector:focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .feature-selector { transition: none; }
+}

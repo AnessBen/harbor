@@ -36,6 +36,19 @@ test("tempo alone and missing drum evidence cannot approve a dance", () => {
   }
 });
 
+test("loud grid-aligned drums do not hide quieter syncopated attacks", () => {
+  const fit = createMikuDanceFit();
+  let score = 0;
+  for (let time = 0; time < 24000; time += 20) {
+    const beat = time / 400;
+    const onBeat = time % 400 === 0;
+    const offBeat = [200, 600, 1000].includes(time % 1600);
+    fit.sample(time, onBeat ? 1 : offBeat ? .25 : 0, 0);
+    score = fit.advance(20, time, beat, 400, true);
+  }
+  assert.ok(score < .55, "a loud steady layer cannot mask a syncopated drum pattern");
+});
+
 test("a loud fast section with poor choreography fit never starts a playful routine", () => {
   const dance = createMikuDance();
   for (let time = 0; time < 60000; time += 20) {

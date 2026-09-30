@@ -203,7 +203,7 @@ export type Settings = {
   navIconAnimations: boolean;
   bigPicturePlayerUi: "tenFoot" | "desktop";
   screensaver: boolean;
-  screensaverStyle: "ambient" | "catBoat" | "custom";
+  screensaverStyle: "ambient" | "catBoat" | "halloween" | "custom";
   screensaverMedia: ScreensaverMedia[];
   screensaverMediaId: string | null;
   screensaverDelayMin: number;
@@ -277,6 +277,8 @@ export type Settings = {
   discordShowPartyJoin: boolean;
   discordMusicPresence: boolean;
   playerEngine: "auto" | "html5" | "mpv";
+  /** resize shrinks the Harbor window; native floats the video in its own window. */
+  pipBehavior: "resize" | "native";
   playerShellId: string;
   playerChromeTheme: "auto" | "default" | "stremio";
   playerMenuBlack: boolean;
@@ -315,6 +317,7 @@ export type Settings = {
   streamCacheMaxGb: number;
   deleteWatchedDownloads: boolean;
   streamCacheDir: string;
+  playbackCacheDir: string;
   remoteStreamServerUrl: string;
   remoteStreamServerStrict: boolean;
   castAlwaysTranscode: boolean;
@@ -396,6 +399,11 @@ export type Settings = {
   playbackSourcePreference: "ask" | "local" | "online" | "home-server";
   preferredMediaServerId: string | null;
   localMinFileSizeMb: number;
+  /** Re-scan the folders already in the local library on open, adding only files it has not seen.
+   * Existing entries are never rebuilt, so anything corrected with Identify stays corrected. */
+  localAutoScan: boolean;
+  /** How an auto-scan identifies a new file, remembered from the last manual scan. */
+  localScanMode: "tmdb" | "nfo" | null;
   catalogsPinned: string[];
   catalogsHidden: string[];
   posterBaseUrl: string;
@@ -442,6 +450,7 @@ export type Settings = {
   playerSvp: boolean;
   svpVpyPath: string;
   svpScope: "all" | "anime" | "non-anime";
+  svpTargetFps: "double" | "48" | "60" | "display";
   seekBackStepSec: number;
   seekForwardStepSec: number;
   seekBackStepShortSec: number;

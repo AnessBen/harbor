@@ -65,7 +65,7 @@ const BROWSE_MODES: Array<{
 
 void Library;
 
-export function AddonsView() {
+export function AddonsView({ active = true }: { active?: boolean }) {
   const t = useT();
   const { settings, update } = useSettings();
   const { authKey } = useAuth();
@@ -76,8 +76,6 @@ export function AddonsView() {
   const [tab, setTab] = useState<Tab>(() => consumeAddonsTab() ?? "discover");
 
   useEffect(() => {
-    const requested = consumeAddonsTab();
-    if (requested) setTab(requested);
     void prefetchTopAddonLogos();
     void import("@/lib/providers/stremio-addons-index").then((m) =>
       m.ensureCommunityIndex().catch(() => undefined),
@@ -97,6 +95,16 @@ export function AddonsView() {
     if (!settings.showAdultAddons && categoryFilter === "nsfw") setCategoryFilter(null);
   }, [settings.showAdultAddons, categoryFilter]);
   const [query, setQuery] = useState("");
+  useEffect(() => {
+    if (!active) return;
+    const requested = consumeAddonsTab();
+    if (!requested) return;
+    // Settings can reopen this still-mounted page. Explicit Manage navigation
+    // should show the full collection rather than a previous catalog search.
+    setTab(requested);
+    setQuery("");
+    setCategoryFilter(null);
+  }, [active]);
   const goToCategory = (cat: string) => {
     setCategoryFilter(cat);
     setTab("browse");
@@ -610,9 +618,9 @@ function RemoteOrLocalDetail({
       if (carried) {
         const manifest =
           (carried.manifest as ResolvedAddon["manifest"] | null) ??
-          ((await fetchManifestAt(carried.manifestUrl).catch(() => null)) as
-            | ResolvedAddon["manifest"]
-            | null);
+          ((await fetchManifestAt(carried.manifestUrl).catch(
+            () => null,
+          )) as ResolvedAddon["manifest"] | null);
         if (cancelled) return;
         if (manifest) {
           setRemote({

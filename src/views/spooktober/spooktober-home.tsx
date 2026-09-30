@@ -15,6 +15,7 @@ export function SpooktoberHome({ active = true, onReady }: { active?: boolean; o
   const [available, setAvailable] = useState(isSpooktoberSeason);
   const [screen, setScreen] = useState<"home" | "festival">("home");
   const [festivalOpened, setFestivalOpened] = useState(false);
+  const [entryToken, setEntryToken] = useState(0);
   const [playlistRequest, setPlaylistRequest] = useState<SpooktoberPlaylistRequest | null>(null);
   const close = useCallback(() => {
     setScreen("home");
@@ -22,7 +23,7 @@ export function SpooktoberHome({ active = true, onReady }: { active?: boolean; o
     requestAnimationFrame(() => document.querySelector<HTMLButtonElement>("[data-spooktober-invitation]")?.focus({ preventScroll: true }));
   }, []);
   const prepareFestival = () => setFestivalOpened(true);
-  const openFestival = () => { prepareFestival(); setScreen("festival"); };
+  const openFestival = () => { prepareFestival(); setEntryToken(value => value + 1); setScreen("festival"); };
   useEffect(() => {
     const receive = () => {
       const request = takeSpooktoberPlaylistRequest();
@@ -55,7 +56,7 @@ export function SpooktoberHome({ active = true, onReady }: { active?: boolean; o
         <Home active={active && screen === "home"} onReady={onReady} seasonalInvitation={available && !isDismissed("spooktober") ? <SpooktoberInvitation onDismiss={() => dismiss("spooktober")} onOpen={openFestival} onPrepare={prepareFestival} /> : undefined} />
       </div>
       {festivalOpened && <div className="spooktober-surface" data-spooktober-surface hidden={screen !== "festival"} inert={screen !== "festival"}>
-        <Suspense fallback={<SpooktoberLoadingScene onBack={active && screen === "festival" ? close : undefined} />}><Festival active={active && screen === "festival"} onBack={close} playlistRequest={playlistRequest} /></Suspense>
+        <Suspense fallback={<SpooktoberLoadingScene onBack={active && screen === "festival" ? close : undefined} />}><Festival active={active && screen === "festival"} onBack={close} playlistRequest={playlistRequest} entryToken={entryToken} /></Suspense>
       </div>}
     </div>
   );

@@ -2,30 +2,42 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createMikuExpression } from "../src/lib/music/miku-expression";
 
-test("eyelids hold an expression through beat variations instead of blinking on each nod", () => {
-  for (const period of [350, 500, 800]) {
-    const eyes = createMikuExpression();
-    let previous = false, changes = 0;
-    for (let time = 0; time < 15000; time += 16) {
-      const moving = Math.sin(time / period * Math.PI * 2) > -0.7;
-      const closed = eyes.advance(16, true, moving);
-      if (closed !== previous) changes++;
-      previous = closed;
-    }
-    assert.equal(changes, 1);
-    assert.equal(previous, true);
+test("headphone listening keeps the eyes closed without periodic looks up", () => {
+  const eyes = createMikuExpression();
+  eyes.advance(200, true);
+  for (let time = 0; time < 120000; time += 20) {
+    assert.deepEqual(eyes.advance(20, true), { closure: 1, kind: "enjoy" });
   }
 });
 
-test("a brief dip keeps eyes closed; a sustained rest, pause or new track opens them", () => {
+test("eyes ease shut in wall time, including at ten frames per second", () => {
+  for (const step of [10, 100]) {
+    const eyes = createMikuExpression();
+    let previous = 0, elapsed = 0;
+    while (elapsed < 300) {
+      elapsed += step;
+      const p = eyes.advance(step, true);
+      assert.ok(p.closure >= previous && p.closure <= 1);
+      if (elapsed < 180) assert.ok(p.closure > 0 && p.closure < 1);
+      else assert.equal(p.closure, 1);
+      previous = p.closure;
+    }
+  }
+});
+
+test("a delayed frame does not make her look up", () => {
   const eyes = createMikuExpression();
-  for (let i = 0; i < 70; i++) eyes.advance(16, true, true);
-  for (let i = 0; i < 60; i++) assert.equal(eyes.advance(16, true, false), true);
-  for (let i = 0; i < 100; i++) eyes.advance(16, true, false);
-  assert.equal(eyes.advance(16, true, false), false);
-  for (let i = 0; i < 70; i++) eyes.advance(16, true, true);
-  assert.equal(eyes.advance(16, false, true), false);
-  for (let i = 0; i < 70; i++) eyes.advance(16, true, true);
+  eyes.advance(200, true);
+  for (const elapsed of [1000, 10000, NaN, -10]) {
+    assert.deepEqual(eyes.advance(elapsed, true), { closure: 1, kind: "enjoy" });
+  }
+});
+
+test("leaving the listening pose or resetting clears the eye overlay", () => {
+  const eyes = createMikuExpression();
+  eyes.advance(200, true);
+  assert.deepEqual(eyes.advance(0, false), { closure: 0, kind: "open" });
+  assert.equal(eyes.advance(90, true).closure, .5);
   eyes.reset();
-  assert.equal(eyes.advance(16, true, true), false);
+  assert.equal(eyes.advance(0, true).closure, 0);
 });

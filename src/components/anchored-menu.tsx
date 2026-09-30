@@ -10,12 +10,14 @@ export function AnchoredMenu({
   open,
   onClose,
   width,
+  backdrop = true,
   children,
 }: {
   anchorRef: RefObject<HTMLElement | null>;
   open: boolean;
   onClose: () => void;
   width?: number;
+  backdrop?: boolean;
   children: ReactNode;
 }) {
   const [pos, setPos] = useState<{
@@ -57,6 +59,11 @@ export function AnchoredMenu({
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
+    const onPointer = (event: PointerEvent) => {
+      const target = event.target as Node | null;
+      if (target && !anchorRef.current?.contains(target) && !menuRef.current?.contains(target)) onClose();
+    };
+    if (!backdrop) document.addEventListener("pointerdown", onPointer, true);
     window.addEventListener("resize", place);
     window.addEventListener("scroll", onScroll, true);
     window.addEventListener("keydown", onKey);
@@ -65,14 +72,15 @@ export function AnchoredMenu({
       window.removeEventListener("resize", place);
       window.removeEventListener("scroll", onScroll, true);
       window.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onPointer, true);
     };
-  }, [open, anchorRef, width, onClose]);
+  }, [open, anchorRef, width, onClose, backdrop]);
 
   if (!open) return null;
 
   return createPortal(
     <>
-      <div className="fixed inset-0 z-[300]" onMouseDown={onClose} />
+      {backdrop && <div className="fixed inset-0 z-[300]" onMouseDown={onClose} />}
       <div
         ref={menuRef}
         data-anchored-up={pos?.up || undefined}

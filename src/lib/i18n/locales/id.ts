@@ -32,6 +32,10 @@ import bpSports from "./id/bp-sports";
 import nytTv from "./id/nyt-tv";
 
 const id: Record<string, string> = {
+  "Translations": "Terjemahan",
+  "Translating…": "Menerjemahkan…",
+  "Showing {lang}": "Menampilkan {lang}",
+  "Show all": "Tampilkan semua",
   ...mediaStart,
   ...spooktober,
   ...videoCast,

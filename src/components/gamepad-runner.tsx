@@ -249,7 +249,13 @@ export function GamepadRunner() {
     const target = document.elementFromPoint(position.current.x, position.current.y);
     const field = isTextField(target) ? target : selectedField;
     if (field) {
-      setKeyboard(field);
+      // A page-owned keyboard must not stack with the generic controller one.
+      if (field.hasAttribute("data-controller-keyboard-managed")) {
+        setKeyboard(null);
+        field.click();
+      } else {
+        setKeyboard(field);
+      }
       return;
     }
     const seek = target?.closest<HTMLElement>("[data-player-seekbar]");

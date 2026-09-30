@@ -1,4 +1,6 @@
 const settingsRefinements: Record<string, string> = {
+  "Playback cache folder": "Папка кэша воспроизведения",
+  "Temporary video buffering, including debrid streams. Applies when playback restarts; existing files stay in their current folder.": "Временная буферизация видео, включая потоки debrid. Применяется при повторном запуске воспроизведения; существующие файлы остаются в текущей папке.",
   "1 option formatted correctly": "1 параметр отформатирован правильно",
   "1. Open Movies\n2. Select a title\n3. Press Play\n4. Describe what happens": "1. Откройте раздел «Фильмы»\n2. Выберите название\n3. Нажмите «Смотреть»\n4. Опишите, что произошло",
   "3 to 24 letters, numbers, or underscores.": "От 3 до 24 букв, цифр или знаков подчёркивания.",

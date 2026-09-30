@@ -68,7 +68,7 @@ function hasPosterArtwork(src: string): Promise<boolean> {
       image.onerror = null;
       resolve(usable);
     };
-    const timer = setTimeout(() => finish(false), 4000);
+    const timer = setTimeout(() => finish(false), 8000);
     image.onerror = () => finish(false);
     image.onload = () => {
       try {
@@ -90,17 +90,20 @@ function hasPosterArtwork(src: string): Promise<boolean> {
         finish(true);
       }
     };
-    image.src = src;
+    // Metahub's catalog URL redirects without a CORS header. The image host
+    // itself allows pixel inspection, so bypass that redirect for this probe.
+    image.src = src.replace(/^https:\/\/images\.metahub\.space\//i, "https://live.metahub.space/");
   });
 }
 
-async function previewPicks(items: Meta[]): Promise<Meta[]> {
+async function previewPicks(items: Meta[], onBatch: (picks: Meta[]) => void): Promise<Meta[]> {
   const candidates = items.filter((item) => item.poster && item.background && Number(item.imdbRating) > 0 && !item.adult).slice(0, 20);
   const picks: Meta[] = [];
   for (let index = 0; index < candidates.length; index += 4) {
     const batch = candidates.slice(index, index + 4);
     const usable = await Promise.all(batch.map((item) => hasPosterArtwork(item.poster!)));
     picks.push(...batch.filter((_, i) => usable[i]));
+    if (usable.some(Boolean)) onBatch([...picks]);
   }
   return picks;
 }
@@ -110,17 +113,22 @@ function refreshSamples(): Promise<void> {
   if (pending) return pending;
   if (Date.now() - refreshedAt < 60 * 60 * 1000) return Promise.resolve();
   pending = (async () => {
+    const publish = (picks: Meta[]) => {
+      samples = picks;
+      listeners.forEach((listener) => listener());
+    };
     // Unrated announcements often carry title-only placeholder artwork.
-    let picks = await previewPicks(await topSeries().catch(() => []));
-    if (!picks.length) picks = await previewPicks(await topMovies().catch(() => []));
+    let picks = await previewPicks(await topSeries().catch(() => []), publish);
+    if (!picks.length) picks = await previewPicks(await topMovies().catch(() => []), publish);
     if (picks.length) {
       const first = picks[0];
       if (!first.background || !first.description) {
         const detail = await cinemetaMeta(first.type === "movie" ? "movie" : "series", first.id).catch(() => null);
-        if (detail) picks[0] = { ...first, ...detail, poster: detail.poster || first.poster };
+        if (detail) {
+          picks = [{ ...first, ...detail, poster: first.poster }, ...picks.slice(1)];
+          publish(picks);
+        }
       }
-      samples = picks;
-      listeners.forEach((listener) => listener());
     }
     // Avoid repeatedly retrying an offline provider on every slider change.
     refreshedAt = Date.now();

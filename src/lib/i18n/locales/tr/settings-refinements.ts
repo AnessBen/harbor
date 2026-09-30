@@ -1,4 +1,6 @@
 const settingsRefinements: Record<string, string> = {
+  "Playback cache folder": "Oynatma önbelleği klasörü",
+  "Temporary video buffering, including debrid streams. Applies when playback restarts; existing files stay in their current folder.": "Debrid akışları dahil geçici video arabelleği. Oynatma yeniden başlatıldığında uygulanır; mevcut dosyalar bulundukları klasörde kalır.",
   "1 option formatted correctly": "1 seçenek doğru biçimlendirildi",
   "1. Open Movies\n2. Select a title\n3. Press Play\n4. Describe what happens": "1. Filmler'i açın\n2. Bir yapım seçin\n3. Oynat'a basın\n4. Ne olduğunu açıklayın",
   "3 to 24 letters, numbers, or underscores.": "3 ila 24 harf, rakam veya alt çizgi.",

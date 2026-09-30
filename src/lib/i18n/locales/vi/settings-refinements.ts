@@ -1,4 +1,6 @@
 const settingsRefinements: Record<string, string> = {
+  "Playback cache folder": "Thư mục bộ nhớ đệm phát video",
+  "Temporary video buffering, including debrid streams. Applies when playback restarts; existing files stay in their current folder.": "Lưu video tạm thời vào bộ đệm, bao gồm luồng debrid. Áp dụng khi bắt đầu phát lại; các tệp hiện có vẫn ở thư mục hiện tại.",
   "1 option formatted correctly": "Đã định dạng đúng 1 tùy chọn",
   "1. Open Movies\n2. Select a title\n3. Press Play\n4. Describe what happens": "1. Mở Phim\n2. Chọn một phim\n3. Nhấn Phát\n4. Mô tả điều xảy ra",
   "3 to 24 letters, numbers, or underscores.": "Từ 3 đến 24 chữ cái, chữ số hoặc dấu gạch dưới.",

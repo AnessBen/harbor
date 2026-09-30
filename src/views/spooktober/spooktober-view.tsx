@@ -17,16 +17,16 @@ import "./spooktober-view.css";
 const NATIVE_ENTRY = "/spooktober/native-entry.js?v=20260929-playlist-depth";
 type Item = Record<string, unknown>;
 type Intent = { intent: string; item?: Item; id?: string; url?: string };
-type Runtime = { setActive: (active: boolean) => void; back: () => boolean; dispose: () => void };
+type Runtime = { setActive: (active: boolean) => void; forget: () => void; back: () => boolean; dispose: () => void };
 type NativeModule = { mountSpooktober: (options: { root: ShadowRoot; scroller: HTMLElement; onIntent: (message: Intent) => void }) => Promise<Runtime> };
-type SpooktoberViewProps = { active: boolean; onBack: () => void; playlistRequest?: SpooktoberPlaylistRequest | null };
+type SpooktoberViewProps = { active: boolean; onBack: () => void; playlistRequest?: SpooktoberPlaylistRequest | null; entryToken?: number };
 const text = (item: Item, key: string) => typeof item[key] === "string" ? item[key] as string : "";
 
 export function SpooktoberView(props: SpooktoberViewProps) {
   return <SpooktoberMusicProvider active={props.active}><SpooktoberContent {...props} /></SpooktoberMusicProvider>;
 }
 
-function SpooktoberContent({ active, onBack, playlistRequest }: SpooktoberViewProps) {
+function SpooktoberContent({ active, onBack, playlistRequest, entryToken }: SpooktoberViewProps) {
   const t = useT();
   const { openMeta } = useView();
   const { settings } = useSettings();
@@ -112,6 +112,7 @@ function SpooktoberContent({ active, onBack, playlistRequest }: SpooktoberViewPr
       if (runtime.current === mounted) runtime.current = null;
     };
   }, [attempt, NATIVE_ENTRY]);
+  useEffect(() => { if (entryToken) runtime.current?.forget(); }, [entryToken, ready]);
   useEffect(() => { runtime.current?.setActive(isVisible); }, [isVisible, ready]);
   useEffect(() => {
     const root = host.current?.shadowRoot;

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync } from "node:fs";
 import ts from "typescript";
+import { backingTrackVersion } from "../src/lib/music/source-version";
 import { planDailyMixes } from "../src/lib/music/daily-mixes";
 import type { DailyMix } from "../src/lib/music/daily-mixes";
 import type { MusicPlaylist, MusicTrack } from "../src/lib/music/types";
@@ -46,6 +47,8 @@ const playlists: MusicPlaylist[] = [
   },
 ];
 
+const artistGenres = Object.fromEntries([...RAP.map(name => [name.toLowerCase(), ["hip-hop"]]), ...DANCE.map(name => [name.toLowerCase(), ["hands up"]])]);
+
 function scene(artist: string): "rap" | "dance" | "other" {
   if (RAP.includes(artist)) return "rap";
   if (DANCE.includes(artist)) return "dance";
@@ -53,7 +56,7 @@ function scene(artist: string): "rap" | "dance" | "other" {
 }
 
 test("playlist membership keeps unrelated scenes out of one mix", () => {
-  const mixes = planDailyMixes(shuffled, [], {}, 1000, { playlists });
+  const mixes = planDailyMixes(shuffled, [], {}, 1000, { playlists, artistGenres });
   assert.ok(mixes.length > 0, "expected at least one mix");
   for (const mix of mixes) {
     const scenes = new Set(mix.artists.map(scene));
@@ -65,9 +68,9 @@ test("playlist membership keeps unrelated scenes out of one mix", () => {
   }
 });
 
-test("every mix names more than one artist", () => {
-  for (const mix of planDailyMixes(shuffled, [], {}, 1000, { playlists })) {
-    assert.ok(mix.artists.length >= 2, `mix ${mix.index} had ${mix.artists.length} artist(s)`);
+test("every mix has a usable artist seed", () => {
+  for (const mix of planDailyMixes(shuffled, [], {}, 1000, { playlists, artistGenres })) {
+    assert.ok(mix.artists.length >= 1, `mix ${mix.index} had ${mix.artists.length} artist(s)`);
   }
 });
 
@@ -76,8 +79,9 @@ test("extra sources widen the pool beyond recents and liked", () => {
   const wide = planDailyMixes([track("Odetari", "a"), track("Odetari", "b")], [], {}, 1000, {
     extra: RAP.map((artist) => track(artist, "s")),
     playlists,
+    artistGenres,
   });
-  assert.equal(narrow.length, 0, "one artist alone cannot form a mix");
+  assert.equal(narrow.length, 1, "missing genre metadata keeps a focused Daily Mix available");
   assert.ok(wide.length > 0, "extra sources should produce a mix");
 });
 
@@ -86,14 +90,18 @@ function dailyMixes(loadPlaylistLikeThis: (...args: unknown[]) => Promise<MusicT
     readFileSync(new URL("../src/lib/music/daily-mixes.ts", import.meta.url), "utf8"),
     { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } },
   ).outputText;
+  let cached: MusicTrack[] | null = null;
   const mocks: Record<string, unknown> = {
+    "./source-version": { backingTrackVersion },
     "./search-artists": {
       artistCreditParts: (name: string) => name.split(",").map((part) => part.trim()),
     },
     "./track-identity": {
       musicTrackIdentity: (entry: MusicTrack) => `${entry.artist}|${entry.title}`.toLowerCase(),
     },
-    "./radio": { loadPlaylistLikeThis },
+    "./artist-authority": { resolveArtist: async (name: string) => ({ canonical: { name } }) },
+    "./catalog": { artistTop: loadPlaylistLikeThis },
+    "./recent-context": { hydrateMusicContextTracks: async () => {}, heldMusicContextTracks: () => cached, rememberMusicContextTracks: (_kind: string, _id: string, tracks: MusicTrack[]) => { cached = tracks; } },
   };
   const module = { exports: {} };
   new Function("require", "module", "exports", code)(
@@ -143,12 +151,27 @@ test("the fallback skips what was already heard", async () => {
   );
 });
 
-test("a station that builds is never replaced by the seeds", async () => {
+test("catalog expansion rejects unrelated artists instead of filling a genre gap", async () => {
   const built = [track("Someone Else", "z1"), track("Another", "z2")];
   const api = dailyMixes(async () => built);
   const out = await api.loadDailyMixTracks(mixOf([track("Juice WRLD", "a1")]));
   assert.deepEqual(
     out.map((entry) => entry.title),
-    ["z1", "z2"],
+    ["a1"],
   );
+});
+
+test("listening adjacency and a mixed playlist are not evidence of a shared genre", () => {
+  const mixes = planDailyMixes(shuffled, [], {}, 1000, { playlists });
+  assert.equal(mixes.length, 6);
+  assert.ok(mixes.every(mix => mix.artists.length === 1));
+});
+
+test("reopening a Daily Mix reuses its queue without another catalog request", async () => {
+  let calls = 0;
+  const api = dailyMixes(async () => { calls++; return [track("Juice WRLD", "expanded")]; });
+  const mix = mixOf([track("Juice WRLD", "seed")]);
+  const first = await api.loadDailyMixTracks(mix);
+  assert.deepEqual(await api.loadDailyMixTracks(mix), first);
+  assert.equal(calls, 1);
 });

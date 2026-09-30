@@ -172,6 +172,7 @@ export function MusicTrackMenu({
     <AnchoredMenu anchorRef={anchorRef} open={open} onClose={onClose} width={220}>
       <div
         role="menu"
+        data-dropdown-menu
         ref={menuRef}
         onKeyDown={(event) => {
           const buttons = [

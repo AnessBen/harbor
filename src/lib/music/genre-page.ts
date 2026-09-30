@@ -1,5 +1,5 @@
 import { safeFetch } from "@/lib/safe-fetch";
-import { scheduleMusicBrainzRequest } from "./recording-profile";
+import { MUSICBRAINZ_HEADERS, scheduleMusicBrainzRequest } from "./recording-profile";
 import { resolveRoster } from "./mb-roster";
 import type { RankedMusicSearchResults } from "./sources";
 import { artistIdentityKey } from "./artist-authority";
@@ -12,7 +12,7 @@ type Cached = { until: number; value: string[] };
 const tagCache = new Map<string, Cached>();
 
 function endpoint(tag: string): string {
-  const query = encodeURIComponent(`tag:"${tag.replace(/"/g, "")}"`);
+  const query = encodeURIComponent(`tag:"${tag.replace(/"/g, "")}" AND NOT type:other`);
   return `https://musicbrainz.org/ws/2/artist?query=${query}&limit=${TAG_LIMIT}&fmt=json`;
 }
 
@@ -24,7 +24,7 @@ export async function genreArtistNames(tag: string, signal?: AbortSignal): Promi
   const names = await scheduleMusicBrainzRequest(async () => {
     const response = await safeFetch(endpoint(key), {
       signal,
-      headers: { Accept: "application/json" },
+      headers: MUSICBRAINZ_HEADERS,
     });
     if (!response.ok) throw new Error("Genre lookup is unavailable");
     const body = (await response.json()) as { artists?: Array<{ name?: unknown }> };

@@ -154,19 +154,49 @@ fn tempo_version(track: &MusicTrack) -> Option<&'static str> {
     }
 }
 
+fn backing_version(track: &MusicTrack) -> Option<&'static str> {
+    let label = normalized(&format!(
+        "{} {}",
+        track.title,
+        track.version.as_deref().unwrap_or("")
+    ));
+    let words = label.split_whitespace().collect::<Vec<_>>();
+    if words.contains(&"karaoke") || words.windows(2).any(|w| w == ["sing", "along"]) {
+        Some("karaoke")
+    } else if words.contains(&"instrumental")
+        || words.windows(2).any(|w| {
+            matches!(
+                w,
+                ["backing", "track"]
+                    | ["no", "vocals"]
+                    | ["without", "vocals"]
+                    | ["vocal", "removed"]
+            )
+        })
+    {
+        Some("instrumental")
+    } else {
+        None
+    }
+}
+
 pub(super) fn candidate_score(target: &MusicTrack, candidate: &MusicTrack) -> Option<i32> {
+    if backing_version(target) != backing_version(candidate) {
+        return None;
+    }
     // A close duration alone does not make a speed edit the requested recording.
     if tempo_version(target) != tempo_version(candidate) {
         return None;
     }
     let title = similarity(&target.title, &candidate.title);
     // An upload credits the artist in its title and carries the uploader as the artist.
-    let artist = similarity(&target.artist, &candidate.artist)
-        .max(if credits_artist(&target.artist, &candidate.title) {
+    let artist = similarity(&target.artist, &candidate.artist).max(
+        if credits_artist(&target.artist, &candidate.title) {
             70
         } else {
             0
-        });
+        },
+    );
     if title < 55 || artist < 35 {
         return None;
     }
@@ -271,6 +301,22 @@ mod tests {
         }
     }
 
+    #[test]
+    fn backing_tracks_do_not_replace_vocal_recordings() {
+        let vocal = track("KEEP GOING");
+        for title in [
+            "KEEP GOING (Instrumental)",
+            "KEEP GOING karaoke",
+            "KEEP GOING - no vocals",
+        ] {
+            assert!(candidate_score(&vocal, &track(title)).is_none());
+        }
+        assert!(candidate_score(&vocal, &track("KEEP GOING (Official Audio)")).is_some());
+        let instrumental = track("KEEP GOING (Instrumental)");
+        assert!(candidate_score(&instrumental, &instrumental).is_some());
+        assert!(candidate_score(&instrumental, &vocal).is_none());
+    }
+
     fn song(title: &str, seconds: u64, explicit: Option<bool>) -> MusicTrack {
         let mut built = track(title);
         built.title = title.to_string();
@@ -284,7 +330,11 @@ mod tests {
     fn a_reupload_that_names_the_artist_in_its_title_is_still_the_song() {
         let mut target = song("Runnin' Thru the 7th with My Woadies", 205, None);
         target.artist = "$uicideboy$, Pouya".to_string();
-        let mut upload = song("$UICIDEBOY$ & Pouya - RUNNIN THRU THE 7TH WITH MY WOADIES", 205, None);
+        let mut upload = song(
+            "$UICIDEBOY$ & Pouya - RUNNIN THRU THE 7TH WITH MY WOADIES",
+            205,
+            None,
+        );
         upload.artist = "crazytim23".to_string();
         assert!(candidate_score(&target, &upload).is_some());
     }

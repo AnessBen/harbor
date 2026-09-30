@@ -141,6 +141,12 @@ impl MusicDeck {
         Ok(())
     }
 
+    /// Whether this deck is silent only because a video took over, which is the one case
+    /// where offering to start it again is meaningful.
+    pub(super) fn paused_for_video(&self) -> bool {
+        self.paused_for_video.load(Ordering::SeqCst)
+    }
+
     pub(super) async fn pause_for_video(&self) -> Result<bool, String> {
         let slot = self.inner.lock().await;
         let Some(session) = slot.as_ref() else {

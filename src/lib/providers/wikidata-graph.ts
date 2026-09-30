@@ -193,6 +193,13 @@ function parseSiblings(rows: Binding[]): Map<string, AdaptationSibling[]> {
 }
 
 function parseSources(rows: Binding[]): AdaptationSource[] {
+function namedAuthors(raw: string | undefined): string[] {
+  return (raw ?? "")
+    .split(" & ")
+    .map((name) => name.trim())
+    .filter((name) => name && !/^https?:\/\//i.test(name) && !/^Q\d+$/.test(name));
+}
+
   const out: AdaptationSource[] = [];
   for (const row of rows) {
     const qid = str(row, "src");
@@ -201,7 +208,7 @@ function parseSources(rows: Binding[]): AdaptationSource[] {
     out.push({
       qid,
       title,
-      authors: (str(row, "authors") ?? "").split(" & ").filter(Boolean),
+      authors: namedAuthors(str(row, "authors")),
       year: num(row, "pub"),
       openLibraryId: str(row, "olId"),
       gutenbergId: str(row, "gutId"),

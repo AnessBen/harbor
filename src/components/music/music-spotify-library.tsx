@@ -1,3 +1,7 @@
+import { MusicPlaylistToolbar } from "@/components/music/music-playlist-toolbar";
+import { usePlaylistFilters } from "@/lib/music/use-playlist-filters";
+import { LibraryTrackList } from "@/components/music/music-library-parts";
+import { useMusicPlayback } from "@/lib/music/use-music-playback";
 import { MusicCollectionControls } from "./music-collection-controls";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -12,7 +16,6 @@ import {
 import { useT } from "@/lib/i18n";
 import { useSectionBack } from "@/lib/section-back";
 import { connectSource } from "@/lib/music/catalog";
-import { enqueueMusic } from "@/lib/music/player";
 import {
   createSpotifyPlaylist,
   importSpotifyCollection,
@@ -25,10 +28,8 @@ import type { MusicPlaylist, MusicTrack } from "@/lib/music/types";
 import { registerMusicQueueOrigin } from "@/lib/music/playback-origin";
 import { openUrl } from "@/lib/window";
 import { useMusicConnections } from "./music-connections";
-import { useMusicPlaylistPicker } from "./music-playlist-picker";
 import { MusicServiceLogo } from "./music-service-logo";
 import { useMusicSourcePicker } from "./music-source-picker";
-import { MusicTrackRow } from "./music-track-row";
 import "./music-spotify-library.css";
 
 export function MusicSpotifyLibrary({
@@ -45,7 +46,6 @@ export function MusicSpotifyLibrary({
   const account = connections.connections.find((connection) => connection.id === "spotify");
   const connected = account?.status === "connected";
   const { openSourcePicker } = useMusicSourcePicker();
-  const { openPlaylistPicker } = useMusicPlaylistPicker();
   const [kind, setKind] = useState<"playlists" | "liked">(initialKind);
   const [selected, setSelected] = useState<SpotifyLibraryPlaylist | null>(null);
   const [page, setPage] = useState<SpotifyLibraryPage | null>(null);
@@ -64,6 +64,10 @@ export function MusicSpotifyLibrary({
   const importAbort = useRef<AbortController | null>(null);
   const origin = useRef<{ id: string; scroll: Element | null; top: number } | null>(null);
   const selectedId = selected?.id;
+  const player = useMusicPlayback();
+  const collection = usePlaylistFilters(selectedId ?? kind, page?.tracks, { addedAt: page?.trackAddedAt, recentFirst: kind === "liked" && !selected });
+  const filteringCollection = collection.active || collection.filters.sort !== "default";
+
 
   const more = useRef<HTMLButtonElement | null>(null);
   const read = useCallback(
@@ -85,6 +89,7 @@ export function MusicSpotifyLibrary({
             ? {
                 ...next,
                 tracks: [...previous.tracks, ...next.tracks],
+                trackAddedAt: { ...previous.trackAddedAt, ...next.trackAddedAt },
                 playlists: [...previous.playlists, ...next.playlists],
                 skipped: previous.skipped + next.skipped,
               }
@@ -121,7 +126,7 @@ export function MusicSpotifyLibrary({
   useEffect(() => {
     const node = more.current;
     const next = page?.nextOffset;
-    if (!node || next == null || loading || working) return;
+    if (!node || next == null || loading || working || failure || filteringCollection) return;
     const watch = new IntersectionObserver(
       (entries) => {
         if (entries.some((entry) => entry.isIntersecting)) void read(next, true);
@@ -130,7 +135,11 @@ export function MusicSpotifyLibrary({
     );
     watch.observe(node);
     return () => watch.disconnect();
-  }, [page?.nextOffset, loading, working, read]);
+  }, [page?.nextOffset, loading, working, read, failure, filteringCollection]);
+
+  useEffect(() => {
+    if (active && filteringCollection && page?.nextOffset != null && !loading && !working && !failure) void read(page.nextOffset, true);
+  }, [active, filteringCollection, page?.nextOffset, loading, working, failure, read]);
 
   useEffect(() => {
     const changed = () => setRefresh((value) => value + 1);
@@ -431,7 +440,7 @@ export function MusicSpotifyLibrary({
           )}
           {(selected || kind === "liked") && !!page?.tracks.length && (
             <MusicCollectionControls
-              tracks={page.tracks}
+              tracks={collection.tracks}
               onPlay={play}
               disabled={!!working}
             />
@@ -471,19 +480,12 @@ export function MusicSpotifyLibrary({
               ))}
             </div>
           ) : (
-            <div className="music-spotify-tracks">
-              {page?.tracks.map((track, index) => (
-                <MusicTrackRow
-                  key={`${track.id}:${index}`}
-                  track={track}
-                  index={index + 1}
-                  showDuration
-                  onPlay={() => play(track, page?.tracks ?? [])}
-                  onAddToQueue={() => enqueueMusic(track)}
-                  onAddToPlaylist={() => openPlaylistPicker(track)}
-                />
-              ))}
-            </div>
+            <>
+              <MusicPlaylistToolbar controller={collection} loading={loading} />
+              <LibraryTrackList title="" subtitle="" showControls={false} tracks={collection.tracks} view={collection.filters.view}
+                likedIds={player.likedIds} selectedPlaylist={null} onPlay={play}
+                emptyCopy={t(collection.active ? "music.searchEmpty" : "music.spotifyLibrary.empty")} />
+            </>
           )}
           {loading && (
             <p role="status" className="music-spotify-actions text-sm text-ink-muted">

@@ -5,6 +5,14 @@ const NEAR = 2;
 const DEPTH = 32;
 const PATIENCE = 40;
 const INTERRUPTS = ["wheel", "touchstart", "pointerdown", "keydown"] as const;
+export const MUSIC_SCROLL_POSITION_EVENT = "harbor:music-scroll-position";
+
+function position(el: HTMLElement, top: number): void {
+  el.scrollTo({ top, behavior: "instant" });
+  // Child layout effects run first. Recheck sticky headers after the parent restores
+  // the destination scroll position, before the browser paints the new page.
+  el.dispatchEvent(new Event(MUSIC_SCROLL_POSITION_EVENT));
+}
 
 type Layer = { key: string; group: string; top: number };
 type Aim = { layer: Layer; top: number };
@@ -39,7 +47,7 @@ function settle(el: HTMLElement, target: number, done: () => void): () => void {
     if (over) return;
     const height = el.clientHeight;
     const reach = el.scrollHeight - height;
-    if (height > 0) el.scrollTop = Math.min(target, Math.max(0, reach));
+    if (height > 0) position(el, Math.min(target, Math.max(0, reach)));
     stable = reach === last ? stable + 1 : 0;
     last = reach;
     if (
@@ -83,7 +91,7 @@ export function useMusicScrollContinuity(ref: RefObject<HTMLElement | null>, key
         layers.current = [{ key: seen.current, group: groupOf(seen.current), top: 0 }];
         offset.current = 0;
         const el = ref.current;
-        if (el) el.scrollTop = 0;
+        if (el) position(el, 0);
       },
     };
     session = mine;
@@ -127,7 +135,7 @@ export function useMusicScrollContinuity(ref: RefObject<HTMLElement | null>, key
       stack.push({ key, group, top: 0 });
       if (stack.length > DEPTH) stack.splice(0, stack.length - DEPTH);
       offset.current = 0;
-      el.scrollTop = 0;
+      position(el, 0);
       return;
     }
 
@@ -136,7 +144,7 @@ export function useMusicScrollContinuity(ref: RefObject<HTMLElement | null>, key
     const target = layer.top;
     offset.current = target;
     if (target <= NEAR) {
-      el.scrollTop = 0;
+      position(el, 0);
       return;
     }
     aim.current = { layer, top: target };

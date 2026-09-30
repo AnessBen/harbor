@@ -89,7 +89,7 @@ function pushSession(): void {
   if (videoOwnsMediaKeys()) return;
   const state = getMusicState();
   const track = state.current;
-  if (!track) {
+  if (!track || state.phase === "idle" || state.phase === "error") {
     clearMediaControls();
     return;
   }

@@ -48,9 +48,11 @@ export function cycleMusicRepeat(): void {
 }
 
 /** What will actually play next, shuffle included, so a list never shows the stored order by mistake. */
-export function musicUpcoming(queue: MusicTrack[], index: number, count: number): MusicTrack[] {
-  return queueOrder.upcoming(queue, index, transport, count);
+export function musicUpcoming(queue: MusicTrack[], index: number, count: number, includeRepeats = true): MusicTrack[] {
+  return queueOrder.upcoming(queue, index, includeRepeats ? transport : { ...transport, repeat: "off" }, count);
 }
+
+export const getMusicTransport = (): MusicTransport => transport;
 
 export function useMusicTransport(): MusicTransport {
   return useSyncExternalStore(
@@ -82,6 +84,22 @@ export function musicAdvance(
 
 export function musicPrevious(queue: MusicTrack[], index: number): MusicTrack | null {
   return queueOrder.previous(queue, index, transport.shuffle);
+}
+
+/**
+ * The tracks worth resolving early. Preloading the stored neighbours warmed the wrong songs
+ * whenever shuffle or Play next changed the order, so every advance paid for a cold lookup.
+ */
+export function musicWarmTargets(
+  queue: MusicTrack[],
+  index: number,
+  count: number,
+): MusicTrack[] {
+  const ahead = musicUpcoming(queue, index, count);
+  const out = priorityNext ? [priorityNext, ...ahead] : ahead;
+  const behind = queueOrder.peekPrevious(queue, index, transport.shuffle);
+  if (behind) out.push(behind);
+  return out;
 }
 
 export function resetMusicOrder(): void {

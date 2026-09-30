@@ -3290,6 +3290,7 @@ const SETTINGS_OPTIONS: SettingsOption[] = [
   {
     label: "Trakt connection",
     section: "trackers",
+    tab: "trakt",
     keywords: [
       "trakt",
       "scrobble",
@@ -3304,6 +3305,7 @@ const SETTINGS_OPTIONS: SettingsOption[] = [
   {
     label: "AniList connection",
     section: "trackers",
+    tab: "mal",
     keywords: [
       "anilist",
       "anime",
@@ -3320,11 +3322,13 @@ const SETTINGS_OPTIONS: SettingsOption[] = [
   {
     label: "Simkl connection",
     section: "trackers",
+    tab: "simkl",
     keywords: ["simkl", "sync", "watched", "watchlist", "connect", "disconnect", "avatar", "anime"],
   },
   {
     label: "Letterboxd connection",
     section: "trackers",
+    tab: "letterboxd",
     keywords: [
       "letterboxd",
       "stremboxd",
@@ -3423,6 +3427,22 @@ const SETTINGS_OPTIONS: SettingsOption[] = [
     label: "Sign in to Stremio",
     section: "basics",
     keywords: ["sign in", "login", "stremio account", "sync", "manage account", "email", "log in"],
+  },
+  {
+    label: "Picture in picture style",
+    section: "basics",
+    anchorTitle: "Picture in picture style",
+    keywords: [
+      "pip",
+      "picture in picture",
+      "mini player",
+      "floating window",
+      "detached",
+      "resize window",
+      "watch while browsing",
+      "always on top",
+      "popout",
+    ],
   },
   {
     label: "How Play works",
@@ -4193,45 +4213,53 @@ const SETTINGS_OPTIONS: SettingsOption[] = [
   {
     label: "Connect your Trakt account",
     section: "trackers",
+    tab: "trakt",
     anchorTitle: "Connect your Trakt account",
     keywords: ["trakt", "connect", "tracking", "scrobble", "watchlist", "recommendations"],
   },
   {
     label: "Connect Trakt",
     section: "trackers",
+    tab: "trakt",
     keywords: ["trakt login", "device code", "authorize", "link trakt"],
   },
   {
     label: "About Trakt",
     section: "trackers",
+    tab: "trakt",
     keywords: ["trakt.tv", "what is trakt", "info", "website"],
   },
   {
     label: "Open Trakt profile",
     section: "trackers",
+    tab: "trakt",
     keywords: ["open profile", "trakt profile", "view profile", "my trakt", "profile page"],
   },
   {
     label: "Use my Trakt avatar as my Harbor avatar",
     section: "trackers",
+    tab: "trakt",
     anchorTitle: "Your Trakt account",
     keywords: ["trakt avatar", "profile picture", "avatar sync", "wear avatar"],
   },
   {
     label: "Disconnect from Trakt",
     section: "trackers",
+    tab: "trakt",
     anchorTitle: "Your Trakt account",
     keywords: ["disconnect", "unlink", "remove trakt", "stop scrobbling", "sign out"],
   },
   {
     label: "Export to Trakt",
     section: "trackers",
+    tab: "trakt",
     anchorTitle: "Move your watchlist",
     keywords: ["export watchlist", "copy watchlist", "send to trakt", "upload", "move watchlist"],
   },
   {
     label: "Import from Trakt",
     section: "trackers",
+    tab: "trakt",
     anchorTitle: "Move your watchlist",
     keywords: [
       "import watchlist",
@@ -4244,12 +4272,14 @@ const SETTINGS_OPTIONS: SettingsOption[] = [
   {
     label: "Show comments on detail pages",
     section: "trackers",
+    tab: "trakt",
     anchorTitle: "Comments",
     keywords: ["trakt comments", "community comments", "reviews", "discussion", "episodes"],
   },
   {
     label: "Blur Trakt comments by default",
     section: "trackers",
+    tab: "trakt",
     keywords: [
       "blur comments by default",
       "blur comments",
@@ -4261,45 +4291,53 @@ const SETTINGS_OPTIONS: SettingsOption[] = [
   {
     label: "Connect your AniList account",
     section: "trackers",
+    tab: "anilist",
     anchorTitle: "Connect your AniList account",
     keywords: ["anilist", "connect", "anime lists", "link account", "anime tracking", "rails"],
   },
   {
     label: "Connect AniList",
     section: "trackers",
+    tab: "anilist",
     keywords: ["anilist login", "authorize", "oauth", "link"],
   },
   {
     label: "About AniList",
     section: "trackers",
+    tab: "anilist",
     keywords: ["anilist.co", "info", "website", "what is anilist"],
   },
   {
     label: "Open AniList profile",
     section: "trackers",
+    tab: "anilist",
     keywords: ["open profile", "anilist profile", "view profile", "profile page", "my anilist"],
   },
   {
     label: "Sync watch progress",
     section: "trackers",
+    tab: "anilist",
     anchorTitle: "Tracking what you watch",
     keywords: ["anilist sync", "episode progress", "auto update", "forward only", "tracking"],
   },
   {
     label: "Use my AniList avatar as my Harbor avatar",
     section: "trackers",
+    tab: "anilist",
     anchorTitle: "Tracking what you watch",
     keywords: ["anilist avatar", "profile picture", "avatar", "wear avatar"],
   },
   {
     label: "Show AniList comments",
     section: "trackers",
+    tab: "anilist",
     anchorTitle: "Comments",
     keywords: ["anilist comments", "forum threads", "anime discussion", "detail pages"],
   },
   {
     label: "Blur AniList comments by default",
     section: "trackers",
+    tab: "anilist",
     keywords: [
       "blur comments by default",
       "blur comments",
@@ -4312,12 +4350,14 @@ const SETTINGS_OPTIONS: SettingsOption[] = [
   {
     label: "Disconnect from AniList",
     section: "trackers",
+    tab: "anilist",
     anchorTitle: "Your AniList account",
     keywords: ["disconnect", "unlink", "remove anilist", "stop sync"],
   },
   {
     label: "Connect your MyAnimeList account",
     section: "trackers",
+    tab: "mal",
     keywords: [
       "mal",
       "myanimelist",
@@ -4331,21 +4371,25 @@ const SETTINGS_OPTIONS: SettingsOption[] = [
   {
     label: "MAL Client ID",
     section: "trackers",
+    tab: "mal",
     keywords: ["mal client id", "api key", "myanimelist api", "client id", "register app"],
   },
   {
     label: "Connect MyAnimeList",
     section: "trackers",
+    tab: "mal",
     keywords: ["mal login", "authorize", "oauth", "pin code", "link"],
   },
   {
     label: "About MyAnimeList",
     section: "trackers",
+    tab: "mal",
     keywords: ["myanimelist.net", "info", "website", "what is mal"],
   },
   {
     label: "Open MAL profile",
     section: "trackers",
+    tab: "mal",
     keywords: [
       "open profile",
       "mal profile",
@@ -4357,85 +4401,100 @@ const SETTINGS_OPTIONS: SettingsOption[] = [
   {
     label: "Disconnect from MyAnimeList",
     section: "trackers",
+    tab: "mal",
     anchorTitle: "Connected",
     keywords: ["disconnect", "unlink", "remove mal", "stop sync"],
   },
   {
     label: "Connect your Simkl account",
     section: "trackers",
+    tab: "simkl",
     keywords: ["simkl", "connect", "tracking", "plan to watch", "mark watched", "sync"],
   },
   {
     label: "Connect Simkl",
     section: "trackers",
+    tab: "simkl",
     keywords: ["simkl login", "device code", "authorize", "link"],
   },
   {
     label: "About Simkl",
     section: "trackers",
+    tab: "simkl",
     keywords: ["simkl.com", "info", "website", "what is simkl"],
   },
   {
     label: "Open Simkl profile",
     section: "trackers",
+    tab: "simkl",
     keywords: ["open profile", "simkl profile", "view profile", "profile page", "my simkl"],
   },
   {
     label: "Use my Simkl avatar as my Harbor avatar",
     section: "trackers",
+    tab: "simkl",
     anchorTitle: "Connected",
     keywords: ["simkl avatar", "profile picture", "avatar", "wear avatar"],
   },
   {
     label: "Disconnect from Simkl",
     section: "trackers",
+    tab: "simkl",
     keywords: ["disconnect", "unlink", "remove simkl", "stop sync"],
   },
   {
     label: "Enable Letterboxd integration",
     section: "trackers",
+    tab: "letterboxd",
     anchorTitle: "Letterboxd",
     keywords: ["letterboxd", "letterbox", "stremboxd", "enable", "films", "diary", "watchlist"],
   },
   {
     label: "Mode",
     section: "trackers",
+    tab: "letterboxd",
     anchorTitle: "Connection",
     keywords: ["public mode", "full mode", "username only", "password mode", "segmented"],
   },
   {
     label: "Letterboxd username",
     section: "trackers",
+    tab: "letterboxd",
     anchorTitle: "Connection",
     keywords: ["username", "handle", "account name", "letterbox user"],
   },
   {
     label: "Letterboxd password",
     section: "trackers",
+    tab: "letterboxd",
     anchorTitle: "Connection",
     keywords: ["password", "sign in", "2fa", "totp", "two-factor", "full mode"],
   },
   {
     label: "Connect / Verify",
     section: "trackers",
+    tab: "letterboxd",
     anchorTitle: "Connection",
     keywords: ["verify", "connect", "validate", "check catalogs", "public"],
   },
   {
     label: "Connect",
     section: "trackers",
+    tab: "letterboxd",
     anchorTitle: "Connection",
     keywords: ["login", "sign in", "verify & connect", "full login"],
   },
   {
     label: "About Stremboxd",
     section: "trackers",
+    tab: "letterboxd",
     anchorTitle: "Connection",
     keywords: ["stremboxd", "bridge", "configure", "info", "website"],
   },
   {
     label: "Catalogs to show",
     section: "trackers",
+    tab: "letterboxd",
     anchorTitle: "Catalogs to show",
     keywords: [
       "watchlist",
@@ -4450,29 +4509,34 @@ const SETTINGS_OPTIONS: SettingsOption[] = [
   {
     label: "Custom lists",
     section: "trackers",
+    tab: "letterboxd",
     anchorTitle: "Custom lists",
     keywords: ["add list", "list url", "remove list", "letterboxd list", "import list", "slug"],
   },
   {
     label: "Show my rating on movie posters",
     section: "trackers",
+    tab: "letterboxd",
     anchorTitle: "On screen",
     keywords: ["my rating", "poster overlay", "stars", "personal rating"],
   },
   {
     label: "Blur reviews by default",
     section: "trackers",
+    tab: "letterboxd",
     keywords: ["blur reviews", "spoilers", "film pages", "reveal"],
   },
   {
     label: "Hidden catalogs",
     section: "trackers",
+    tab: "letterboxd",
     anchorTitle: "Hidden catalogs",
     keywords: ["unhide", "show hidden", "restore catalog", "hidden rows"],
   },
   {
     label: "Disconnect",
     section: "trackers",
+    tab: "letterboxd",
     anchorTitle: "Connection",
     keywords: ["logout", "disconnect", "sign out letterboxd", "unlink", "full mode"],
   },
@@ -4794,6 +4858,13 @@ const SETTINGS_OPTIONS: SettingsOption[] = [
     tab: "engine",
     anchorTitle: "Local engine",
     keywords: ["p2p chip", "peers", "speed", "progress overlay", "status chip", "player overlay"],
+  },
+  {
+    label: "Playback cache folder",
+    section: "player",
+    tab: "play",
+    anchorTitle: "Streams",
+    keywords: ["debrid cache", "video cache", "buffer folder", "system drive full", "cache location", "remux", "mpv cache"],
   },
   {
     label: "Download the whole file while streaming",
@@ -8242,6 +8313,22 @@ const SETTINGS_OPTIONS: SettingsOption[] = [
     ],
   },
   {
+    label: "Keep folders up to date",
+    section: "library",
+    tab: "library",
+    anchorTitle: "Local library",
+    keywords: [
+      "auto scan",
+      "autoscan",
+      "automatic scan",
+      "rescan folders",
+      "watch folder",
+      "new downloads",
+      "refresh local library",
+      "scan on open",
+    ],
+  },
+  {
     label: "Minimum file size (local scan)",
     section: "library",
     tab: "library",
@@ -8289,6 +8376,7 @@ const SETTINGS_OPTIONS: SettingsOption[] = [
   {
     label: "Show sync indicator",
     section: "trackers",
+    tab: "anilist",
     anchorTitle: "Sync indicator",
     keywords: [
       "sync indicator",
@@ -8304,6 +8392,7 @@ const SETTINGS_OPTIONS: SettingsOption[] = [
   {
     label: "Sync indicator position",
     section: "trackers",
+    tab: "anilist",
     anchorTitle: "Sync indicator",
     keywords: [
       "position",
@@ -8319,6 +8408,7 @@ const SETTINGS_OPTIONS: SettingsOption[] = [
   {
     label: "Use MyAnimeList avatar",
     section: "trackers",
+    tab: "mal",
     anchorTitle: "Connected",
     keywords: [
       "mal avatar",
@@ -8333,6 +8423,7 @@ const SETTINGS_OPTIONS: SettingsOption[] = [
   {
     label: "Show Simkl rails on Home",
     section: "trackers",
+    tab: "simkl",
     anchorTitle: "Home Rail Settings",
     keywords: [
       "simkl rails",
@@ -8348,6 +8439,7 @@ const SETTINGS_OPTIONS: SettingsOption[] = [
   {
     label: "Show Up Next on Simkl rail",
     section: "trackers",
+    tab: "simkl",
     anchorTitle: "Home Rail Settings",
     keywords: [
       "up next",
@@ -8362,6 +8454,7 @@ const SETTINGS_OPTIONS: SettingsOption[] = [
   {
     label: "Show Simkl Trending Today rail",
     section: "trackers",
+    tab: "simkl",
     anchorTitle: "Home Rail Settings",
     keywords: [
       "trending",
@@ -8377,6 +8470,7 @@ const SETTINGS_OPTIONS: SettingsOption[] = [
   {
     label: "Scrobble to Simkl",
     section: "trackers",
+    tab: "simkl",
     anchorTitle: "Connected",
     keywords: [
       "scrobble",
@@ -8392,6 +8486,7 @@ const SETTINGS_OPTIONS: SettingsOption[] = [
   {
     label: "Display Simkl Community Ratings",
     section: "trackers",
+    tab: "simkl",
     anchorTitle: "Connected",
     keywords: [
       "community ratings",
@@ -8405,6 +8500,7 @@ const SETTINGS_OPTIONS: SettingsOption[] = [
   {
     label: "Enable User Ratings",
     section: "trackers",
+    tab: "simkl",
     anchorTitle: "Connected",
     keywords: [
       "user ratings",
@@ -8419,6 +8515,7 @@ const SETTINGS_OPTIONS: SettingsOption[] = [
   {
     label: "Anime Title Language",
     section: "trackers",
+    tab: "simkl",
     anchorTitle: "Connected",
     keywords: [
       "anime title",
@@ -8434,6 +8531,7 @@ const SETTINGS_OPTIONS: SettingsOption[] = [
   {
     label: "Home rail categories (Movies, TV, Anime)",
     section: "trackers",
+    tab: "simkl",
     anchorTitle: "Home Rail Settings",
     keywords: [
       "home rail settings",
@@ -11032,7 +11130,7 @@ export function SettingsTools({
 }: {
   query: string;
   setQuery: (v: string) => void;
-  onSubmit: (id: SectionId, anchor?: string) => void;
+  onSubmit: (id: SectionId, anchor?: string, tab?: string) => void;
 }) {
   const { settings } = useSettings();
   const navLayout = activeLayout(settings.theme);
@@ -11046,7 +11144,7 @@ export function SettingsTools({
     }
     if (optionMatches && optionMatches.length > 0) {
       const o = optionMatches[0];
-      onSubmit(o.section, o.anchorTitle ? settingsAnchor(o.anchorTitle) : undefined);
+      onSubmit(o.section, o.anchorTitle ? settingsAnchor(o.anchorTitle) : undefined, o.tab);
       setQuery("");
     }
   };

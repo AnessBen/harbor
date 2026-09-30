@@ -3,6 +3,10 @@
   container-type: inline-size;
   padding-block-start: max(80px, var(--harbor-floating-back-space, 0px));
 }
+[data-music-view][data-music-opening],
+[data-music-view][data-music-opening] button {
+  cursor: progress;
+}
 .music-page-mast {
   align-items: center;
 }

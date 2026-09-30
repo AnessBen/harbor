@@ -10,10 +10,12 @@ import { sportsLeagueByTag } from "@/lib/sports/provider";
 import { SportsReminderButton } from "@/views/sports/reminder-button";
 import { WhereToWatch } from "@/views/sports/where-to-watch";
 import { useMatchDetail } from "@/views/sports/use-match-detail";
+import { SportsMatchDetailsSkeleton } from "@/views/sports/sports-skeletons";
 import { useAthletePortrait } from "@/views/sports/use-athlete-portrait";
+import { isIndividualCompetition } from "@/lib/sports/competition-metadata";
 import { EventLogo, useEventDate } from "@/views/sports/hub-cards";
 import { hubLeague } from "@/lib/sports/hub-data";
-import { officialBoxingUrl } from "@/lib/sports/providers/boxing-schedule";
+import { BoxingEventDetails } from "@/views/sports/boxing-event-details";
 import { useBoxingEvent } from "@/views/sports/use-boxing-event";
 import "@/views/sports/hub.css";
 import { MatchPanel } from "@/views/sports/match-panel";
@@ -44,13 +46,25 @@ export function MatchDetailView({
   const { detail, loading, failed, retry } = useMatchDetail(game, !officialBoxing);
   const current = detail ?? boxingGame;
   const league = sportsLeagueByTag(game.league) ?? hubLeague(game.league);
-  const individual = ["tennis", "combat", "golf", "motorsport"].includes(league?.group ?? "");
+  const individual = !officialBoxing && isIndividualCompetition(league?.group ?? "");
   const homePortrait = useAthletePortrait(
-    { path: league?.path ?? "", ...current.home, image: current.home.logo },
+    {
+      path: league?.path ?? "",
+      group: league?.group,
+      name: current.home.name,
+      id: current.home.athleteSource === "espn" ? (current.home.athleteId ?? "") : "",
+      image: current.home.logo,
+    },
     individual,
   );
   const awayPortrait = useAthletePortrait(
-    { path: league?.path ?? "", ...current.away, image: current.away.logo },
+    {
+      path: league?.path ?? "",
+      group: league?.group,
+      name: current.away.name,
+      id: current.away.athleteSource === "espn" ? (current.away.athleteId ?? "") : "",
+      image: current.away.logo,
+    },
     individual,
   );
   const isCombat = sportsLeagueByTag(game.league)?.group === "combat";
@@ -153,16 +167,26 @@ export function MatchDetailView({
         <SportsReminderButton game={current} />
       </div>
       <div className="sh-match-photo-credit">
-        {[homePortrait, awayPortrait].some(
-          (portrait) => portrait.attribution?.source === "TheSportsDB",
-        ) && (
-          <button
-            className="sh-text-button min-h-9 text-xs text-ink-muted"
-            onClick={() => openUrl("https://www.thesportsdb.com/")}
-          >
-            {t("Photos")}: TheSportsDB
-          </button>
-        )}
+        {[homePortrait, awayPortrait]
+          .flatMap((portrait, index, portraits) => {
+            const credit = portrait.attribution;
+            return credit &&
+              credit.source !== "ESPN" &&
+              !portraits
+                .slice(0, index)
+                .some((prior) => prior.attribution?.sourceUrl === credit.sourceUrl)
+              ? [credit]
+              : [];
+          })
+          .map((credit) => (
+            <button
+              key={credit.sourceUrl}
+              className="sh-text-button min-h-9 text-xs text-ink-muted"
+              onClick={() => openUrl(credit.sourceUrl)}
+            >
+              {t("Photos")}: {credit.source}
+            </button>
+          ))}
       </div>
       <div className="sh-detail-watch">
         <WatchSources
@@ -209,7 +233,9 @@ export function MatchDetailView({
           failed={failed}
           sport={sportsLeagueByTag(game.league)?.group ?? ""}
         />
-        <WhereToWatch game={{ ...current, broadcasts: current.broadcasts ?? game.broadcasts }} />
+        <WhereToWatch
+          game={{ ...current, broadcasts: current.broadcasts ?? game.broadcasts }}
+        />
         <EventOdds game={current} />
       </div>
       {!officialBoxing && (
@@ -233,33 +259,9 @@ export function MatchDetailView({
       )}
       <div className="sh-detail-content">
         {officialBoxing ? (
-          <section className="sh-where-watch">
-            <h3>{current.context?.name}</h3>
-            <p className="sh-muted">
-              {[current.context?.draw, current.context?.venue].filter(Boolean).join(" · ")}
-            </p>
-            {[current.home, current.away]
-              .filter((side) => side.record)
-              .map((side) => (
-                <p key={side.name}>
-                  {side.name} · {side.record}
-                </p>
-              ))}
-            <p className="sh-muted">
-              {t(
-                "Schedule published by the event promoter. Visit the official fight card for the latest lineup and broadcast details.",
-              )}
-            </p>
-            {officialBoxingUrl(current) && (
-              <button className="sh-button" onClick={() => openUrl(officialBoxingUrl(current)!)}>
-                {t("Official fight card")}
-              </button>
-            )}
-          </section>
+          <BoxingEventDetails game={current} />
         ) : loading ? (
-          <p className="sh-lineups-pending" role="status">
-            {t("Loading match details…")}
-          </p>
+          <SportsMatchDetailsSkeleton />
         ) : !detail ? (
           <div className="sh-empty">
             <h2>{t("Match details are not available yet.")}</h2>
@@ -393,7 +395,9 @@ function LineupsTab({ detail }: { detail: SportsMatchDetail }) {
   const t = useT();
   if (!detail.homeRoster.length && !detail.awayRoster.length) {
     return (
-      <div className="text-center text-sm text-ink-subtle">{t("Lineups not available yet.")}</div>
+      <div className="text-center text-sm text-ink-subtle">
+        {t("Lineups not available yet.")}
+      </div>
     );
   }
 
@@ -625,15 +629,35 @@ function TeamPitch({
 
 type ProfileStatLabel = "Height" | "Weight" | "Age" | "Reach" | "Stance";
 
-function StatRow({ label, hVal, aVal }: { label: ProfileStatLabel; hVal: string; aVal: string }) {
+const RECORD_VALUE = /^\s*\d+\s*-\s*\d+(?:\s*-\s*\d+)?\s*$/;
+
+function statMeasure(value: string): number | null {
+  const feet = value.match(/(\d+)\s*'\s*(\d+(?:\.\d+)?)?/);
+  if (feet) return Number(feet[1]) * 12 + Number(feet[2] ?? 0);
+  const plain = value.match(/-?\d+(?:\.\d+)?/);
+  return plain ? Number(plain[0]) : null;
+}
+
+function StatRow({
+  label,
+  hVal,
+  aVal,
+}: {
+  label: ProfileStatLabel;
+  hVal: string;
+  aVal: string;
+}) {
   const t = useT();
-  const hNum = parseFloat((hVal || "0").replace(/[^0-9.-]/g, ""));
-  const aNum = parseFloat((aVal || "0").replace(/[^0-9.-]/g, ""));
+  const ranked = label !== "Stance";
+  const hNum = ranked ? statMeasure(hVal || "") : null;
+  const aNum = ranked ? statMeasure(aVal || "") : null;
+  const hLeads = hNum !== null && aNum !== null && hNum > aNum;
+  const aLeads = hNum !== null && aNum !== null && aNum > hNum;
 
   return (
     <div className="flex items-center justify-between py-2 text-sm font-medium">
       <div
-        className={`w-12 text-center tabular-nums sm:w-16 ${hNum > aNum ? "font-bold text-ink" : "text-ink-subtle"}`}
+        className={`w-12 text-center tabular-nums sm:w-16 ${hLeads ? "font-bold text-ink" : "text-ink-subtle"}`}
       >
         {hVal || "-"}
       </div>
@@ -641,7 +665,7 @@ function StatRow({ label, hVal, aVal }: { label: ProfileStatLabel; hVal: string;
         {t(label)}
       </div>
       <div
-        className={`w-12 text-center tabular-nums sm:w-16 ${aNum > hNum ? "font-bold text-ink" : "text-ink-subtle"}`}
+        className={`w-12 text-center tabular-nums sm:w-16 ${aLeads ? "font-bold text-ink" : "text-ink-subtle"}`}
       >
         {aVal || "-"}
       </div>
@@ -712,14 +736,23 @@ function MmaProfileTab({ detail }: { detail: SportsMatchDetail }) {
 function StatsTab({ detail }: { detail: SportsMatchDetail }) {
   const t = useT();
 
-  const StatsTabRow = ({ label, hVal, aVal }: { label: string; hVal?: string; aVal?: string }) => {
+  const StatsTabRow = ({
+    label,
+    hVal,
+    aVal,
+  }: {
+    label: string;
+    hVal?: string;
+    aVal?: string;
+  }) => {
     if (!hVal && !aVal) return null;
 
-    const hNum = parseFloat((hVal || "0").replace(/[^0-9.-]/g, ""));
-    const aNum = parseFloat((aVal || "0").replace(/[^0-9.-]/g, ""));
+    const ranked = !RECORD_VALUE.test(hVal || "") && !RECORD_VALUE.test(aVal || "");
+    const hNum = ranked ? statMeasure(hVal || "") : null;
+    const aNum = ranked ? statMeasure(aVal || "") : null;
 
-    const hIsGreater = hNum > aNum;
-    const aIsGreater = aNum > hNum;
+    const hIsGreater = hNum !== null && aNum !== null && hNum > aNum;
+    const aIsGreater = hNum !== null && aNum !== null && aNum > hNum;
 
     return (
       <div className="flex items-center justify-between border-b border-edge-soft/50 py-3 text-sm last:border-0">
@@ -729,7 +762,9 @@ function StatsTab({ detail }: { detail: SportsMatchDetail }) {
         <span className="text-ink-subtle">
           {label === "Overall Record" ? t("Overall Record") : label}
         </span>
-        <span className={`w-12 text-end font-bold ${aIsGreater ? "text-green-500" : "text-ink"}`}>
+        <span
+          className={`w-12 text-end font-bold ${aIsGreater ? "text-green-500" : "text-ink"}`}
+        >
           {aVal || "0"}
         </span>
       </div>
@@ -753,7 +788,12 @@ function StatsTab({ detail }: { detail: SportsMatchDetail }) {
       {!!detail.allStats.length && (
         <div className="flex flex-col gap-1 rounded-2xl bg-elevated/20 p-4 ring-1 ring-edge-soft/50 shadow-sm">
           {detail.allStats.map((stat, i) => (
-            <StatsTabRow key={i} label={stat.label} hVal={stat.homeValue} aVal={stat.awayValue} />
+            <StatsTabRow
+              key={i}
+              label={stat.label}
+              hVal={stat.homeValue}
+              aVal={stat.awayValue}
+            />
           ))}
         </div>
       )}

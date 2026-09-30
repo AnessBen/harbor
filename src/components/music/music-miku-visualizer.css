@@ -8,10 +8,30 @@
   user-select: none;
   contain: layout style;
   isolation: isolate;
+  /* Clip at the bar's top edge, retaining the wider dance's side gutters. */
+  clip-path: inset(-100% -50% 0);
+  visibility: visible;
+  transition: visibility 0s;
 }
 .music-miku-art { display: block; width: 100%; height: 100%; object-fit: contain; }
-/* Keep her beat clock, gesture and pose alive behind Now Playing. */
-.music-miku-perch[data-concealed="true"] { visibility: hidden; }
+/* Only the reveal moves; her mounted pose and beat clock keep running. CSS
+   transitions reverse from their current position during rapid toggles. */
+.music-miku-reveal {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform: translateY(0);
+  transition: transform 440ms cubic-bezier(0.22, 0.8, 0.25, 1);
+}
+.music-miku-perch[data-concealed="true"] {
+  visibility: hidden;
+  transition-delay: 220ms;
+}
+.music-miku-perch[data-concealed="true"] .music-miku-reveal {
+  transform: translateY(101%);
+  transition-duration: 220ms;
+  transition-timing-function: ease-in-out;
+}
 .music-miku-sprite { background-repeat: no-repeat; background-position: 0 0; }
 .music-miku-eyes {
   position: absolute;
@@ -22,7 +42,8 @@
   height: 45.833333%;
   background-repeat: no-repeat;
   opacity: 0;
-  transition: opacity 140ms ease-out;
+  /* The expression clock owns the quick close and slower reopen. A second
+     CSS fade would keep chasing it and prevent a blink from fully closing. */
 }
 .music-miku-dancer {
   position: absolute;
@@ -150,6 +171,10 @@
   100% { background-position: 0 0; }
 }
 @media (prefers-reduced-motion: reduce) {
+  .music-miku-perch,
+  .music-miku-perch[data-concealed="true"],
+  .music-miku-perch[data-concealed="true"] .music-miku-reveal,
+  .music-miku-reveal { transition: none; }
   .music-miku-perch[data-stage="idle"] .music-miku-idle { animation: none; }
   .music-miku-eyes { transition: none; }
 }

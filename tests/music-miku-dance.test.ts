@@ -67,7 +67,7 @@ test("a 30-second drop keeps dancing until its energy recedes, then a new drop v
     const start = f.now;
     while (f.now - start < 30000) assert.equal(f.tick().stage, "dancing");
     while (f.state.stage === "dancing") f.tick(.35);
-    assert.ok(f.now - start < 30000 + MIKU_DANCE.loopBeats[kind] * period + 32);
+    assert.ok(f.now - start < 30000 + Math.max(MIKU_DANCE.sectionLossGraceMs, period * MIKU_DANCE.sectionLossGraceBeats) + MIKU_DANCE.loopBeats[kind] * period + 32);
     f.until("listening");
     const next = f.state.kind;
     assert.notEqual(next, kind);
@@ -176,7 +176,7 @@ test("losing tempo confidence mid-song carries the dance to its authored exit wi
   assert.notEqual(f.state.frame, frame);
   assert.equal(f.tick().stage, "dancing");
   let sawExit = false;
-  for (let i = 0; i < 1000 && f.state.stage !== "listening"; i++) {
+  for (let i = 0; i < 2000 && f.state.stage !== "listening"; i++) {
     const state = f.tick(.8, true, true, false);
     if (state.stage === "leaving") sawExit = true;
     assert.ok(state.opacity === 0 || state.opacity === 1);
@@ -215,7 +215,7 @@ test("a frozen or rebased estimator clock cannot freeze or skip the dance's hand
   for (const kind of routines) {
     const f = fixture(kind); f.until("dancing");
     let state = f.state, exit = false;
-    for (let i = 0; i < 1000 && state.stage !== "listening"; i++) {
+    for (let i = 0; i < 2000 && state.stage !== "listening"; i++) {
       state = f.dance.advance(16, pulse(0, .8, false), true, true);
       assert.ok(state.opacity === 0 || state.opacity === 1);
       if (state.stage === "leaving") exit = true;
@@ -319,19 +319,19 @@ test("every approved routine gets a turn before the cycle repeats across songs",
 
 // The longer reference routine has a short arms-down exit every two beats.
 const referenceRepertoire = {
-  loopFrames: [64, 64, 76], loopBeats: [2, 4, 8], breaksMs: [16000, 20000, 18000],
-  stopExits: [null, null, { everyBeats: 2, frameOffsets: [117, 158, 178, 198], frames: 20 }],
+  loopFrames: [64, 76], loopBeats: [2, 8], breaksMs: [16000, 18000],
+  stopExits: [null, { everyBeats: 2, frameOffsets: [117, 158, 178, 198], frames: 20 }],
 };
 
 test("the eight-beat dance pauses at the next gesture without accelerating or skipping its short exit", () => {
   for (const period of [300, 500, 850]) for (const beat of [.1, 1.5, 2.1, 3.5, 4.1, 5.5, 6.1, 7.5]) {
-    const f = fixture(2, period, referenceRepertoire);
+    const f = fixture(1, period, referenceRepertoire);
     f.until("dancing");
     const start = f.now;
     while (f.now - start < beat * period) f.tick();
     let state = f.state, previous = state.frame, advanced = 0, duration = 0;
     let exitStart = -1, exitEnd = -1, rested = false;
-    const expectedOffset = referenceRepertoire.stopExits[2]!.frameOffsets[(Math.floor(beat / 2) + 1) % 4];
+    const expectedOffset = referenceRepertoire.stopExits[1]!.frameOffsets[(Math.floor(beat / 2) + 1) % 4];
     while (state.stage !== "listening" && duration < 3000) {
       state = f.tick(.8, false, true, false); duration += 16;
       assert.ok(state.opacity === 0 || state.opacity === 1);
@@ -356,7 +356,7 @@ test("the eight-beat dance pauses at the next gesture without accelerating or sk
 });
 
 test("rapid song changes cannot rush an eight-beat dance or restart its arms-down exit", () => {
-  const f = fixture(2, 850, referenceRepertoire); f.until("dancing");
+  const f = fixture(1, 850, referenceRepertoire); f.until("dancing");
   f.dance.selectTrack("fast-next-song");
   let state = f.state, previous = state.frame, advanced = 0, duration = 0, exitStart = -1;
   while (state.stage !== "listening" && duration < 3000) {
@@ -369,17 +369,17 @@ test("rapid song changes cannot rush an eight-beat dance or restart its arms-dow
       previous = state.frame;
     }
     if (state.stage === "disengaging" && exitStart < 0) exitStart = state.frame;
-    if (state.stage !== "listening") assert.equal(state.kind, 2);
+    if (state.stage !== "listening") assert.equal(state.kind, 1);
     assert.ok(state.opacity === 0 || state.opacity === 1);
   }
   assert.equal(exitStart, 158);
   assert.equal(state.stage, "listening"); assert.equal(state.kind, 0);
-  assert.equal(f.memory.lastPerformed, 2);
+  assert.equal(f.memory.lastPerformed, 1);
   assert.ok(duration >= 2200 && duration <= 2412, "finish two slow beats and lower despite incoming fast drums");
 });
 
 test("the eight-beat dance uses its full headphone return when the music leaves a highlight", () => {
-  const f = fixture(2, 500, referenceRepertoire); f.until("dancing");
+  const f = fixture(1, 500, referenceRepertoire); f.until("dancing");
   let state = f.state;
   for (let n = 0; n < 1000 && state.stage !== "listening"; n++) {
     state = f.tick(.35);
@@ -391,7 +391,7 @@ test("the eight-beat dance uses its full headphone return when the music leaves 
 });
 
 test("a delayed render crossing a stop boundary still shows the matching first exit pose", () => {
-  const f = fixture(2, 500, referenceRepertoire); f.until("dancing");
+  const f = fixture(1, 500, referenceRepertoire); f.until("dancing");
   const start = f.now;
   while (f.now - start < 900) f.tick();
   const state = f.dance.advance(250, pulse((f.now + 250) / 500), false, true);
@@ -420,7 +420,7 @@ test("a busy render cannot leave the dance behind the drum clock", () => {
 
 test("the reference dance gently re-aligns its accents after a beat-clock rebase", () => {
   for (const period of [300, 500, 850]) for (const offset of [-.35, .35]) {
-    const f = fixture(2, period); f.until("dancing");
+    const f = fixture(1, period); f.until("dancing");
     let beat = f.now / period, state = f.state;
     // Analysis briefly drops out while the song continues, then reacquires
     // the pulse with a new origin. She must not retain that phase error.
@@ -447,7 +447,7 @@ test("the reference dance gently re-aligns its accents after a beat-clock rebase
 
 test("a tempo correction during hands-down cannot stall or rush the entrance", () => {
   for (const [from, to] of [[300, 850], [850, 300]]) {
-    const f = fixture(2, from); f.until("entering");
+    const f = fixture(1, from); f.until("entering");
     while (f.state.frame < 20) f.tick();
     let state = f.state, beat = f.now / from, duration = 0;
     const frames = new Set<number>();
@@ -462,8 +462,8 @@ test("a tempo correction during hands-down cannot stall or rush the entrance", (
   }
 });
 
-test("the two shorter grooves settle at either half-loop without accelerating the last gesture", () => {
-  for (const kind of [0, 1]) for (const period of [300, 500, 850]) for (const phase of [.15, .65]) {
+test("the retained shorter groove settles at either half-loop without accelerating the last gesture", () => {
+  for (const kind of [0]) for (const period of [300, 500, 850]) for (const phase of [.15, .65]) {
     const f = fixture(kind, period); f.until("dancing");
     const beats = MIKU_DANCE.loopBeats[kind], frames = MIKU_DANCE.loopFrames[kind];
     const start = f.now;

@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from "react";
+import { HoverTooltip } from "@/components/hover-tooltip";
 import { ChevronLeft } from "@/components/icons/music-icons";
 import { MusicCatalogRow } from "@/components/music/music-catalog-row";
 import { MusicBillboardCharts, MusicDiscoveryChartRow } from "@/components/music/music-discovery-charts";
 import { MusicDiscoveryIcon } from "@/components/music/music-discovery-icon";
+import { MusicTasteIcon } from "@/components/music/music-taste-icon";
 import { MusicVideoDiscovery } from "@/components/music/music-video-discovery";
 import { MusicSectionHead } from "@/components/music/music-track-grid";
 import { useT } from "@/lib/i18n";
@@ -78,7 +80,7 @@ export function MusicGenres({ onOpen, genre, onGenre, onBillboard, onTastes, onW
       <button className="music-discovery-back" type="button" onClick={() => onGenre(null)}><ChevronLeft className="dir-icon" size={18} aria-hidden />{t("music.explore.back")}</button>
       <header className="music-discovery-hero"><img src={MUSIC_GENRE_ARTWORK[genre.id]} alt=""/><div><h2>{genre.name}</h2><p><MusicDiscoveryIcon genreId={genre.id}/>{t(genre.deezerId ? "music.explore.chartSource" : "music.explore.selectionSource")}</p></div></header>
     </> : <>
-      <header className="music-explore-heading"><div><h2>{t("music.discover")}</h2><p>{t("music.explore.intro")}</p></div><button type="button" className="music-genre-more" onClick={onTastes}>{t("music.taste.choose")}</button></header>
+      <header className="music-explore-heading"><h2>{t("music.discover")}</h2><HoverTooltip label={t("music.taste.choose")} align="end"><button type="button" className="music-explore-tastes" aria-label={t("music.taste.choose")} onClick={onTastes}><MusicTasteIcon /></button></HoverTooltip></header>
       <MusicEventDiscovery onWatch={onWatch} active={active}/>
       <MusicPerformanceSpotlight onWatch={onWatch} active={active}/>
       <MusicVideoDiscovery active={active} onWatch={onWatch}/>
@@ -91,7 +93,7 @@ export function MusicGenres({ onOpen, genre, onGenre, onBillboard, onTastes, onW
       genreId={genre?.id} title={genre && !genre.deezerId ? t("music.explore.selections") : undefined}
       onRetry={() => setRetry(value => value + 1)} onOpen={onOpen}/>}
     {genre ? <>
-      {!!chart.artists.length && <MusicGenreArtists key={genre.id} genreId={genre.id} artists={chart.artists} onOpen={onOpen}/>}
+      <MusicGenreArtists key={genre.id} genreId={genre.id} artists={chart.artists} onOpen={onOpen}/>
       {!loading && <MusicGenreVideos key={`videos:${genre.id}`} genre={genre} artists={chart.artists} active={active} onWatch={onWatch}/>}
       {!loading && <MusicGenreChannels key={`channels:${genre.id}`} genre={genre} active={active} onWatch={onWatch}/>}
       {!!chart.albums?.length && <MusicCatalogRow row={{ id: `genre:${genre.id}:albums`, title: "music.explore.sceneAlbums", titleLiteral: false, layout: "covers", source: "deezer", items: chart.albums.slice(0,16) }} playable onOpen={item => onOpen(item, chart.albums ?? [])}/>}

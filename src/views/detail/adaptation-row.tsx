@@ -11,9 +11,10 @@ export function AdaptationRow({ family }: { family: AdaptationFamily }) {
   const { source, siblings } = family;
   const reachable = siblings.length > 0 || !!source.gutenbergId;
 
-  const facts = [source.authors.join(" & "), source.year != null ? String(source.year) : ""].filter(
-    Boolean,
-  );
+  const facts = [
+    source.authors.filter((name) => !/^https?:\/\//i.test(name)).join(" & "),
+    source.year != null ? String(source.year) : "",
+  ].filter(Boolean);
 
   const subtitle = [
     ...facts,

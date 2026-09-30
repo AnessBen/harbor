@@ -1,5 +1,7 @@
 import { useSyncExternalStore } from "react";
 import { readLocalJson, writeLocalJson } from "./local-store";
+import { musicDestinationIdentity, uniqueMusicRecents } from "./recent-identity";
+import type { MusicCatalogItem } from "./types";
 
 export type MusicDestinationKind = "artist" | "album" | "track" | "liked";
 
@@ -10,6 +12,7 @@ export type MusicDestination = {
   name: string;
   artist?: string;
   artwork: string;
+  item?: MusicCatalogItem;
   at: number;
 };
 
@@ -37,7 +40,8 @@ export async function hydrateMusicDestinations(): Promise<void> {
   hydrated = true;
   const saved = await readLocalJson<MusicDestination[]>(STORE);
   if (Array.isArray(saved) && saved.length > 0) {
-    list = saved.filter((entry) => entry && entry.id && entry.name).slice(0, LIMIT);
+    list = uniqueMusicRecents([...list, ...saved.filter((entry) => entry && entry.id && entry.name)], musicDestinationIdentity).slice(0, LIMIT);
+    writeLocalJson(STORE, list);
   }
   ready = true;
   notify();
@@ -47,11 +51,10 @@ export function recordMusicDestination(entry: Omit<MusicDestination, "at">): voi
   const id = entry.id?.trim();
   const name = entry.name?.trim();
   if (!id || !name) return;
-  const key = `${entry.kind}:${id}`;
-  const next = [
+  const next = uniqueMusicRecents([
     { ...entry, id, name, at: Date.now() },
-    ...list.filter((held) => `${held.kind}:${held.id}` !== key),
-  ].slice(0, LIMIT);
+    ...list,
+  ], musicDestinationIdentity).slice(0, LIMIT);
   list = next;
   writeLocalJson(STORE, next);
   notify();

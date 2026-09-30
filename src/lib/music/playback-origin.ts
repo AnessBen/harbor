@@ -8,6 +8,7 @@ import { queueTrackKey } from "./queue-order";
 import type { MusicCatalogItem, MusicTrack } from "./types";
 
 export type MusicPlaybackOrigin =
+  | { kind: "library"; id: "liked" | "recent"; name: string }
   | { kind: "playlist"; id: string; name: string }
   | { kind: "similar"; id: string; name: string; seed?: MusicTrack }
   | { kind: "catalog"; id: string; name: string; item: Exclude<MusicCatalogItem, { kind: "track" }> }
@@ -135,4 +136,10 @@ export function useMusicPlaybackOrigin(): MusicPlaybackOrigin {
     getMusicPlaybackOrigin,
     getMusicPlaybackOrigin,
   );
+}
+
+export function recordMusicLibraryPlayback(id: "liked" | "recent", name: string, tracks: readonly MusicTrack[]): void {
+  const from: MusicPlaybackOrigin = { kind: "library", id, name };
+  registerMusicQueueOrigin(tracks, from);
+  setMusicPlaybackOrigin(from);
 }

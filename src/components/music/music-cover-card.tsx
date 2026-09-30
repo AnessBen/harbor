@@ -5,12 +5,14 @@ import { Poster } from "@/components/poster";
 import { useT } from "@/lib/i18n";
 import { MusicMediaBadge } from "./music-media-badge";
 import { MusicArtistLink } from "./music-artist-link";
+import { HoverTooltip } from "@/components/hover-tooltip";
+import { sourceLabel } from "@/lib/music/source-label";
 import type { AlbumExplicitMark } from "@/lib/music/album-explicit";
 import type { MusicCatalogItem } from "@/lib/music/types";
 import "./music-cover-card.css";
 
 export type MusicCardBadge =
-  | { kind: "connector"; connectorId: string; label?: string }
+  | { kind: "connector"; connectorId: string; label?: string; itemId?: string }
   | { kind: "trackCount"; count: number }
   | { kind: "playCount"; count: number }
   | { kind: "station" };
@@ -67,10 +69,14 @@ export function MusicCardBadgeChip({ badge }: { badge: MusicCardBadge }) {
   if (badge.kind === "connector") {
     const glyph = badge.label ?? connectorGlyph(badge.connectorId);
     if (!glyph) return null;
+    const service = badge.connectorId === "catalog" ? badge.itemId?.split(":")[0] ?? "catalog" : badge.connectorId;
+    const label = badge.label ?? sourceLabel(service);
     return (
-      <span className={`${base} bg-accent-soft text-ink`} title={badge.connectorId}>
-        {glyph}
-      </span>
+      <HoverTooltip label={label} side="top" align="center" className="inline-flex shrink-0">
+        <span aria-label={label} data-music-source={service} className={`${base} bg-accent-soft text-ink`}>
+          {glyph}
+        </span>
+      </HoverTooltip>
     );
   }
 

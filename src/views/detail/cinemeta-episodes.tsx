@@ -142,6 +142,7 @@ export function CinemetaEpisodes({
               episode: {
                 season,
                 episode: number,
+                videoId: ep.id || undefined,
                 runtime: runtime ?? undefined,
                 name: ep.name || ep.title || undefined,
                 still: stills[0],

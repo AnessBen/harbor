@@ -10,11 +10,13 @@ export function MusicCollectionControls({
   tracks,
   onPlay,
   disabled = false,
+  loading = false,
   extra,
 }: {
   tracks: MusicTrack[];
   onPlay: (track: MusicTrack, queue: MusicTrack[]) => void;
   disabled?: boolean;
+  loading?: boolean;
   extra?: ReactNode;
 }) {
   const t = useT();
@@ -26,7 +28,7 @@ export function MusicCollectionControls({
       <button
         type="button"
         className="music-collection-play"
-        disabled={disabled || !tracks.length || busy}
+        disabled={disabled || loading || !tracks.length || busy}
         aria-label={t(playing ? "music.pause" : "music.play")}
         title={t(playing ? "music.pause" : "music.play")}
         onClick={play}
@@ -39,11 +41,11 @@ export function MusicCollectionControls({
           <Play size={24} fill="currentColor" aria-hidden />
         )}
       </button>
-      {tracks.length > 1 && (
+      {(tracks.length > 1 || loading) && (
         <button
           type="button"
           className="music-collection-shuffle"
-          disabled={disabled}
+          disabled={disabled || loading}
           aria-pressed={transport.shuffle}
           aria-label={t("music.transport.shuffle")}
           title={t("music.transport.shuffle")}

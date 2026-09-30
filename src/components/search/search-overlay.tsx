@@ -389,7 +389,7 @@ export function SearchOverlay() {
             )}
           </div>
 
-          <div className="relative isolate min-h-0 overflow-x-hidden overflow-y-auto px-7 py-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="harbor-search-body relative isolate min-h-0 overflow-x-hidden overflow-y-auto px-7 py-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {explore.length > 0 ? (
               <ExplorePane
                 key={explore.length}
@@ -413,9 +413,7 @@ export function SearchOverlay() {
             ) : (
               <>
                 {!trimmed && (
-                  <div className="harbor-search-section">
-                    <EmptyState onClose={close} onOpenGuide={() => setGuideOpen(true)} />
-                  </div>
+                  <EmptyState onClose={close} onOpenGuide={() => setGuideOpen(true)} />
                 )}
 
                 {magnetInput && (

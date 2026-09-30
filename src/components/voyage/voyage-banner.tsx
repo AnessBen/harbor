@@ -10,6 +10,7 @@ import { closeVoyage, openVoyage, useVoyage, useVoyageOpen } from "@/lib/voyage/
 
 import { VoyageInline } from "./voyage-inline";
 import "./voyage-inline.css";
+import { artAtWidth } from "@/lib/image-rung";
 
 function capsuleBg(url?: string): string | undefined {
   if (!url) return url;
@@ -217,8 +218,9 @@ function VoyageCapsule({ meta }: { meta: Meta }) {
       <div className="absolute inset-x-4 bottom-3 flex items-end gap-2.5 [transform:skewX(8deg)]">
         <span className="block h-[68px] w-[46px] shrink-0 overflow-hidden rounded-sm shadow-[0_8px_18px_-6px_rgba(0,0,0,0.85)] ring-1 ring-white/15">
           <img
-            src={poster.src}
+            src={artAtWidth(poster.src, 46)}
             onError={poster.onError}
+            loading="lazy"
             alt=""
             draggable={false}
             className="h-full w-full object-cover"

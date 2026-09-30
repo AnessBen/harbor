@@ -1,4 +1,6 @@
 const settingsRefinements: Record<string, string> = {
+  "Playback cache folder": "재생 캐시 폴더",
+  "Temporary video buffering, including debrid streams. Applies when playback restarts; existing files stay in their current folder.": "디브리드 스트림을 포함한 동영상의 임시 버퍼링에 사용됩니다. 재생을 다시 시작하면 적용되며, 기존 파일은 현재 폴더에 남습니다.",
   "1 option formatted correctly": "옵션 1개의 형식이 올바릅니다",
   "1. Open Movies\n2. Select a title\n3. Press Play\n4. Describe what happens": "1. 영화 열기\n2. 작품 선택\n3. 재생 누르기\n4. 발생한 상황 설명",
   "3 to 24 letters, numbers, or underscores.": "3~24자의 영문자, 숫자 또는 밑줄을 사용하세요.",

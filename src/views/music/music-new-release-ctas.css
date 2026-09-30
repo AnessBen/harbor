@@ -50,9 +50,23 @@
   line-height: 1.25;
   color: var(--color-ink);
   overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  display: block;
+  white-space: nowrap;
+  block-size: 1.25em;
+}
+.music-cta-line > span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.music-cta-line > span[data-marquee] {
+  inline-size: max-content;
+  overflow: visible;
+}
+.music-cta-card:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }
 .music-cta-artist {
   font-size: 12.5px;

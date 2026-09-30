@@ -29,7 +29,7 @@ export function createMikuDanceFit() {
       if (locked && period && started !== null && now - started >= period * 8) {
         const end = Math.floor(beat) - 1, start = end - 7;
         const covered = new Set<number>(), kicked = new Set<number>();
-        let aligned = 0, total = 0;
+        let aligned = 0, total = 0, alignedCount = 0, totalCount = 0;
         const tolerance = Math.min(.23, .08 + 40 / period);
         for (const attack of attacks) {
           const position = beat + (attack.time - now) / period;
@@ -37,13 +37,15 @@ export function createMikuDanceFit() {
           const nearest = Math.round(position);
           if (nearest < start || nearest > end) continue;
           const weight = Math.max(attack.kick, attack.snare * .65);
-          total += weight;
+          total += weight; totalCount++;
           if (Math.abs(position - nearest) <= tolerance) {
-            aligned += weight; covered.add(nearest);
+            aligned += weight; alignedCount++; covered.add(nearest);
             if (attack.kick >= .18) kicked.add(nearest);
           }
         }
-        const alignment = total > .5 ? aligned / total : 0;
+        // Quieter but distinct offbeat drums still change the groove. A few
+        // loud aligned kicks must not hide those already-qualified attacks.
+        const alignment = total > .5 ? Math.min(aligned / total, alignedCount / totalCount) : 0;
         // Every-beat kicks or a consistent kick/snare backbeat can carry a
         // dance. Offbeat 808 bursts and sparse drums keep the listening groove.
         const coverage = covered.size / 8, kickCoverage = kicked.size / 8;

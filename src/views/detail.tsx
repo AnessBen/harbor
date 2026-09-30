@@ -7,8 +7,9 @@ import {
   useSyncExternalStore,
   type ReactNode,
 } from "react";
-import { Check, Plus, RotateCcw } from "lucide-react";
+import { Check, Plus } from "lucide-react";
 import { Play } from "@/components/icons/play-filled";
+import { animePlayEpisode } from "./detail/anime-play-episode";
 import {
   animeDetails,
   type AnimeDetailExtras,
@@ -102,7 +103,6 @@ import { profileFromDetail, trackEvent } from "@/lib/discover";
 import { MOVIE_GENRES, TV_GENRES } from "@/lib/feed/tags";
 import { useScrollMemory, useView, type PlayEpisode } from "@/lib/view";
 import { prefetchSegments } from "@/lib/skip-intro";
-import { PencilOutlineIcon } from "@/components/icons/pencil-outline";
 import { useT } from "@/lib/i18n";
 import { AddToListMenu } from "@/components/lists/add-to-list-menu";
 import { HoverTooltip } from "@/components/hover-tooltip";
@@ -121,15 +121,8 @@ import { useTitleBackdrop } from "@/lib/title-backdrop";
 import { useTitleLogo } from "@/lib/title-logo";
 import { useStableAsset, toHiResBackdrop } from "@/lib/use-stable-asset";
 import { useReducedMotion } from "@/lib/use-reduced-motion";
-import { ContentRails, type DetailSection } from "./detail/content-rails";
-import {
-  loadDetailCustomization,
-  saveDetailCustomization,
-  moveSection,
-  toggleSectionHidden,
-  resetDetailCustomization,
-  type DetailCustomization,
-} from "@/lib/detail-customization";
+import type { DetailSection } from "./detail/content-rails";
+import { DetailLayoutEditor } from "./detail/layout-editor";
 import { EpisodeDownloadButton } from "./detail/episode-download-button";
 import { HeroBackdrop } from "./detail/hero-backdrop";
 import { isTitleUpcoming } from "./detail/helpers";
@@ -322,8 +315,6 @@ export function DetailView({
   const { authKey } = useAuth();
   const [loading, setLoading] = useState(true);
   const [trailerOpen, setTrailerOpen] = useState(false);
-  const [layout, setLayout] = useState<DetailCustomization>(loadDetailCustomization);
-  const [layoutEdit, setLayoutEdit] = useState(false);
   const [scores, setScores] = useState<OmdbScores | null>(null);
   const [cinemetaRating, setCinemetaRating] = useState<string | null>(null);
   const [harborImdbRating, setHarborImdbRating] = useState<string | null>(null);
@@ -1381,26 +1372,7 @@ export function DetailView({
     let targetEp: PlayEpisode | undefined;
     if (isSeries) {
       if (isAnime) {
-        const wantedEp = lastPlay
-          ? animeEpisodes.find(
-              (e) => (e.seasonNumber || 1) === lastPlay.season && e.number === lastPlay.episode,
-            )
-          : animeEpisodes[0];
-        if (wantedEp) {
-          targetEp = {
-            season: wantedEp.seasonNumber || 1,
-            episode: wantedEp.number,
-            name: wantedEp.title,
-            still: wantedEp.thumbnail ?? undefined,
-            overview: wantedEp.synopsis || undefined,
-            kitsuStreamId: wantedEp.streamId,
-            imdbId: wantedEp.imdbId,
-            imdbSeason: wantedEp.imdbSeason,
-            imdbEpisode: wantedEp.imdbEpisode,
-            absoluteNumber: wantedEp.absoluteNumber ?? wantedEp.number,
-            tvdbEpisodeId: wantedEp.tvdbEpisodeId,
-          };
-        }
+        targetEp = animePlayEpisode(animeEpisodes, lastPlay, idAnime, animeCanonicalId);
       } else {
         const lp = lastPlay || { season: 1, episode: 1 };
         targetEp = { season: lp.season, episode: lp.episode };
@@ -1411,7 +1383,17 @@ export function DetailView({
       }
     }
     prefetchSegments(playMeta, targetEp);
-  }, [loading, isSeries, isAnime, lastPlay, animeEpisodes, cinemetaFull?.videos, playMeta]);
+  }, [
+    loading,
+    isSeries,
+    isAnime,
+    lastPlay,
+    idAnime,
+    animeCanonicalId,
+    animeEpisodes,
+    cinemetaFull?.videos,
+    playMeta,
+  ]);
 
   const episodeName = useCallback(
     (season: number, episode: number): string | undefined => {
@@ -1507,29 +1489,7 @@ export function DetailView({
         return;
       }
       if (isAnime) {
-        const wantedEp = lastPlay
-          ? animeEpisodes.find(
-              (e) => (e.seasonNumber || 1) === lastPlay.season && e.number === lastPlay.episode,
-            )
-          : animeEpisodes[0];
-        if (wantedEp) {
-          await launch({
-            season: wantedEp.seasonNumber || 1,
-            episode: wantedEp.number,
-            name: wantedEp.title,
-            still: wantedEp.thumbnail ?? undefined,
-            overview: wantedEp.synopsis || undefined,
-            kitsuStreamId: wantedEp.streamId,
-            imdbId: wantedEp.imdbId,
-            imdbSeason: wantedEp.imdbSeason,
-            imdbEpisode: wantedEp.imdbEpisode,
-            absoluteNumber: wantedEp.absoluteNumber ?? wantedEp.number,
-            tvdbEpisodeId: wantedEp.tvdbEpisodeId,
-            sourceMetaId: !idAnime && animeCanonicalId ? animeCanonicalId : undefined,
-          });
-          return;
-        }
-        await launch(undefined);
+        await launch(animePlayEpisode(animeEpisodes, lastPlay, idAnime, animeCanonicalId));
         return;
       }
       if (lastPlay) {
@@ -2418,11 +2378,8 @@ export function DetailView({
               node: (
                 <AwardsBlock
                   awards={awards}
-                  seriesImdbId={
-                    isSeries
-                      ? (detail.imdbId ?? (meta.id.startsWith("tt") ? meta.id : null))
-                      : null
-                  }
+                  imdbId={detail.imdbId ?? (meta.id.startsWith("tt") ? meta.id : null)}
+                  kind={isSeries ? "series" : "movie"}
                 />
               ),
             });
@@ -2501,47 +2458,7 @@ export function DetailView({
             });
           }
           if (railSections.length === 0) return null;
-          const railKeys = railSections.map((s) => s.key);
-          const persist = (next: DetailCustomization) => {
-            setLayout(next);
-            saveDetailCustomization(next);
-          };
-          const hasChanges = layout.order.length > 0 || layout.hidden.length > 0;
-          return (
-            <>
-              <div className="flex items-center justify-end gap-2">
-                {layoutEdit && hasChanges && (
-                  <button
-                    onClick={() => persist(resetDetailCustomization())}
-                    className="flex h-8 items-center gap-1.5 rounded-md bg-white/[0.06] px-2.5 text-[12px] font-medium text-ink-muted transition-colors hover:bg-white/[0.10] hover:text-ink"
-                  >
-                    <RotateCcw size={12} strokeWidth={2.2} />
-                    {t("Reset")}
-                  </button>
-                )}
-                <button
-                  onClick={() => setLayoutEdit((v) => !v)}
-                  className={`flex h-8 items-center gap-1.5 rounded-md px-2.5 text-[12px] font-medium transition-colors ${
-                    layoutEdit
-                      ? "bg-ink text-canvas hover:opacity-90"
-                      : "bg-white/[0.06] text-ink-muted hover:bg-white/[0.10] hover:text-ink"
-                  }`}
-                >
-                  <PencilOutlineIcon size={12} />
-                  {layoutEdit ? t("Done editing") : t("Customize layout")}
-                </button>
-              </div>
-              <FadeInUp>
-                <ContentRails
-                  sections={railSections}
-                  custom={layout}
-                  editMode={layoutEdit}
-                  onMove={(k, d) => persist(moveSection(layout, railKeys, k, d))}
-                  onToggleHidden={(k) => persist(toggleSectionHidden(layout, k))}
-                />
-              </FadeInUp>
-            </>
-          );
+          return <DetailLayoutEditor sections={railSections} />;
         })()}
 
         {!loading && !detail && !isAnime && !addonNative && !settings.tmdbKey && (
