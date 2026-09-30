@@ -1,7 +1,8 @@
+import { activeProfileId } from "@/lib/active-profile-id";
 import { currentActivitiesAll } from "./activities/gate";
 import { simklRequest } from "./client";
 import { simklTargetIds } from "./ids";
-import { subscribeSession } from "./session";
+import { getSession, subscribeSession } from "./session";
 import type { SimklTarget } from "./types";
 
 export type WatchlistStatus = "watching" | "plantowatch" | "hold" | "completed" | "dropped";
@@ -45,6 +46,7 @@ type RawAllItems = { movies?: RawEntry[]; shows?: RawEntry[]; anime?: RawEntry[]
 type SimklData = {
   statuses: Map<string, WatchlistStatus>;
   watched: Map<string, Set<string>>;
+  watchedAt: Map<string, Map<string, number>>;
 };
 
 function isStatus(s: string | undefined): s is WatchlistStatus {
@@ -57,7 +59,8 @@ function idKeys(ids: RawIds | undefined, kind: "movie" | "show"): string[] {
   if (!ids) return [];
   const keys: string[] = [];
   if (ids.imdb) keys.push(ids.imdb);
-  if (ids.tmdb != null) keys.push(kind === "movie" ? `tmdb:movie:${ids.tmdb}` : `tmdb:tv:${ids.tmdb}`);
+  if (ids.tmdb != null)
+    keys.push(kind === "movie" ? `tmdb:movie:${ids.tmdb}` : `tmdb:tv:${ids.tmdb}`);
   if (ids.mal != null) keys.push(`mal:${ids.mal}`);
   if (ids.kitsu != null) keys.push(`kitsu:${ids.kitsu}`);
   if (ids.anilist != null) keys.push(`anilist:${ids.anilist}`);
@@ -72,18 +75,26 @@ function targetKeys(target: SimklTarget): string[] {
 
 let cache: Promise<SimklData> | null = null;
 let cacheMarker: string | null = null;
+let generation = 0;
 
 subscribeSession(() => {
+  generation++;
   cache = null;
   cacheMarker = null;
 });
 
 async function pull(): Promise<SimklData> {
-  const data = await simklRequest<RawAllItems>(
-    "/sync/all-items/all/all?extended=full&episode_watched_at=yes",
-  ).catch(() => ({}) as RawAllItems);
+  const owner = generation;
+  const profile = activeProfileId();
+  const data =
+    (await simklRequest<RawAllItems | null>(
+      "/sync/all-items/all/all?extended=full&episode_watched_at=yes",
+    )) ?? {};
+  if (owner !== generation || profile !== activeProfileId())
+    throw new Error("Simkl session changed");
   const statuses = new Map<string, WatchlistStatus>();
   const watched = new Map<string, Set<string>>();
+  const watchedAt = new Map<string, Map<string, number>>();
   const add = (entries: RawEntry[] | undefined, kind: "movie" | "show") => {
     for (const e of entries ?? []) {
       const node = kind === "movie" ? e.movie : e.show;
@@ -92,27 +103,41 @@ async function pull(): Promise<SimklData> {
       if (isStatus(e.status)) for (const k of keys) statuses.set(k, e.status);
       if (kind === "show" && e.seasons) {
         const eps = new Set<string>();
+        const times = new Map<string, number>();
         for (const s of e.seasons) {
           for (const ep of s.episodes ?? []) {
             if (ep.watched_at && s.number != null && ep.number != null) {
               eps.add(`${s.number}:${ep.number}`);
+              const at = Date.parse(ep.watched_at);
+              if (Number.isFinite(at)) times.set(`${s.number}:${ep.number}`, at);
             }
           }
         }
         if (eps.size > 0) for (const k of keys) watched.set(k, eps);
+        if (times.size > 0) for (const k of keys) watchedAt.set(k, times);
       }
     }
   };
   add(data.movies, "movie");
   add(data.shows, "show");
   add(data.anime, "show");
-  return { statuses, watched };
+  rememberSimklWatched(watched);
+  return { statuses, watched, watchedAt };
 }
 
 async function loadData(): Promise<SimklData> {
+  const owner = generation;
   const all = await currentActivitiesAll();
+  if (owner !== generation) throw new Error("Simkl session changed");
   if (!cache || (all !== null && all !== cacheMarker)) {
-    cache = pull();
+    const request = pull().catch((error) => {
+      if (cache === request) {
+        cache = null;
+        cacheMarker = null;
+      }
+      throw error;
+    });
+    cache = request;
     cacheMarker = all;
   }
   return cache;
@@ -126,10 +151,57 @@ export async function loadSimklWatchedMap(): Promise<Map<string, Set<string>>> {
   return (await loadData()).watched;
 }
 
-export function statusForId(
-  map: Map<string, WatchlistStatus>,
-  id: string,
-): WatchlistStatus | null {
+export async function loadSimklProgress(): Promise<SimklData> {
+  return loadData();
+}
+
+function simklWatchedKey(): string {
+  return `harbor.simkl.watched.v1.${activeProfileId()}`;
+}
+
+// Synchronous starting point for the first paint. The async load still runs and replaces
+// this, so a stale copy can only delay a card, never leave it permanently wrong.
+export function peekSimklWatchedMap(): Map<string, Set<string>> {
+  if (typeof localStorage === "undefined") return new Map();
+  try {
+    const saved = JSON.parse(localStorage.getItem(simklWatchedKey()) ?? "null");
+    if (
+      !saved ||
+      !saved.account ||
+      saved.account !== getSession()?.username ||
+      typeof saved.at !== "number" ||
+      Date.now() - saved.at > 86400000
+    )
+      return new Map();
+    const raw: unknown = saved.watched;
+    if (!raw || typeof raw !== "object") return new Map();
+    const map = new Map<string, Set<string>>();
+    for (const [key, episodes] of Object.entries(raw as Record<string, unknown>)) {
+      if (Array.isArray(episodes)) {
+        map.set(key, new Set(episodes.filter((e): e is string => typeof e === "string")));
+      }
+    }
+    return map;
+  } catch {
+    return new Map();
+  }
+}
+
+function rememberSimklWatched(watched: Map<string, Set<string>>): void {
+  if (typeof localStorage === "undefined") return;
+  try {
+    const flat: Record<string, string[]> = {};
+    for (const [key, episodes] of watched) flat[key] = [...episodes];
+    localStorage.setItem(
+      simklWatchedKey(),
+      JSON.stringify({ account: getSession()?.username, at: Date.now(), watched: flat }),
+    );
+  } catch {
+    /* ignore quota */
+  }
+}
+
+export function statusForId(map: Map<string, WatchlistStatus>, id: string): WatchlistStatus | null {
   return map.get(id) ?? null;
 }
 

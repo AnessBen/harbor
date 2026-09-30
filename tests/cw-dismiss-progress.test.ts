@@ -91,6 +91,18 @@ test("fresh local resume overrides stale cloud recency for the same episode", ()
   assert.equal(h.api.isCwDismissed(value), false);
 });
 
+test("an older tracker episode cannot undo dismissal, while later episodes and fresh rewatches can", () => {
+  const h = harness();
+  const current = item("simkl");
+  h.api.dismissCw(current, null);
+  const older = { ...current, state: { ...current.state!, episode: 1, video_id: "tt-test:1:1" } };
+  assert.equal(h.api.isCwDismissed(older), true);
+  const later = { ...current, state: { ...current.state!, episode: 3, video_id: "tt-test:1:3" } };
+  assert.equal(h.api.isCwDismissed(later), false);
+  h.setResume(older, 100, Date.now() + 1000);
+  assert.equal(h.api.isCwDismissed(older), false);
+});
+
 test("external dismissal clears resume and persists its progress checkpoint", () => {
   const h = harness();
   const value = item("simkl");

@@ -74,12 +74,14 @@ import {
 import { useTrakt } from "@/lib/trakt/provider";
 import { buildTraktHomeRows } from "@/lib/trakt/home-rails";
 import { fetchWatchedKeySet } from "@/lib/trakt/history";
+import { peekTraktWatched } from "@/lib/trakt/watched-keys";
 import { recentlyPlayed, subscribePlayback, type WatchedSet } from "@/lib/playback-history";
 import { detectAnimeForCw, useDetectedAnimeVersion } from "@/lib/anime-detect";
 import { buildSimklHomeRows } from "@/lib/simkl/home-rails";
 import {
   loadSimklWatchedMap,
   loadSimklStatusMap,
+  peekSimklWatchedMap,
   type WatchlistStatus,
 } from "@/lib/simkl/list-status";
 import { useExternalCw } from "@/lib/feed/external-cw";
@@ -111,7 +113,15 @@ import { RowSkeleton } from "./home/row-skeleton";
 import { AddSourceModal } from "@/components/add-source-modal";
 import type { SourceRow } from "@/lib/custom-sources";
 
-export function Home({ active = true, onReady, seasonalInvitation }: { active?: boolean; onReady?: () => void; seasonalInvitation?: ReactNode }) {
+export function Home({
+  active = true,
+  onReady,
+  seasonalInvitation,
+}: {
+  active?: boolean;
+  onReady?: () => void;
+  seasonalInvitation?: ReactNode;
+}) {
   const { authKey, user } = useAuth();
   const { activeProfile, profiles } = useProfiles();
   const { settings, update } = useSettings();
@@ -133,8 +143,10 @@ export function Home({ active = true, onReady, seasonalInvitation }: { active?: 
   const externalCw = useExternalCw(
     !hideSharedCw && (settings.cwSources.trakt || settings.cwSources.simkl),
   );
-  const [traktWatched, setTraktWatched] = useState<Set<string>>(() => new Set());
-  const [simklWatchedMap, setSimklWatchedMap] = useState<Map<string, Set<string>>>(() => new Map());
+  const [traktWatched, setTraktWatched] = useState<Set<string>>(() => peekTraktWatched());
+  const [simklWatchedMap, setSimklWatchedMap] = useState<Map<string, Set<string>>>(() =>
+    peekSimklWatchedMap(),
+  );
   const [simklStatusMap, setSimklStatusMap] = useState<Map<string, WatchlistStatus>>(
     () => new Map(),
   );
@@ -155,7 +167,7 @@ export function Home({ active = true, onReady, seasonalInvitation }: { active?: 
   const [tmdbProvidedByAddon, setTmdbProvidedByAddon] = useState(false);
   const [addonsTick, setAddonsTick] = useState(0);
   const [buildTick, setBuildTick] = useState(0);
-  const { isConnected: traktConnected } = useTrakt();
+  const { isConnected: traktConnected, session: traktSession } = useTrakt();
   const { isConnected: simklConnected } = useSimkl();
   const { isConnected: anilistConnected } = useAnilist();
   const letterboxd = useLetterboxd();
@@ -376,13 +388,15 @@ export function Home({ active = true, onReady, seasonalInvitation }: { active?: 
       .catch(() => {});
     fetchWatchedKeySet()
       .then((set) => {
-        if (!cancelled) setTraktWatched(set);
+        if (!cancelled) {
+          setTraktWatched(set);
+        }
       })
       .catch(() => {});
     return () => {
       cancelled = true;
     };
-  }, [traktConnected, settings.tmdbKey]);
+  }, [traktConnected, traktSession, activeProfile?.id, settings.tmdbKey]);
 
   useEffect(() => {
     if (!simklConnected) {
