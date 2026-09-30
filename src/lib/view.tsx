@@ -1,4 +1,5 @@
 import type { SportsGame } from "./sports/espn";
+import type { SectionId } from "@/views/settings/shared";
 import {
   navigateUnderPreview,
   previewPageStack,
@@ -233,23 +234,7 @@ export type ScrollSnapshot = {
 const RESTORE_RETRY_MS = 60;
 const RESTORE_RETRIES = 20;
 
-export type SettingsSection =
-  | "webhooks"
-  | "account"
-  | "library"
-  | "trakt"
-  | "anilist"
-  | "simkl"
-  | "letterboxd"
-  | "parental"
-  | "relay"
-  | "streaming"
-  | "language"
-  | "player"
-  | "streamFilters"
-  | "plugins"
-  | "licenses"
-  | "advanced";
+export type SettingsSection = SectionId;
 
 type ViewValue = {
   matchDetailGame: SportsGame | null;

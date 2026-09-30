@@ -373,13 +373,13 @@ export function Settings({ visible = true }: { visible?: boolean }) {
   const [savedKey, setSavedKey] = useState<SavedKey | null>(null);
   const { settingsSectionRequest, topKind, chromeHidden: viewChromeHidden } = useView();
   const TRACKER_IDS = ["trakt", "anilist", "mal", "simkl", "letterboxd"];
-  const resolveSection = (id: string | null | undefined): SectionId => {
+  const resolveSection = (id: SectionId | null | undefined): SectionId => {
     if (!id) return "account";
     if (TRACKER_IDS.includes(id)) {
       requestTracker(id);
       return "trackers";
     }
-    return id as SectionId;
+    return id;
   };
   const [landing, setLanding] = useState<string | null>(null);
   const [active, setActive] = useState<SectionId>(resolveSection(settingsSectionRequest.section));
