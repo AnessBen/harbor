@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useRef } from "react";
 import { markAnimeWatching, syncAnimeProgress } from "@/lib/anilist/sync";
 import { markMalWatching, syncMalProgress } from "@/lib/mal/sync";
+import { getSession as getAnilistSession } from "@/lib/anilist/session";
+import { getSession as getMalSession } from "@/lib/mal/session";
+import { activeProfileId } from "@/lib/active-profile-id";
 import { animeIdentityEligible, resolveAnimeIdentity } from "@/lib/streams/anime-identity";
 import {
   isForeignSplitSeason,
@@ -19,6 +22,7 @@ import { savePlayback } from "@/lib/playback-history";
 import { clearResume, saveResumeMs } from "@/lib/resume";
 import { isMovieWatchedLocal, setMovieWatchedLocal } from "@/lib/movie-watched";
 import { setViewedSeason } from "@/lib/season-view-pref";
+import { animeTrackerTarget } from "@/lib/tracker-progress";
 import type { PlayerSnapshot } from "@/lib/player/bridge";
 import { getPlaybackPosition, subscribePlaybackClock } from "@/lib/player/playback-clock";
 import { useSettings } from "@/lib/settings";
@@ -39,13 +43,6 @@ const STUB_MAX_SEC = 150;
 
 const isAnimeId = (id: string) =>
   id.startsWith("kitsu:") || id.startsWith("mal:") || id.startsWith("anilist:");
-
-const animeTrackId = (s: PlayerSrc): string | null => {
-  if (isAnimeId(s.meta.id)) return s.meta.id;
-  const ks = s.episode?.kitsuStreamId;
-  if (ks?.startsWith("kitsu:")) return ks.split(":").slice(0, 2).join(":");
-  return null;
-};
 
 // Per-season sync resolution that also applies when a kitsu stream id is set.
 // Off the split-franchise allowlist this defers to stock eligibility.
@@ -269,27 +266,28 @@ export function useResumeAutosave(params: ResumeAutosaveParams) {
       );
     }
     if (pos < TASTE_MIN_SEC) return;
-    const trackId = s.episode?.sourceMetaId ?? animeTrackId(s);
-    const absEp = s.episode?.absoluteNumber;
-    const trackEp =
-      seasonForeign && typeof ep === "number"
-        ? ep
-        : s.episode?.sourceMetaId
-          ? ep
-          : (s.episode?.imdbEpisode ?? ep);
+    const track = animeTrackerTarget(id, s.episode, ep);
+    const profile = activeProfileId();
+    const anilistSession = getAnilistSession();
+    const malSession = getMalSession();
     const syncReady = finished || (sn.durationSec > 0 && pos / sn.durationSec >= SYNC_RATIO);
     const fireTrackers = (tid: string, tep: number | undefined): void => {
-      if (anilistAutoSyncRef.current) void markAnimeWatching(tid, s.meta.name);
-      if (malAutoSyncRef.current) void markMalWatching(tid, s.meta.name);
-      if (!syncReady) return;
-      if (anilistAutoSyncRef.current) void syncAnimeProgress(tid, tep, s.meta.name, absEp, cs);
-      if (malAutoSyncRef.current) void syncMalProgress(tid, tep, s.meta.name, absEp, cs);
+      // Resolution may finish after a profile switch or tracker reconnect.
+      if (activeProfileId() !== profile || activeSessionRef.current.ownerId !== current.ownerId) return;
+      if (anilistAutoSyncRef.current && getAnilistSession() === anilistSession) {
+        if (syncReady) void syncAnimeProgress(tid, tep, s.meta.name, cs);
+        else void markAnimeWatching(tid, s.meta.name);
+      }
+      if (malAutoSyncRef.current && getMalSession() === malSession) {
+        if (syncReady) void syncMalProgress(tid, tep, s.meta.name, cs);
+        else void markMalWatching(tid, s.meta.name);
+      }
     };
     const useIdentity =
       (anilistAutoSyncRef.current || malAutoSyncRef.current) &&
       animeIdentityEligibleForSync(id, s.episode);
-    if (trackId && !useIdentity) {
-      fireTrackers(trackId, trackEp);
+    if (track && !useIdentity) {
+      fireTrackers(track.id, track.episode);
     } else if (useIdentity) {
       void resolveAnimeIdentity(id, rid, {
         season: cs,
@@ -301,10 +299,10 @@ export function useResumeAutosave(params: ResumeAutosaveParams) {
           // Prefer the season-scoped entry so multi-season franchises sync to
           // the correct per-season AniList/MAL media, not the season-1 entry.
           if (identity) fireTrackers(`kitsu:${identity.kitsuId}`, identity.number);
-          else if (trackId) fireTrackers(trackId, trackEp);
+          else if (track) fireTrackers(track.id, track.episode);
         })
         .catch(() => {
-          if (trackId) fireTrackers(trackId, trackEp);
+          if (track) fireTrackers(track.id, track.episode);
         });
     }
     const kind = finished ? "watched" : "play";

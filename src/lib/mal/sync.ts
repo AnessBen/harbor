@@ -94,17 +94,21 @@ export function resetForProfile(): void {
 
 export async function markMalWatching(harborId: string, title: string): Promise<void> {
   if (!isAuthenticated()) return;
+  const profile = activeProfileId();
+  const session = getSession();
+  const owned = () => activeProfileId() === profile && getSession() === session;
   if (watchingMarked.has(harborId)) return;
   watchingMarked.add(harborId);
   try {
     const malId = await resolveMalMediaId(harborId);
-    if (malId == null) {
+    if (!owned() || malId == null) {
       watchingMarked.delete(harborId);
       return;
     }
     const cur = await malRequest<EntryResponse>(
       `/anime/${malId}?fields=num_episodes,my_list_status`,
     );
+    if (!owned()) return;
     if (cur?.my_list_status && cur.my_list_status.status !== "plan_to_watch") return;
     const total = cur?.num_episodes ?? 0;
     if (cur?.my_list_status && total > 0 && cur.my_list_status.num_episodes_watched >= total)
@@ -113,7 +117,7 @@ export async function markMalWatching(harborId: string, title: string): Promise<
       method: "PATCH",
       body: new URLSearchParams({ status: "watching" }),
     });
-    emit({ kind: "watching", title });
+    if (owned()) emit({ kind: "watching", title });
   } catch (e) {
     watchingMarked.delete(harborId);
     if (e instanceof MalApiError && e.status === 401) return;
@@ -124,7 +128,6 @@ export async function syncMalProgress(
   harborId: string,
   episode: number | undefined,
   title: string,
-  absoluteEpisode?: number,
   season?: number,
 ): Promise<void> {
   if (!isAuthenticated()) return;
@@ -132,20 +135,16 @@ export async function syncMalProgress(
   const session = getSession();
   const owned = () => activeProfileId() === profile && getSession() === session;
   const ep = episode ?? 1;
-  if (!Number.isFinite(ep) || ep < 1) return;
-  const abs =
-    absoluteEpisode != null && Number.isFinite(absoluteEpisode) && absoluteEpisode > ep
-      ? absoluteEpisode
-      : null;
+  if (!Number.isInteger(ep) || ep < 1) return;
 
   const sent = loadSent();
   const sentKey = `${harborId}|${season ?? ""}|${ep}`;
   const prevSent = sentProgress(sent, sentKey);
-  if (prevSent && Date.now() - prevSent.t < SENT_TTL_MS && prevSent.p >= (abs ?? ep)) {
+  if (prevSent && Date.now() - prevSent.t < SENT_TTL_MS && prevSent.p >= ep) {
     return;
   }
 
-  const flightKey = `${profile}|${harborId}|${ep}|${abs ?? ""}`;
+  const flightKey = `${profile}|${harborId}|${ep}`;
   if (inflight.has(flightKey)) {
     return;
   }
@@ -169,12 +168,9 @@ export async function syncMalProgress(
 
     const current = cur?.my_list_status?.num_episodes_watched ?? 0;
     const total = cur?.num_episodes ?? 0;
-    let target = ep;
-    if (abs != null && total > 0 && abs <= total && ep <= current && abs > current) target = abs;
-    if (total > 0 && target > total) {
-      if (target > total + 1) return;
-      target = total;
-    }
+    // The caller resolves entry-relative numbering before reaching this layer.
+    const target = ep;
+    if (total > 0 && target > total) return;
     if (target <= current) {
       rememberSent(sent, sentKey, Math.max(prevSent?.p ?? 0, current));
       saveSent(sent);

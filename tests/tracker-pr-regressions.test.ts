@@ -387,19 +387,19 @@ for (const service of ["anilist", "mal"]) {
       },
     );
     const sync = service === "anilist" ? api.syncAnimeProgress : api.syncMalProgress;
-    await sync(`${service}:1`, 2, "Fixture", undefined, 1);
+    await sync(`${service}:1`, 2, "Fixture", 1);
     assert.equal(writes, 1);
     confirmed = true;
-    await sync(`${service}:1`, 2, "Fixture", undefined, 1);
+    await sync(`${service}:1`, 2, "Fixture", 1);
     assert.equal(writes, 2);
-    await sync(`${service}:1`, 2, "Fixture", undefined, 1);
+    await sync(`${service}:1`, 2, "Fixture", 1);
     assert.equal(writes, 2);
     data.set(base, JSON.stringify({ [key]: { p: 2, t: Date.now() - 61000 } }));
-    await sync(`${service}:1`, 2, "Fixture", undefined, 1);
+    await sync(`${service}:1`, 2, "Fixture", 1);
     assert.equal(writes, 3);
     data.delete(base);
     switchDuring = true;
-    await sync(`${service}:1`, 2, "Fixture", undefined, 1);
+    await sync(`${service}:1`, 2, "Fixture", 1);
     assert.equal(writes, 3);
     assert.equal(data.has(`harbor.${service}.synced.v1.b`), false);
   });

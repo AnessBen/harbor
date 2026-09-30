@@ -3,6 +3,7 @@ import ts from "typescript";
 import { emptySnapshot } from "../../src/lib/player/bridge.ts";
 import { isNaturalEnd } from "../../src/lib/player/playback-end.ts";
 import { playerLoadIdentity } from "../../src/lib/player/load-identity.ts";
+import { animeTrackerTarget } from "../../src/lib/tracker-progress.ts";
 
 export function playbackPersistenceHarness(kind: "local" | "cloud" = "local") {
   const effects: Array<{ deps: unknown[] | undefined; cleanup?: () => void }> = [];
@@ -18,8 +19,9 @@ export function playbackPersistenceHarness(kind: "local" | "cloud" = "local") {
   const localCw: any[] = [], cleared: any[][] = [], watchEvents: any[] = [];
   const localOwners: any[] = [];
   let profileId = "fixture";
+  let trackerSession = {};
   const cloudWrites: any[][] = [];
-  const identityRequests: any[][] = [], trackerProgress: any[][] = [];
+  const identityRequests: any[][] = [], trackerProgress: any[][] = [], trackerStatus: any[][] = [];
   const libraryItem = { _id: "tt100", name: "Test series", state: {} };
   let cloudRead: () => Promise<any> = async () => libraryItem;
   const sameDeps = (a: unknown[] | undefined, b: unknown[] | undefined) =>
@@ -39,6 +41,7 @@ export function playbackPersistenceHarness(kind: "local" | "cloud" = "local") {
   const noop = () => {};
   const dependencies: Record<string, unknown> = {
     markAnimeWatching: noop, syncAnimeProgress: noop, markMalWatching: noop, syncMalProgress: noop,
+    animeTrackerTarget, activeProfileId: () => profileId, getSession: () => trackerSession,
     animeIdentityEligible: () => false, resolveAnimeIdentity: async () => null,
     isForeignSplitSeason: () => false, splitFranchiseDisplaySeason: () => undefined,
     isSplitFranchiseKitsu: () => false, parseKitsuId: () => null,
@@ -87,13 +90,20 @@ export function playbackPersistenceHarness(kind: "local" | "cloud" = "local") {
     writes, watched, history, synced, cleared, localCw, watchEvents, cloudWrites,
     localOwners, setProfile: (id: string) => { profileId = id; },
     setCloudRead: (read: () => Promise<any>) => { cloudRead = read; },
-    identityRequests, trackerProgress,
+    identityRequests, trackerProgress, trackerStatus,
+    setIdentityResolver(resolve: (...args: any[]) => Promise<any>) {
+      dependencies.resolveAnimeIdentity = (...args: any[]) => { identityRequests.push(args); return resolve(...args); };
+    },
+    skipIdentityResolution() { dependencies.animeIdentityEligible = () => false; },
+    switchTrackerSession() { trackerSession = {}; },
     enableAnimeSync() {
       dependencies.useSettings = () => ({ settings: { anilistAutoSync: true, malAutoSync: true } });
       dependencies.animeIdentityEligible = () => true;
       dependencies.resolveAnimeIdentity = async (...args: any[]) => { identityRequests.push(args); return { kitsuId: 99, number: args[2].episode }; };
       dependencies.syncAnimeProgress = (...args: any[]) => trackerProgress.push(["anilist", ...args]);
       dependencies.syncMalProgress = (...args: any[]) => trackerProgress.push(["mal", ...args]);
+      dependencies.markAnimeWatching = (...args: any[]) => trackerStatus.push(["anilist", ...args]);
+      dependencies.markMalWatching = (...args: any[]) => trackerStatus.push(["mal", ...args]);
     },
     render(params: any) {
       refIndex = effectIndex = memoIndex = 0; pending = [];

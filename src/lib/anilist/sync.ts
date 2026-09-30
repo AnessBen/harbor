@@ -144,15 +144,19 @@ export function resetForProfile(): void {
 
 export async function markAnimeWatching(harborId: string, title: string): Promise<void> {
   if (!isAuthenticated()) return;
+  const profile = activeProfileId();
+  const session = getSession();
+  const owned = () => activeProfileId() === profile && getSession() === session;
   if (watchingMarked.has(harborId)) return;
   watchingMarked.add(harborId);
   try {
     const mediaId = await resolveAnilistMediaId(harborId);
-    if (mediaId == null) {
+    if (!owned() || mediaId == null) {
       watchingMarked.delete(harborId);
       return;
     }
     const cur = await anilistRequest<EntryResponse>(ENTRY_QUERY, { id: mediaId });
+    if (!owned()) return;
     const entry = cur?.Media?.mediaListEntry;
     if (entry && entry.status !== "PLANNING") return;
     const total = cur?.Media?.episodes ?? 0;
@@ -161,7 +165,7 @@ export async function markAnimeWatching(harborId: string, title: string): Promis
       mediaId,
       status: "CURRENT",
     });
-    emit({ kind: "watching", title });
+    if (owned()) emit({ kind: "watching", title });
   } catch (e) {
     watchingMarked.delete(harborId);
     if (e instanceof AnilistApiError && e.status === 401) return;
@@ -172,7 +176,6 @@ export async function syncAnimeProgress(
   harborId: string,
   episode: number | undefined,
   title: string,
-  absoluteEpisode?: number,
   season?: number,
 ): Promise<void> {
   if (!isAuthenticated()) return;
@@ -180,20 +183,16 @@ export async function syncAnimeProgress(
   const session = getSession();
   const owned = () => activeProfileId() === profile && getSession() === session;
   const ep = episode ?? 1;
-  if (!Number.isFinite(ep) || ep < 1) return;
-  const abs =
-    absoluteEpisode != null && Number.isFinite(absoluteEpisode) && absoluteEpisode > ep
-      ? absoluteEpisode
-      : null;
+  if (!Number.isInteger(ep) || ep < 1) return;
 
   const sent = loadSent();
   const sentKey = `${harborId}|${season ?? ""}|${ep}`;
   const prevSent = sentProgress(sent, sentKey);
-  if (prevSent && Date.now() - prevSent.t < SENT_TTL_MS && prevSent.p >= (abs ?? ep)) {
+  if (prevSent && Date.now() - prevSent.t < SENT_TTL_MS && prevSent.p >= ep) {
     return;
   }
 
-  const flightKey = `${profile}|${harborId}|${ep}|${abs ?? ""}`;
+  const flightKey = `${profile}|${harborId}|${ep}`;
   if (inflight.has(flightKey)) {
     return;
   }
@@ -217,12 +216,9 @@ export async function syncAnimeProgress(
 
     const current = media.mediaListEntry?.progress ?? 0;
     const total = media.episodes ?? 0;
-    let target = ep;
-    if (abs != null && total > 0 && abs <= total && ep <= current && abs > current) target = abs;
-    if (total > 0 && target > total) {
-      if (target > total + 1) return;
-      target = total;
-    }
+    // The caller resolves entry-relative numbering before reaching this layer.
+    const target = ep;
+    if (total > 0 && target > total) return;
     if (target <= current) {
       rememberSent(sent, sentKey, Math.max(prevSent?.p ?? 0, current));
       saveSent(sent);
