@@ -12,6 +12,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Flag } from "@/components/flag";
 import { hasImportedSubTitle, markImportedSub, useImportedSubs } from "@/lib/player/imported-subs";
 import { setSecondarySub } from "@/lib/player/secondary-sub";
+import { canBeSecondarySub } from "@/lib/player/sub-format";
 import { useT } from "@/lib/i18n";
 import { HoverTooltip } from "@/components/hover-tooltip";
 import { filterTracksByPreferredLanguage, isGeneratedLangLabel } from "@/lib/subtitles/language";
@@ -424,8 +425,10 @@ export function MenuBody(props: SubtitleMenuProps & { onClose: () => void }) {
                         onPick={() => {
                           onSelect(t.id);
                         }}
-                        onPickSecondary={() =>
-                          pickSecondary(t.id === secondaryTrack?.id ? null : t.id)
+                        onPickSecondary={
+                          canBeSecondarySub(t)
+                            ? () => pickSecondary(t.id === secondaryTrack?.id ? null : t.id)
+                            : undefined
                         }
                       />
                     );
