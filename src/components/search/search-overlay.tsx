@@ -1,6 +1,7 @@
 import { X, Loader2, CornerDownLeft, CalendarRange, Tag } from "lucide-react";
 import { Search } from "@/components/icons/search-icon";
 import { useEffect, useRef, useState } from "react";
+import { isTauri } from "@tauri-apps/api/core";
 import { createPortal } from "react-dom";
 import { TvModalClose } from "@/components/tv-modal-close";
 import { tvFocus } from "@/lib/keyboard-navigation";
@@ -44,6 +45,7 @@ import { getSearchDisplayState } from "@/lib/search-display-state";
 import { AiExampleHint, SEARCH_EXAMPLES } from "@/components/ai-example-hint";
 import { useSettings } from "@/lib/settings";
 import { useExitPresence } from "@/lib/use-exit-presence";
+import { useWindowFullscreen } from "@/lib/use-window-fullscreen";
 import { isMagnetInput, isDirectVideoUrl } from "@/lib/torrent/magnet";
 
 export function SearchOverlay() {
@@ -61,6 +63,7 @@ export function SearchOverlay() {
   } = useSearch();
   const inputRef = useRef<HTMLInputElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const backdropGesture = useRef<(() => void) | null>(null);
   const { openFilter, openMeta, openPerson, setView } = useView();
   const [explore, setExplore] = useState<ExploreFrame[]>([]);
   const t = useT();
@@ -74,8 +77,15 @@ export function SearchOverlay() {
   }, [query]);
   const { settings, update } = useSettings();
   const { mounted, closing } = useExitPresence(open, 150);
+  const fullscreen = useWindowFullscreen();
+
+  useEffect(
+    () => () => backdropGesture.current?.(),
+    [open, closing, settings.dragAnywhere, fullscreen],
+  );
 
   const close = () => {
+    backdropGesture.current?.();
     if (query.trim() && results) recordRecent(query);
     setOpen(false);
   };
@@ -89,6 +99,7 @@ export function SearchOverlay() {
   };
 
   const commit = () => {
+    backdropGesture.current?.();
     if (query.trim() && results) recordRecent(query);
     closeForNavigation();
   };
@@ -140,7 +151,7 @@ export function SearchOverlay() {
         root.querySelectorAll<HTMLElement>(
           'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
         ),
-      ).filter((el) => el.getClientRects().length > 0);
+      ).filter((el) => el.tabIndex >= 0 && el.getClientRects().length > 0);
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key !== "Tab" || e.defaultPrevented) return;
       if (!(e.target instanceof Node) || !root.contains(e.target)) return;
@@ -169,31 +180,55 @@ export function SearchOverlay() {
   if (!mounted) return null;
 
   const beginDragOrClose = (e: React.MouseEvent) => {
-    if (e.target !== e.currentTarget) return;
-    if (e.button !== 0) return;
+    if (e.target !== e.currentTarget || e.button !== 0 || !open || closing) return;
+    e.preventDefault();
+    backdropGesture.current?.();
     const startX = e.clientX;
     const startY = e.clientY;
+    const canDrag = isTauri() && settings.dragAnywhere && !fullscreen;
+    let active = true;
+    let moved = false;
     let dragStarted = false;
+    const cleanup = () => {
+      active = false;
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+      window.removeEventListener("blur", cleanup);
+      if (backdropGesture.current === cleanup) backdropGesture.current = null;
+    };
     const onMove = (ev: MouseEvent) => {
+      if (!(ev.buttons & 1)) {
+        cleanup();
+        return;
+      }
       if (dragStarted) return;
       const dx = Math.abs(ev.clientX - startX);
       const dy = Math.abs(ev.clientY - startY);
-      if (dx > 6 || dy > 6) {
-        dragStarted = true;
-        window.removeEventListener("mousemove", onMove);
-        window.removeEventListener("mouseup", onUp);
-        import("@tauri-apps/api/window")
-          .then(({ getCurrentWindow }) => getCurrentWindow().startDragging())
-          .catch(() => {});
-      }
+      if (dx <= 6 && dy <= 6) return;
+      moved = true;
+      if (!canDrag) return;
+      dragStarted = true;
+      import("@tauri-apps/api/window")
+        .then(async ({ getCurrentWindow }) => {
+          if (!active) return;
+          const win = getCurrentWindow();
+          if (await win.isFullscreen().catch(() => true)) return;
+          // Releasing, closing or leaving the window cancels a pending native request.
+          if (!active) return;
+          cleanup();
+          await win.startDragging();
+        })
+        .catch(() => {});
     };
-    const onUp = () => {
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
-      if (!dragStarted) close();
+    const onUp = (ev: MouseEvent) => {
+      if (ev.button !== 0) return;
+      cleanup();
+      if (!moved) close();
     };
+    backdropGesture.current = cleanup;
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
+    window.addEventListener("blur", cleanup);
   };
 
   const pushExplore = (frame: ExploreFrame) => {
@@ -283,7 +318,7 @@ export function SearchOverlay() {
         tabIndex={-1}
         aria-label={t("Close search")}
         onMouseDown={beginDragOrClose}
-        className={`harbor-search-backdrop absolute -inset-6 cursor-default ${
+        className={`harbor-search-backdrop no-press absolute -inset-6 cursor-default ${
           closing ? "harbor-search-scrim-out" : "harbor-search-scrim-in"
         }`}
       />
@@ -309,7 +344,6 @@ export function SearchOverlay() {
             <div className="relative flex-1">
               <input
                 ref={inputRef}
-                autoFocus
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
