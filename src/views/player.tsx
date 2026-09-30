@@ -1011,6 +1011,10 @@ function NativePlayerView({ src }: { src: PlayerSrc }) {
   });
 
   useEffect(() => {
+    if (snap.status === "idle" || snap.status === "ended" || snap.status === "error") {
+      clearMediaControls();
+      return;
+    }
     const ep = src.episode;
     const subtitle = ep ? `S${ep.season} E${ep.episode}${ep.name ? ` · ${ep.name}` : ""}` : "";
     const artUrl = src.episode?.still || src.meta.background || src.meta.poster || null;
@@ -1022,6 +1026,10 @@ function NativePlayerView({ src }: { src: PlayerSrc }) {
     const unsub = subscribePlaybackClock(() => {
       const livePos = getPlaybackPosition();
       const currentSnap = snapRef.current;
+      if (currentSnap.status === "idle" || currentSnap.status === "ended" || currentSnap.status === "error") {
+        clearMediaControls();
+        return;
+      }
       const playingNow =
         currentSnap.status === "playing" && (currentSnap.firstFrameReady || livePos > 0.3);
       updateMediaControls(

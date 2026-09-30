@@ -168,6 +168,7 @@ import {
   syncMusicTaskbarArtwork,
 } from "@/lib/music/taskbar-buttons";
 import { resetMusicForProfile } from "@/lib/music/player";
+import { startMediaSessionWindowTracking } from "@/lib/media-session";
 
 const importAnime = () => import("@/views/anime");
 const importCalendar = () => import("@/views/calendar");
@@ -1427,6 +1428,7 @@ function Shell({ onReady }: { onReady?: () => void }) {
     "data-layer-inactive": !top ? "" : undefined,
   });
 
+  useEffect(() => startMediaSessionWindowTracking(), []);
   useEffect(() => startMusicTaskbarButtons(), []);
   useEffect(() => syncMusicTaskbarArtwork(), [settings.musicArtworkAppIcon]);
   useEffect(() => resetMusicForProfile(), [activeProfileForMusic]);
