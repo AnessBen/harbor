@@ -9,10 +9,12 @@ import {
   type TrackInfo,
 } from "../bridge";
 import { fetchAndParse, findActiveCue } from "@/lib/subtitles/parser";
-import { prepareSubtitle } from "@/lib/subtitles/prepare";
+import { SubtitlePreparationError, prepareSubtitle } from "@/lib/subtitles/prepare";
 import { stripSdhText } from "@/lib/subtitles/sdh-filter";
 import { subtitleTrackDownloadHeaders } from "@/lib/subtitles/provider-auth";
 import { takePreparedSubtitle } from "@/lib/subtitles/prepared-registry";
+import { clearPendingSub, markPendingSub } from "@/lib/subtitles/pending-subs";
+import { registerTranslationJob } from "@/lib/subtitles/translation-jobs";
 import type { SubTrack } from "./types";
 import { bufferedAhead, readAudioTracks, videoAudio } from "./audio-tracks";
 import { mapErrorCode } from "./error-map";
@@ -294,6 +296,7 @@ export function createHtml5Bridge(): PlayerBridge {
             archive: prepared.archive,
             prepared: true,
           };
+          clearPendingSub(track.originalUrl ?? track.url);
         } else {
           const cues = await fetchAndParse(track.url, { ...track.metadata, lang: track.lang });
           if (requestMediaRevision !== mediaRevision || !subTracks.includes(track)) return false;
@@ -306,6 +309,21 @@ export function createHtml5Bridge(): PlayerBridge {
           release: track.metadata?.release,
           error: e instanceof Error ? e.name : "unknown",
         });
+        if (
+          track.metadata?.refreshable === true &&
+          e instanceof SubtitlePreparationError &&
+          (e.reason === "invalid-cues" || e.reason === "unsupported-format")
+        ) {
+          // The addon answered before the subtitle was ready: a pending job, not a failure.
+          const pendingUrl = track.originalUrl ?? track.url;
+          markPendingSub(pendingUrl);
+          registerTranslationJob({
+            url: pendingUrl,
+            lang: track.lang,
+            title: track.title,
+            metadata: track.metadata,
+          });
+        }
         if (requestMediaRevision === mediaRevision && subTracks.includes(track)) track.cues = [];
         return false;
       } finally {
@@ -821,6 +839,19 @@ export function createHtml5Bridge(): PlayerBridge {
       const prepared = takePreparedSubtitle(url);
       const providerDerived = metadata?.providerDerived ?? Boolean(metadata?.provider);
       if (!prepared && providerDerived && !isSafeProviderSubtitleUrl(url)) return false;
+      // Replace a previous track for the same source so a re-fetched provider subtitle
+      // (translating addon) does not stack a duplicate.
+      const sourceUrl = metadata?.originalUrl ?? url;
+      if (!prepared) {
+        const priorIdx = subTracks.findIndex(
+          (track) => track.originalUrl === sourceUrl || track.url === sourceUrl,
+        );
+        if (priorIdx >= 0) {
+          const [oldTrack] = subTracks.splice(priorIdx, 1);
+          oldTrack.cleanup?.();
+          if (activeSubId === oldTrack.id) activeSubId = null;
+        }
+      }
       let resolvedUrl = url;
       if (
         !/^(https?|blob|data):/i.test(url) &&

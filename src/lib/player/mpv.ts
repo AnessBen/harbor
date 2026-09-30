@@ -1,8 +1,10 @@
 import { invoke } from "@tauri-apps/api/core";
-import { prepareSubtitle } from "@/lib/subtitles/prepare";
+import { SubtitlePreparationError, prepareSubtitle } from "@/lib/subtitles/prepare";
 import { subtitleTrackDownloadHeaders } from "@/lib/subtitles/provider-auth";
 import { takePreparedSubtitle } from "@/lib/subtitles/prepared-registry";
 import { markLimitReached } from "@/lib/subtitles/limit-signal";
+import { clearPendingSub, markPendingSub } from "@/lib/subtitles/pending-subs";
+import { registerTranslationJob } from "@/lib/subtitles/translation-jobs";
 import { mpvFailureSnapshot } from "./mpv-failure";
 import { isLinuxDesktop, isMacDesktop, isWindowsDesktop } from "@/lib/platform";
 import { makeSafeTauriUnlisten } from "@/lib/tauri-unlisten";
@@ -1142,6 +1144,28 @@ export function createMpvBridge(mpvOptions?: MpvOptions): PlayerBridge {
       if (!transferredPrepared && providerDerived && !isSafeProviderSubtitleUrl(url)) {
         return false;
       }
+      // A provider subtitle can be re-fetched (e.g. a translating addon that only serves
+      // the finished file later). Replace the previous track for the same source rather
+      // than stacking a duplicate. mpv's sub-remove only touches external subtitle files,
+      // which is the only case that can match here.
+      const sourceUrl = metadata?.originalUrl ?? url;
+      const prior = transferredPrepared
+        ? undefined
+        : snap.subtitleTracks.find(
+            (track) =>
+              track.kind === "subtitle" &&
+              track.external === true &&
+              (track.originalUrl === sourceUrl || track.url === sourceUrl),
+          );
+      if (prior) {
+        try {
+          await invoke("mpv_sub_remove", { id: prior.id });
+        } catch {
+          // Track already gone; adding the refreshed file below still works.
+        }
+        const priorFile = prior.externalFilename?.replace(/\\/g, "/");
+        if (priorFile) urlByExternalFilename.delete(priorFile);
+      }
       let preparedCleanup: (() => void) | null = transferredPrepared?.cleanup ?? null;
       let preparedCues: SubCue[] | undefined = transferredPrepared?.cues;
       let registeredMetadata: ExternalSubtitleMetadata | null = null;
@@ -1171,6 +1195,7 @@ export function createMpvBridge(mpvOptions?: MpvOptions): PlayerBridge {
             archive: prepared.archive,
             prepared: true,
           };
+          clearPendingSub(url);
         } catch (e) {
           const message = e instanceof Error ? e.message : String(e);
           console.warn("[mpv] subtitle preparation failed", {
@@ -1179,6 +1204,16 @@ export function createMpvBridge(mpvOptions?: MpvOptions): PlayerBridge {
           preparedCleanup?.();
           if (/status 429/.test(message)) {
             markLimitReached(url);
+          }
+          if (
+            metadata?.refreshable === true &&
+            e instanceof SubtitlePreparationError &&
+            (e.reason === "invalid-cues" || e.reason === "unsupported-format")
+          ) {
+            // The addon answered before the subtitle was ready. Treat it as a pending
+            // job so the UI says "try again shortly", and never surface the placeholder.
+            markPendingSub(url);
+            registerTranslationJob({ url, lang, title, metadata });
           }
           return false;
         }
