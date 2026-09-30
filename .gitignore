@@ -50,6 +50,7 @@ scratchpad/
 # Working notes, triage ledgers and local dev logs. Only *.md and *.log were
 # keeping this out of the tree by accident; make it explicit.
 _private/
+/src-tauri/tauri.dev.local.json
 
 # This repo is pnpm (see packageManager + CI). npm lockfiles must not be committed.
 package-lock.json

@@ -23,7 +23,10 @@ function load<T>(
   mocks: Record<string, unknown>,
   globals: Record<string, unknown>,
 ): T {
-  const source = readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
+  const source = readFileSync(new URL(`../${path}`, import.meta.url), "utf8").replaceAll(
+    "import.meta.env.DEV",
+    String(globals.__DEV__ === true),
+  );
   const { outputText } = ts.transpileModule(source, {
     compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS },
   });
@@ -156,7 +159,13 @@ function deferred<T>() {
 }
 
 function harness(
-  options: { beta?: boolean; managed?: boolean; platform?: string; version?: string } = {},
+  options: {
+    beta?: boolean;
+    managed?: boolean;
+    platform?: string;
+    version?: string;
+    dev?: boolean;
+  } = {},
 ) {
   const localStorage = storage();
   localStorage.setItem("harbor.settings", JSON.stringify({ betaUpdates: !!options.beta }));
@@ -325,6 +334,7 @@ function harness(
       },
     },
     {
+      __DEV__: options.dev,
       localStorage,
       window: { __TAURI_INTERNALS__: {}, addEventListener() {}, setInterval() {} },
       fetch: async (url: string, init: { headers?: unknown }) => {
@@ -349,6 +359,30 @@ function harness(
   );
   return { updater, channel, betaReturn, localStorage, recovery, config, calls };
 }
+
+test("development builds leave installed-release update and recovery state untouched", async () => {
+  for (const channel of ["stable", "beta", "experimental"] as const) {
+    const h = harness({ dev: true, beta: channel === "beta" });
+    if (channel === "experimental") h.updater.setExperimentalUpdates(true);
+    const pending = JSON.stringify({ version: "999.0.0", channel });
+    h.localStorage.setItem("harbor.update.pending", pending);
+    h.updater.startUpdateWatcher();
+    await h.updater.checkForUpdate(true);
+    await h.updater.prepareBetaReturn("0.9.122");
+    await h.updater.downloadUpdate();
+    await h.updater.installUpdate();
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.deepEqual(h.calls.headers, []);
+    assert.deepEqual(h.calls.fetchUrls, []);
+    assert.deepEqual(h.calls.nativeFetchUrls, []);
+    assert.equal(
+      h.calls.download + h.calls.install + h.calls.stage + h.calls.launch + h.calls.relaunch,
+      0,
+    );
+    assert.equal(h.updater.useUpdate().status, "idle");
+    assert.equal(h.localStorage.getItem("harbor.update.pending"), pending);
+  }
+});
 
 test("account requests use native-aware transport and retry with the refreshed token", async () => {
   let token = "old-test-token";
