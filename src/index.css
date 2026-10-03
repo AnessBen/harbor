@@ -693,27 +693,18 @@ main[data-kids="on"]::-webkit-scrollbar-thumb:hover {
 }
 
 @keyframes harbor-panel-in {
-  0% {
+  from {
     opacity: 0;
-    transform: translateY(-8px) scale(0.94);
+    transform: translateY(-6px) scale(0.98);
   }
-  40% {
-    opacity: 1;
-  }
-  55% {
-    transform: translateY(0) scale(1.02);
-  }
-  78% {
-    transform: scale(0.995);
-  }
-  100% {
+  to {
     opacity: 1;
     transform: none;
   }
 }
 
 .animate-panel-in {
-  animation: harbor-panel-in 300ms ease-in-out backwards;
+  animation: harbor-panel-in 160ms cubic-bezier(0.32, 0.72, 0, 1) backwards;
   transform-origin: top right;
 }
 
@@ -722,31 +713,22 @@ main[data-kids="on"]::-webkit-scrollbar-thumb:hover {
 }
 
 @keyframes harbor-dialog-in {
-  0% {
+  from {
     opacity: 0;
-    transform: translateY(14px) scale(0.94, 0.96);
+    transform: translateY(10px) scale(0.97);
   }
-  45% {
-    opacity: 1;
-  }
-  55% {
-    transform: translateY(-3px) scale(1.015, 1.03);
-  }
-  78% {
-    transform: translateY(1px) scale(0.998, 0.994);
-  }
-  100% {
+  to {
     opacity: 1;
     transform: none;
   }
 }
 
 .animate-dialog-in {
-  animation: harbor-dialog-in 300ms ease-in-out backwards;
+  animation: harbor-dialog-in 180ms cubic-bezier(0.32, 0.72, 0, 1) backwards;
 }
 
 .animate-dialog-out {
-  animation: harbor-dialog-in 190ms ease-in-out reverse both;
+  animation: harbor-dialog-in 130ms cubic-bezier(0.32, 0.72, 0, 1) reverse both;
 }
 
 .animate-scrim-in {
@@ -881,16 +863,7 @@ main[data-kids="on"]::-webkit-scrollbar-thumb:hover {
 @keyframes harbor-tip-pop {
   from {
     opacity: 0;
-    transform: translateY(4px) scale(0.86, 0.72);
-  }
-  20% {
-    opacity: 1;
-  }
-  50% {
-    transform: translateY(-2px) scale(1.05, 1.12);
-  }
-  75% {
-    transform: translateY(1px) scale(0.98, 0.96);
+    transform: scale(0.96);
   }
   to {
     opacity: 1;
@@ -899,7 +872,7 @@ main[data-kids="on"]::-webkit-scrollbar-thumb:hover {
 }
 
 .harbor-tip-pop {
-  animation: harbor-tip-pop 240ms ease-in-out backwards;
+  animation: harbor-tip-pop 120ms cubic-bezier(0.32, 0.72, 0, 1) backwards;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1180,27 +1153,18 @@ main[data-kids="on"]::-webkit-scrollbar-thumb:hover {
 }
 
 @keyframes harbor-banner-in {
-  0% {
+  from {
     opacity: 0;
-    transform: translateY(-9px) scale(1.04, 0.46);
+    transform: translateY(-8px);
   }
-  38% {
-    opacity: 1;
-  }
-  56% {
-    transform: translateY(2px) scale(0.985, 1.07);
-  }
-  78% {
-    transform: translateY(0) scale(1.005, 0.99);
-  }
-  100% {
+  to {
     opacity: 1;
     transform: none;
   }
 }
 
 .animate-banner-in {
-  animation: harbor-banner-in 420ms ease-in-out backwards;
+  animation: harbor-banner-in 220ms cubic-bezier(0.32, 0.72, 0, 1) backwards;
   transform-origin: top center;
 }
 
@@ -1356,52 +1320,26 @@ main[data-kids="on"]::-webkit-scrollbar-thumb:hover {
 }
 
 @keyframes harbor-menu-in {
-  0% {
+  from {
     opacity: 0;
-    transform: translateY(-9px) scale(1.04, 0.82);
+    transform: scale(0.98);
   }
-  46% {
-    opacity: 1;
-  }
-  58% {
-    transform: translateY(2px) scale(0.985, 1.035);
-  }
-  80% {
-    transform: translateY(0) scale(1.004, 0.992);
-  }
-  100% {
+  to {
     opacity: 1;
     transform: none;
   }
 }
 
-@keyframes harbor-menu-in-up {
-  0% {
-    opacity: 0;
-    transform: translateY(9px) scale(1.04, 0.82);
-  }
-  46% {
-    opacity: 1;
-  }
-  58% {
-    transform: translateY(-2px) scale(0.985, 1.035);
-  }
-  80% {
-    transform: translateY(0) scale(1.004, 0.992);
-  }
-  100% {
-    opacity: 1;
-    transform: none;
-  }
+.animate-menu-in,
+.animate-menu-in-up {
+  animation: harbor-menu-in 140ms cubic-bezier(0.32, 0.72, 0, 1) backwards;
 }
 
 .animate-menu-in {
-  animation: harbor-menu-in 300ms ease-in-out backwards;
   transform-origin: top center;
 }
 
 .animate-menu-in-up {
-  animation: harbor-menu-in-up 300ms ease-in-out backwards;
   transform-origin: bottom center;
 }
 
@@ -1909,7 +1847,7 @@ main[data-kids="on"]::-webkit-scrollbar-thumb:hover {
 }
 
 .animate-modal-in {
-  animation: harbor-modal-in 480ms var(--ease-out) backwards;
+  animation: harbor-modal-in 200ms cubic-bezier(0.32, 0.72, 0, 1) backwards;
 }
 
 .animate-nudge-in {
@@ -3140,7 +3078,6 @@ html[data-theme-card="stremio"] .modal-panel {
 }
 
 html[data-theme-layout="stremio"] [data-harbor-player] {
-  --color-canvas: var(--color-canvas);
   --color-surface: #181434;
   --color-elevated: #1f1b3f;
   --color-raised: #2a2358;
@@ -3254,12 +3191,40 @@ html[data-theme-layout="minui"] .harbor-together-pill {
 @keyframes harbor-search-panel-in {
   from {
     opacity: 0;
-    transform: translateY(-10px) scale(0.98);
+    transform: translateY(-8px) scale(0.988);
   }
   to {
     opacity: 1;
-    transform: none;
+    transform: translateY(0) scale(1);
   }
+}
+
+@keyframes harbor-search-rise {
+  from {
+    opacity: 0;
+    transform: translateY(7px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.harbor-search-cascade > section,
+.harbor-search-body > .harbor-search-section {
+  animation: harbor-search-rise 260ms var(--ease-out) backwards;
+}
+.harbor-search-cascade > section:nth-child(2),
+.harbor-search-body > .harbor-search-section:nth-child(2) {
+  animation-delay: 40ms;
+}
+.harbor-search-cascade > section:nth-child(3),
+.harbor-search-body > .harbor-search-section:nth-child(3) {
+  animation-delay: 80ms;
+}
+.harbor-search-cascade > section:nth-child(n + 4),
+.harbor-search-body > .harbor-search-section:nth-child(n + 4) {
+  animation-delay: 120ms;
 }
 
 @keyframes harbor-search-panel-out {
@@ -3274,7 +3239,7 @@ html[data-theme-layout="minui"] .harbor-together-pill {
 }
 
 .harbor-search-panel-in {
-  animation: harbor-search-panel-in 240ms var(--ease-out) backwards;
+  animation: harbor-search-panel-in 260ms var(--ease-out) backwards;
   transform-origin: top center;
 }
 
@@ -3309,19 +3274,8 @@ html[data-theme-layout="minui"] .harbor-together-pill {
   animation: harbor-search-scrim-out 150ms ease-in both;
 }
 
-@keyframes harbor-search-section-in {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
 .harbor-search-section {
-  animation: harbor-search-section-in 200ms var(--ease-out) backwards;
+  animation: harbor-search-rise 260ms var(--ease-out) backwards;
 }
 
 @keyframes harbor-rise-in {
@@ -3484,7 +3438,7 @@ html[data-theme-layout="minui"] .harbor-together-pill {
   animation: critics-backdrop-in 200ms ease both;
 }
 .critics-modal-in {
-  animation: critics-modal-in 340ms var(--ease-out) backwards;
+  animation: critics-modal-in 200ms cubic-bezier(0.32, 0.72, 0, 1) backwards;
 }
 .critics-review-in[data-dir="1"] {
   animation: critics-review-next 300ms var(--ease-out) backwards;
@@ -3607,6 +3561,8 @@ html[data-theme-layout="minui"] .harbor-together-pill {
   .harbor-search-scrim-in,
   .harbor-search-scrim-out,
   .harbor-search-section,
+  .harbor-search-cascade > section,
+  .harbor-search-body > .harbor-search-section,
   .harbor-rise,
   .reader-tab-in {
     animation-duration: 1ms;
@@ -4117,14 +4073,7 @@ html[data-theme-layout="minui"] .anime-award-banner-logo {
 @keyframes harbor-studio-in {
   from {
     opacity: 0;
-    transform: scale(0.96, 0.94);
-  }
-  50% {
-    opacity: 1;
-    transform: scale(1.008, 1.012);
-  }
-  75% {
-    transform: scale(0.998, 0.996);
+    transform: scale(0.98);
   }
   to {
     opacity: 1;
@@ -4166,7 +4115,7 @@ html[data-theme-layout="minui"] .anime-award-banner-logo {
 }
 
 .harbor-studio-panel {
-  animation: harbor-studio-in 260ms ease-in-out backwards;
+  animation: harbor-studio-in 180ms cubic-bezier(0.32, 0.72, 0, 1) backwards;
 }
 
 .harbor-studio-body {
@@ -4213,11 +4162,22 @@ html:not([data-input-modality="pointer"])
     :where(
       [data-profile-picker][role="dialog"][tabindex="-1"],
       .hset-title[tabindex="-1"],
-      [data-search-overlay] input
+      .music-library-playlist-hero[tabindex="-1"],
+      [data-search-overlay] input,
+      [data-plugins-search] input
     )
   ) {
   outline: 2px solid var(--color-accent) !important;
   outline-offset: 2px;
+}
+
+/* A plugin's row gives its items a poster, and its own page may name a backdrop; either way that
+   artwork is around 16:9, while a window this wide makes the hero a far harder shape. Covering
+   such a frame centres the crop, which is what cuts a subject off across the eyes. CloudStream
+   anchors the same mismatch to the top instead -- the one thing its PercentageCropImageView
+   exists to control -- so the band the artwork was framed around stays in view. */
+[data-plugins-hero] .harbor-hero-stage > img.object-cover {
+  object-position: 50% 0%;
 }
 
 /* Opaque-surface overrides for translucent "glass" facet (aurora + any user glass theme).
@@ -4391,6 +4351,9 @@ html[data-theme-card="crunch"][dir="rtl"] .harbor-profile-dropdown {
   border-radius: inherit;
   background: color-mix(in srgb, var(--color-elevated) 55%, transparent);
 }
+:where(.harbor-shimmer) {
+  position: relative;
+}
 .harbor-shimmer::after {
   content: "";
   position: absolute;
@@ -4410,6 +4373,13 @@ html[data-theme-card="crunch"][dir="rtl"] .harbor-profile-dropdown {
 }
 .harbor-row-track[data-far] {
   overflow-x: hidden;
+}
+/* Discover mounts ~49 rows and shows one. Skipping the rest spares Blink their style, layout
+   and paint until they are scrolled near; the auto keyword remembers each real height after
+   its first pass, so the scrollbar settles instead of guessing forever. */
+.harbor-row-shell {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 280px;
 }
 .harbor-preview-img {
   background-color: var(--color-raised);
@@ -4741,7 +4711,7 @@ html[data-theme-card="crunch"][dir="rtl"] .harbor-profile-dropdown {
   overflow-x: hidden;
   overflow-y: auto;
   background: var(--color-canvas);
-  padding-block: 8px calc(48px + var(--harbor-music-dock, 0px));
+  padding-block: 8px calc(48px + var(--harbor-dock-gap, 0px));
   padding-inline: var(--hset-pad-inline);
   scroll-padding-block: 16px;
 }
@@ -4756,8 +4726,9 @@ html[data-theme-card="crunch"][dir="rtl"] .harbor-profile-dropdown {
 }
 
 .hset-main:has(.hset-footer) {
-  padding-block-end: var(--harbor-music-dock, 0px);
-  scroll-padding-block-end: calc(var(--hset-footer-h) + 16px + var(--harbor-music-dock, 0px));
+  margin-block-end: var(--harbor-dock-gap, 0px);
+  padding-block-end: 0;
+  scroll-padding-block-end: calc(var(--hset-footer-h) + 16px);
 }
 
 .hset-main[data-hset-wide] {
@@ -5292,7 +5263,8 @@ html[data-theme-card="crunch"][dir="rtl"] .harbor-profile-dropdown {
 
 .hset-footer {
   position: sticky;
-  inset-block-end: var(--harbor-music-dock, 0px);
+  /* The settings scrollport already ends above the music dock. */
+  inset-block-end: 0;
   z-index: 5;
   display: flex;
   align-items: center;
@@ -6458,7 +6430,7 @@ textarea.hset-field {
   gap: 0;
   inline-size: 100%;
   min-block-size: 0;
-  padding: 0 0 calc(16px + var(--harbor-music-dock, 0px));
+  padding: 0 0 calc(16px + var(--harbor-dock-gap, 0px));
   background: var(--hset-sidebar-bg);
   overflow: hidden;
 }

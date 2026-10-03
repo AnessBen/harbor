@@ -5,11 +5,12 @@ import type { AddonRow } from "@/lib/addons";
 import { loadAnimeAddonRows } from "@/lib/addons-anime-filter";
 import { absorbCloudAnimeCw } from "@/lib/anime-cw-absorb";
 import { detectAnimeForCw, useDetectedAnimeVersion } from "@/lib/anime-detect";
+import { useExternalCw } from "@/lib/feed/external-cw";
 import { isCwDismissed, useCwDismissVersion } from "@/lib/cw-dismiss";
 import { franchiseRoot, franchiseRootSync } from "@/lib/providers/anime-franchise-root";
 import { publishResumeStates } from "@/lib/hover-preview/store";
 import { runLanes } from "@/lib/run-lanes";
-import { listLocalCw, localCwEntry, localCwVersion, subscribeLocalCw } from "@/lib/local-cw";
+import { listLocalCw, localCwVersion, subscribeLocalCw } from "@/lib/local-cw";
 import {
   manualWatchedLibraryItems,
   manualWatchedVersion,
@@ -43,15 +44,16 @@ export type BpAnimeCwBase = {
   ready: boolean;
 };
 
-function localItems(): LibraryItem[] {
-  return listLocalCw()
-    .filter((e) => ANIME_CLOUD_ID.test(e.id))
+function localItems(privateOnly: boolean): LibraryItem[] {
+  return listLocalCw(privateOnly)
+    .filter((e) => ANIME_CLOUD_ID.test(e.id) || e.isAnime)
     .map((e) => ({
       _id: e.id,
       type: e.type,
       name: e.name,
       poster: e.poster,
       background: e.background,
+      isAnime: true,
       state: {
         timeOffset: e.positionMs,
         duration: e.durationMs,
@@ -78,6 +80,7 @@ export function useBpAnimeCwBase(): BpAnimeCwBase {
   const { isConnected: simklConnected } = useSimkl();
   const cwVersion = useCwDismissVersion();
   const animeDetectVer = useDetectedAnimeVersion();
+  const trackerCw = useExternalCw(!hideSharedCw && settings.cwSources.trakt);
   const localCwVer = useSyncExternalStore(subscribeLocalCw, localCwVersion);
   const manualWatchedVer = useSyncExternalStore(subscribeManualWatched, manualWatchedVersion);
   const [libItems, setLibItems] = useState<LibraryItem[]>([]);
@@ -135,12 +138,17 @@ export function useBpAnimeCwBase(): BpAnimeCwBase {
 
   const localAnimeCw = useMemo<LibraryItem[]>(() => {
     void localCwVer;
-    return localItems();
-  }, [localCwVer]);
+    return localItems(hideSharedCw);
+  }, [localCwVer, hideSharedCw, activeProfile?.id]);
 
   const pool = useMemo(
-    () => [...localAnimeCw, ...libItems.filter((i) => !ANIME_CLOUD_ID.test(i._id)), ...simklCw],
-    [localAnimeCw, libItems, simklCw],
+    () => [
+      ...localAnimeCw,
+      ...(hideSharedCw ? [] : libItems.filter((i) => !ANIME_CLOUD_ID.test(i._id))),
+      ...(hideSharedCw ? [] : simklCw),
+      ...(hideSharedCw ? [] : trackerCw.filter((i) => i.external === "trakt")),
+    ],
+    [localAnimeCw, libItems, simklCw, trackerCw, hideSharedCw],
   );
 
   const raw = useMemo(() => {
@@ -154,7 +162,6 @@ export function useBpAnimeCwBase(): BpAnimeCwBase {
         if (!isCwMember(i)) return false;
         if (!i.local && !isAnimeCwItem(i)) return false;
         if (isCwDismissed(i)) return false;
-        if (hideSharedCw && localCwEntry(i._id) === null && !i.local) return false;
         if (seen.has(i._id)) return false;
         seen.add(i._id);
         return true;
@@ -189,7 +196,7 @@ export function useBpAnimeCwBase(): BpAnimeCwBase {
     return () => {
       cancelled = true;
     };
-  }, [pool]);
+  }, [pool, animeDetectVer]);
 
   useEffect(() => {
     publishResumeStates(raw);

@@ -5,6 +5,7 @@ import { X, ArrowRight, ExternalLink } from "lucide-react";
 import { ModalShell } from "@/components/modal-shell";
 import { useView } from "@/lib/view";
 import { useT } from "@/lib/i18n";
+import { EventField } from "./event-field";
 import { openUrl } from "@/lib/window";
 import type { SportsGame } from "@/lib/sports/espn";
 import { hubLeague } from "@/lib/sports/hub-data";
@@ -21,7 +22,7 @@ import { EsportsMap } from "./esports-map";
 import { VenuePreview } from "./venue-preview";
 import { EventMetadata } from "./event-metadata";
 import { EventOdds } from "./event-odds";
-import { officialBoxingUrl } from "@/lib/sports/providers/boxing-schedule";
+import { BoxingEventDetails } from "./boxing-event-details";
 
 function StandardHubEventDialog({
   game,
@@ -54,7 +55,10 @@ function StandardHubEventDialog({
     .filter((g) => g.league === game.league && g.context?.id === game.context?.id)
     .sort((a, b) => Number(b.id === game.id) - Number(a.id === game.id) || b.startMs - a.startMs);
   const combat = hubLeague(game.league)?.group === "combat" && game.id.includes("|");
-  const competition = ["motorsport", "golf"].includes(hubLeague(game.league)?.group || "");
+  const field = ["cycling", "athletics", "winter"].includes(hubLeague(game.league)?.group || "");
+  const competition =
+    field || ["motorsport", "golf"].includes(hubLeague(game.league)?.group || "");
+  const fieldArt = field ? game.artwork || game.poster || "" : "";
   if (watch && broadcast)
     return <BroadcastPlayer broadcast={broadcast} onClose={() => setWatch(false)} />;
   return (
@@ -76,7 +80,9 @@ function StandardHubEventDialog({
       <div className="sh-setup-body">
         {hubLeague(game.league)?.group === "esports" && <EsportsMap game={game} />}
         <VenuePreview game={game} detail={null} sport={hubLeague(game.league)?.group ?? ""} />
-        {combat ? (
+        {game.source === "official-boxing" ? (
+          <BoxingEventDetails game={game} />
+        ) : combat ? (
           <FightCard
             games={fights.length ? fights : [game]}
             expanded
@@ -88,6 +94,18 @@ function StandardHubEventDialog({
         ) : competition ? (
           <>
             {game.league === "F1" && <F1Hub game={game} />}
+            {fieldArt && (
+              <img
+                className="sh-published-event-art"
+                src={fieldArt}
+                alt=""
+                loading="lazy"
+                decoding="async"
+                onError={(event) => {
+                  event.currentTarget.hidden = true;
+                }}
+              />
+            )}
             <HubCompetition game={game} />
           </>
         ) : game.source === "thesportsdb-hub" && hubLeague(game.league) ? (
@@ -103,9 +121,11 @@ function StandardHubEventDialog({
             )}
             <div>
               <h3>{t("Event details")}</h3>
-              <p>
-                {game.home.name} {game.away.name && `· ${game.away.name}`}
-              </p>
+              {!game.field?.length && (
+                <p>
+                  {game.home.name} {game.away.name && `· ${game.away.name}`}
+                </p>
+              )}
               {game.source === "opendota" ? (
                 <>
                   <p>
@@ -122,11 +142,9 @@ function StandardHubEventDialog({
               ) : (
                 <p className="sh-muted">
                   {t(
-                    game.source === "official-boxing"
-                      ? "Schedule published by the event promoter. Visit the official fight card for the latest lineup and broadcast details."
-                      : game.source === "official-one"
-                        ? "Schedule from ONE Championship. Visit the official event page for the announced fight card."
-                        : "Schedule from TheSportsDB. Live scores and detailed statistics are not supplied by this feed.",
+                    game.source === "official-one"
+                      ? "Schedule from ONE Championship. Visit the official event page for the announced fight card."
+                      : "Schedule from TheSportsDB. Live scores and detailed statistics are not supplied by this feed.",
                   )}
                 </p>
               )}
@@ -135,6 +153,9 @@ function StandardHubEventDialog({
                   {t("Open official channel")}
                   <ArrowRight size={16} />
                 </button>
+              )}
+              {!!game.field?.length && (
+                <EventField field={game.field} state={game.state} league={game.league} />
               )}
             </div>
           </div>
@@ -145,12 +166,6 @@ function StandardHubEventDialog({
             onClick={() => openUrl(`https://www.onefc.com/events/${game.id}/`)}
           >
             {t("Official event page")}
-            <ExternalLink size={16} />
-          </button>
-        )}
-        {officialBoxingUrl(game) && (
-          <button className="sh-button" onClick={() => openUrl(officialBoxingUrl(game)!)}>
-            {t("Official fight card")}
             <ExternalLink size={16} />
           </button>
         )}

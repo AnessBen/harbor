@@ -12,6 +12,16 @@ import { safeFetch } from "@/lib/safe-fetch";
 import { anilistAnimeSearch } from "@/lib/anilist/browse";
 import type { MangaSummary } from "@/lib/manga/model";
 import type { CharacterHit } from "@/lib/anilist/character";
+import type { EBook } from "@/lib/ebook/api";
+import type { SportsEventHit } from "@/lib/sports/search-events";
+
+export type MusicSearchHit = {
+  id: string;
+  kind: "artist" | "album" | "track";
+  title: string;
+  subtitle: string;
+  artwork?: string;
+};
 
 export type SearchPerson = {
   id: number;
@@ -67,6 +77,9 @@ export type SearchResults = {
   liveTv: LiveTvHit[];
   anime: AnimeHit[];
   manga: MangaSummary[];
+  music: MusicSearchHit[];
+  ebooks: EBook[];
+  sports: SportsEventHit[];
   characters: CharacterHit[];
   addonGroups: AddonResultGroup[];
   addons: AddonHit[];
@@ -255,10 +268,10 @@ export async function searchAll(
 ): Promise<SearchResults> {
   const trimmed = query.trim();
   if (!trimmed) {
-    return { query: "", topMatch: null, people: [], movies: [], series: [], liveTv: [], anime: [], manga: [], characters: [], addonGroups: [], addons: [], intent: null };
+    return { query: "", topMatch: null, people: [], movies: [], series: [], liveTv: [], anime: [], manga: [], music: [], ebooks: [], sports: [], characters: [], addonGroups: [], addons: [], intent: null };
   }
   if (!key) {
-    return { query: trimmed, topMatch: null, people: [], movies: [], series: [], liveTv: [], anime: [], manga: [], characters: [], addonGroups: [], addons: [], intent: detectIntent(trimmed) };
+    return { query: trimmed, topMatch: null, people: [], movies: [], series: [], liveTv: [], anime: [], manga: [], music: [], ebooks: [], sports: [], characters: [], addonGroups: [], addons: [], intent: detectIntent(trimmed) };
   }
 
   const data = await get<Page<MultiItem>>(key, "search/multi", {
@@ -276,6 +289,9 @@ export async function searchAll(
       liveTv: [],
       anime: [],
       manga: [],
+      music: [],
+      ebooks: [],
+      sports: [],
       characters: [],
       addonGroups: [],
       addons: [],
@@ -386,6 +402,9 @@ export async function searchAll(
     liveTv: [],
     anime: [],
     manga: [],
+    music: [],
+    ebooks: [],
+    sports: [],
     characters: [],
     addonGroups: [],
     addons: [],

@@ -6,6 +6,7 @@ import { effectiveBinding, eventToBinding, isTypingTarget, type HotkeyId } from 
 import { isWindowsDesktop } from "@/lib/platform";
 import { isRtxHdrBlocked, isRtxVsrBlocked } from "@/lib/player/rtx-video-policy";
 import { mediaKeyGate } from "@/lib/media-session";
+import { setVideoOwnsMediaKeys } from "@/lib/player/media-key-owner";
 import { useSettings } from "@/lib/settings";
 import { isAnyFullscreen, exitAnyFullscreen } from "@/lib/fullscreen-state";
 import { isBigPictureActive } from "@/lib/big-picture";
@@ -591,6 +592,7 @@ export function useKeyboardShortcuts(params: {
 
   useEffect(() => {
     if (typeof window === "undefined" || !("__TAURI_INTERNALS__" in window)) return;
+    setVideoOwnsMediaKeys(true);
     let dead = false;
     let cleanup: (() => void) | undefined;
     void import("@tauri-apps/api/event").then(async ({ listen }) => {
@@ -651,6 +653,7 @@ export function useKeyboardShortcuts(params: {
     });
     return () => {
       dead = true;
+      setVideoOwnsMediaKeys(false);
       cleanup?.();
     };
   }, []);

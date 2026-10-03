@@ -22,7 +22,8 @@ import type { ReactNode } from "react";
 import { useSettings } from "@/lib/settings";
 import { useT } from "@/lib/i18n";
 import { Section, ToggleRow } from "../shared";
-import { SettingGroup, SettingRow, Nested } from "../kit";
+import { ROW_ACTION, SettingGroup, SettingRow, Nested } from "../kit";
+import { previewScreensaver } from "@/lib/screensaver/media";
 import { PosterCardSection } from "./display/poster-card-section";
 import { ScreensaverMediaManager } from "./screensaver-media";
 import { SFX } from "@/lib/sfx";
@@ -68,15 +69,23 @@ export function AmbienceSection() {
             )}
             icon={<Sailboat size={18} strokeWidth={2} />}
           >
-            <Dropdown
-              value={settings.screensaverStyle}
-              onChange={(v) => update({ screensaverStyle: v as typeof settings.screensaverStyle })}
-              options={[
-                { value: "ambient", label: t("Default") },
-                { value: "catBoat", label: t("Boat") },
-                { value: "custom", label: t("Custom") },
-              ]}
-            />
+            <div className="flex items-center gap-2">
+              <Dropdown
+                value={settings.screensaverStyle}
+                onChange={(v) =>
+                  update({ screensaverStyle: v as typeof settings.screensaverStyle })
+                }
+                options={[
+                  { value: "ambient", label: t("Default") },
+                  { value: "catBoat", label: t("Boat") },
+                  { value: "halloween", label: t("Halloween") },
+                  { value: "custom", label: t("Custom") },
+                ]}
+              />
+              <button type="button" className={ROW_ACTION} onClick={previewScreensaver}>
+                {t("Preview")}
+              </button>
+            </div>
           </SettingRow>
           {settings.screensaverStyle === "custom" && (
             <Nested>

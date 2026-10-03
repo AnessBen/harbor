@@ -53,6 +53,7 @@ pub struct Embed {
     web_view_was_opaque: bool,
     ns_window: Retained<NSWindow>,
     edr: bool,
+    css: Option<MpvGeometry>,
     render: Mutex<RenderContext>,
 }
 
@@ -227,6 +228,7 @@ pub fn install(mpv_ctx: NonNull<mpv_handle>, ns_window_ptr: i64, edr: bool) -> R
             web_view_was_opaque,
             ns_window: ns_window.retain(),
             edr,
+            css: None,
             render: Mutex::new(render),
         });
 
@@ -314,40 +316,54 @@ pub fn make_resizable(ns_window_ptr: i64) -> Result<(), String> {
     Ok(())
 }
 
+unsafe fn sync_frame(embed: &Embed) -> bool {
+    let Some(css) = embed.css else {
+        return false;
+    };
+    let view_as_view: &NSView = embed.view.as_super();
+    let Some(parent) = view_as_view.superview() else {
+        return false;
+    };
+    let parent_bounds = parent.bounds();
+    let native = map_css_geometry(&css, parent_bounds.size.width, parent_bounds.size.height);
+    let native_y = if parent.isFlipped() {
+        native.y
+    } else {
+        parent_bounds.size.height - native.y - native.height
+    };
+    let next = objc2_foundation::NSRect {
+        origin: objc2_foundation::NSPoint {
+            x: native.x,
+            y: native_y,
+        },
+        size: objc2_foundation::NSSize {
+            width: native.width,
+            height: native.height,
+        },
+    };
+    let current = view_as_view.frame();
+    if (current.origin.x - next.origin.x).abs() < 0.5
+        && (current.origin.y - next.origin.y).abs() < 0.5
+        && (current.size.width - next.size.width).abs() < 0.5
+        && (current.size.height - next.size.height).abs() < 0.5
+    {
+        return false;
+    }
+    view_as_view.setFrame(next);
+    true
+}
+
 pub fn resize_to(css: MpvGeometry) -> Result<(), String> {
     let _mtm =
         MainThreadMarker::new().ok_or_else(|| "resize_to must run on main thread".to_string())?;
-    let guard = slot().lock().map_err(|e| format!("slot lock: {}", e))?;
-    let Some(embed) = guard.as_ref() else {
-        return Ok(());
-    };
-    unsafe {
-        let view_as_view: &NSView = embed.view.as_super();
-        let parent = view_as_view
-            .superview()
-            .ok_or_else(|| "GL view has no superview".to_string())?;
-        let parent_bounds = parent.bounds();
-        let native = map_css_geometry(&css, parent_bounds.size.width, parent_bounds.size.height);
-        let native_y = if parent.isFlipped() {
-            native.y
-        } else {
-            parent_bounds.size.height - native.y - native.height
+    {
+        let mut guard = slot().lock().map_err(|e| format!("slot lock: {}", e))?;
+        let Some(embed) = guard.as_mut() else {
+            return Ok(());
         };
-        let frame = objc2_foundation::NSRect {
-            origin: objc2_foundation::NSPoint {
-                x: native.x,
-                y: native_y,
-            },
-            size: objc2_foundation::NSSize {
-                width: native.width,
-                height: native.height,
-            },
-        };
-        view_as_view.setFrame(frame);
-        let mask: usize = 0;
-        let _: () = msg_send![view_as_view, setAutoresizingMask: mask];
-        if let Some(gl_ctx) = embed.view.openGLContext() {
-            let _: () = msg_send![&*gl_ctx, update];
+        embed.css = Some(css);
+        unsafe {
+            sync_frame(embed);
         }
     }
     schedule_redraw();
@@ -362,6 +378,7 @@ pub fn render_now() -> Result<(), String> {
         return Ok(());
     };
     unsafe {
+        let moved = sync_frame(embed);
         let gl_ctx = embed
             .view
             .openGLContext()
@@ -378,7 +395,7 @@ pub fn render_now() -> Result<(), String> {
                 .window()
                 .map(|win| win.backingScaleFactor())
                 .filter(|s| *s > 0.0)
-                .unwrap_or(2.0);
+                .unwrap_or(1.0);
             w = (bounds.size.width * scale) as i32;
             h = (bounds.size.height * scale) as i32;
         }
@@ -386,11 +403,15 @@ pub fn render_now() -> Result<(), String> {
             return Ok(());
         }
         let packed = ((w as u64) << 32) | (h as u32 as u64);
-        if LAST_SURFACE.swap(packed, Ordering::Relaxed) != packed {
+        let resized = LAST_SURFACE.swap(packed, Ordering::Relaxed) != packed;
+        if resized {
             eprintln!(
                 "[harbor::mpv_mac] render surface {}x{} px (bounds {}x{} pt)",
                 w, h, bounds.size.width as i32, bounds.size.height as i32
             );
+        }
+        if moved || resized {
+            let _: () = msg_send![&*gl_ctx, update];
         }
         let render = embed
             .render
@@ -423,6 +444,10 @@ pub fn uninstall() -> Result<(), String> {
 
 fn teardown_embed(embed: Embed) {
     unsafe {
+        if embed.edr {
+            let nil: *mut AnyObject = std::ptr::null_mut();
+            let _: () = msg_send![&*embed.ns_window, setColorSpace: nil];
+        }
         let view_as_view: &NSView = embed.view.as_super();
         view_as_view.removeFromSuperview();
         if let Some(wv) = embed.web_view.as_deref() {

@@ -52,6 +52,7 @@ pub struct MpvStartArgs {
     pub mac_edr: Option<bool>,
     pub is_live: Option<bool>,
     pub full_download: Option<bool>,
+    pub cache_dir: Option<String>,
     pub startup_profile: Option<String>,
     pub headers: Option<HashMap<String, String>>,
     pub extra_options: Option<String>,
@@ -183,6 +184,22 @@ impl MpvState {
             lifecycle: Mutex::new(()),
         }
     }
+
+    /// The live handle, so the render target can be moved to another window without
+    /// restarting playback. A second session would re-open the stream and seek.
+    #[cfg(any(target_os = "macos", target_os = "linux"))]
+    pub(crate) async fn ctx_addr(&self) -> Option<usize> {
+        let guard = self.inner.lock().await;
+        guard.as_ref().map(|session| session.mpv.ctx.as_ptr() as usize)
+    }
+}
+
+#[cfg(target_os = "macos")]
+static MAC_EDR_ACTIVE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+#[cfg(target_os = "macos")]
+pub(crate) fn mac_edr_active() -> bool {
+    MAC_EDR_ACTIVE.load(std::sync::atomic::Ordering::Relaxed)
 }
 
 const OBSERVED_PROPS: &[(&str, u64, PropertyKind)] = &[
@@ -715,6 +732,14 @@ pub async fn mpv_start(
                 .and_then(|h| crate::monitors::resolve_for_hwnd(h.0 as isize))
         })
     };
+    let playback_cache = if args.is_live.unwrap_or(false) {
+        None
+    } else {
+        let base = app.path().app_cache_dir().map_err(|e| e.to_string())?;
+        let dir = crate::playback_cache::cache_dir(&base, args.cache_dir.as_deref())?;
+        crate::playback_cache::prepare_dir(&dir)?;
+        Some(dir)
+    };
     // OS-level HDR state before this transition begins. Compared at teardown
     // against the script-reported state: only off->on waits for restore.
     #[cfg(windows)]
@@ -810,6 +835,12 @@ pub async fn mpv_start(
     #[cfg(windows)]
     let mut g = state.inner.lock().await;
 
+    if let Some(dir) = &playback_cache {
+        if args.cache_dir.as_deref().is_some_and(|s| !s.trim().is_empty()) {
+            let _ = crate::temp_prune::sweep_mpv_cache(dir.clone());
+        }
+    }
+
     let embed_hwnd = if want_embed {
         get_main_hwnd_str(&app)
     } else {
@@ -852,6 +883,14 @@ pub async fn mpv_start(
         eprintln!("[harbor::mpv] init error: {}", msg);
         msg
     })?;
+
+    if let Some(dir) = &playback_cache {
+        let path = dir.to_str().ok_or("Playback cache folder is not valid UTF-8")?;
+        // The option was renamed in mpv 0.41. Support both installed versions.
+        mpv.set_property("demuxer-cache-dir", path)
+            .or_else(|_| mpv.set_property("cache-dir", path))
+            .map_err(|e| format!("Cannot configure playback cache folder: {e}"))?;
+    }
 
     unsafe {
         let level = std::ffi::CString::new("warn").unwrap();
@@ -917,6 +956,7 @@ pub async fn mpv_start(
             .map_err(|e| format!("ns_window: {:?}", e))? as i64;
         let mpv_ctx_addr: usize = mpv.ctx.as_ptr() as usize;
         let mac_edr = args.mac_edr.unwrap_or(false);
+        MAC_EDR_ACTIVE.store(mac_edr, std::sync::atomic::Ordering::Relaxed);
         let (tx, rx) = std::sync::mpsc::sync_channel::<Result<(), String>>(1);
         let _ = app.run_on_main_thread(move || {
             let res = match std::ptr::NonNull::new(mpv_ctx_addr as *mut libmpv2_sys::mpv_handle) {
@@ -1044,19 +1084,6 @@ pub async fn mpv_start(
                 "30"
             },
         );
-        if let Ok(base) = app.path().app_cache_dir() {
-            let dvr = base.join("mpv-cache");
-            let _ = std::fs::create_dir_all(&dvr);
-            if let Some(s) = dvr.to_str() {
-                // mpv renamed this to demuxer-cache-dir; the old name is
-                // rejected (M_PROPERTY_UNKNOWN) on 0.41, which leaves
-                // cache-on-disk enabled with no directory and logs
-                // "Failed to create file cache" on every load.
-                if mpv.set_property("demuxer-cache-dir", s).is_err() {
-                    let _ = mpv.set_property("cache-dir", s);
-                }
-            }
-        }
         let _ = mpv.set_property("cache-on-disk", "yes");
         let _ = mpv.set_property("network-timeout", network_timeout_for(&args.url));
         // No reconnect_streamed: on AES-128 HLS every segment ends in a normal
@@ -1374,8 +1401,10 @@ fn spawn_event_loop(
                                 let gamma = mpv_keepalive
                                     .get_property::<String>("video-params/gamma")
                                     .unwrap_or_default();
-                                let active = gamma == "pq" || gamma == "hlg";
-                                apply_mac_edr(&app, &mpv_keepalive, active);
+                                if !gamma.is_empty() {
+                                    let active = gamma == "pq" || gamma == "hlg";
+                                    apply_mac_edr(&app, &mpv_keepalive, active);
+                                }
                             }
                         }
                     }
@@ -1636,14 +1665,13 @@ pub async fn mpv_set_geometry(
     }
     #[cfg(target_os = "macos")]
     {
-        let (tx, rx) = std::sync::mpsc::sync_channel(1);
         app.run_on_main_thread(move || {
-            let _ = tx.send(crate::mpv_render_mac::resize_to(geom));
+            if let Err(error) = crate::mpv_render_mac::resize_to(geom) {
+                eprintln!("[harbor::mpv] macOS resize rejected: {error}");
+            }
         })
         .map_err(|error| format!("failed to schedule macOS mpv resize: {error}"))?;
-        return rx
-            .recv_timeout(std::time::Duration::from_millis(300))
-            .map_err(|error| format!("timed out waiting for macOS mpv resize: {error}"))?;
+        return Ok(());
     }
     #[cfg(target_os = "linux")]
     {
@@ -2525,6 +2553,27 @@ pub async fn mpv_sub_add(
         return Err(format!("sub-add failed: mpv_command rc={}", rc));
     }
     Ok(())
+}
+
+/// Remove an external subtitle track by its mpv track id.
+///
+/// A provider subtitle can be re-fetched (for example a translating addon that only
+/// serves the finished file once it is ready). Removing the previous track first lets
+/// the refreshed subtitle replace it instead of stacking a duplicate. mpv only allows
+/// this for external subtitle files, which is exactly the case here.
+#[tauri::command]
+pub async fn mpv_sub_remove(state: State<'_, MpvState>, id: String) -> Result<(), String> {
+    let mpv = {
+        let g = state.inner.lock().await;
+        g.as_ref()
+            .map(|s| s.mpv.clone())
+            .ok_or_else(|| "mpv not started".to_string())?
+    };
+    let id = id.trim();
+    if id.is_empty() {
+        return Err("sub-remove requires a track id".to_string());
+    }
+    mpv_argv_command(&mpv, &["sub-remove", id])
 }
 
 fn sub_cache_dir() -> PathBuf {

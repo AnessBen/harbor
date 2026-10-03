@@ -1,6 +1,8 @@
 import { artistCreditParts } from "@/lib/music/search-artists";
+import { featuredCreditNames } from "@/lib/music/artist-credit";
 import { artistIdentityKey, identityForRef, resolveArtist } from "@/lib/music/artist-authority";
 import { loadRecordingProfile } from "@/lib/music/recording-profile";
+import { loadArtistRarities } from "@/lib/music/artist-rarities";
 import {
   albumTracks,
   artistCatalog,
@@ -81,7 +83,22 @@ export async function loadDetailRows(
   if (item.kind === "artist") {
     const releases =
       item.connectorId === "local" ? Promise.resolve(null) : artistCatalog(item, "albums");
-    const [related, albums] = await Promise.allSettled([artistRows(item), releases]);
+    const rarities =
+      item.connectorId === "local"
+        ? Promise.resolve([] as MusicTrack[])
+        : loadArtistRarities(item.name);
+    const playlists =
+      item.connectorId === "local"
+        ? Promise.resolve([] as MusicCatalogItem[])
+        : searchTyped(item.name, 24).then((found) =>
+            found.playlists.map((playlist) => ({ ...playlist, kind: "playlist" as const })),
+          );
+    const [related, albums, rare, lists] = await Promise.allSettled([
+      artistRows(item),
+      releases,
+      rarities,
+      playlists,
+    ]);
     const page = albums.status === "fulfilled" ? albums.value : null;
     const rows =
       related.status === "fulfilled"
@@ -96,6 +113,26 @@ export async function loadDetailRows(
             }))
             .filter((row) => row.items.length)
         : [];
+    const inPlaylists = lists.status === "fulfilled" ? lists.value : [];
+    if (inPlaylists.length)
+      rows.push({
+        id: "artist:playlists",
+        title: "music.row.playlists",
+        titleLiteral: false,
+        layout: "covers",
+        source: "",
+        items: inPlaylists,
+      });
+    const rareTracks = rare.status === "fulfilled" ? rare.value : [];
+    if (rareTracks.length)
+      rows.unshift({
+        id: "artist:rarities",
+        title: "music.artist.rarities",
+        titleLiteral: false,
+        layout: "trackGrid",
+        source: "",
+        items: rareTracks.map((track) => ({ ...track, kind: "track" as const })),
+      });
     if (page)
       rows.unshift({
         id: "artist:releases",
@@ -145,12 +182,20 @@ export async function loadDetailRows(
   const profile = await loadRecordingProfile(item).catch(() => null);
   const credits = new Set([item.artist, ...artistCreditParts(item.artist)].map(artistIdentityKey));
   // A recording's credited identities take precedence over a combined display label.
-  const names =
+  const credited =
     profile?.primaryArtist.name === item.artist
       ? [item.artist]
       : artistCreditParts(item.artist)
           .map((name) => name.trim())
           .filter(Boolean);
+  const creditedKeys = new Set(credited.map(artistIdentityKey));
+  // Most catalogues credit only the lead and bury the guests in the title.
+  const names = [
+    ...credited,
+    ...featuredCreditNames(item.title).filter(
+      (name) => !creditedKeys.has(artistIdentityKey(name)),
+    ),
+  ];
   const artists = (
     await Promise.all(
       names.map(async (name) => {

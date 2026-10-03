@@ -34,6 +34,7 @@ import { useSubDrop } from "./use-sub-drop";
 import { useSubStyleApply } from "./use-sub-style-apply";
 import { useAssNormalize } from "./use-ass-normalize";
 import { useTrackAutoload } from "./use-track-autoload";
+import { useTranslationAutoSelect } from "./use-translation-auto-select";
 import { useSecondarySub } from "./use-secondary-sub";
 import { useAutoSync } from "./use-auto-sync";
 import { publishAutoSync } from "@/components/player/autosync/autosync-store";
@@ -161,6 +162,8 @@ export function usePlayerMedia(params: {
     authKey,
   });
 
+  useTranslationAutoSelect({ bridgeRef, mediaUrl: src.url });
+
   const autoSync = useAutoSync({
     bridgeRef,
     src,
@@ -285,6 +288,11 @@ export function usePlayerMedia(params: {
     snap,
     sourceUrl: src.url,
     lang: settings.secondarySubLang,
+    nativeReady: engine === "mpv" && bridgeReady && mpvMediaReadyForStyle,
+    nativeRender: hdrNativeSurface && !captionsPopout,
+    bridgeKey,
+    placement: settings.subSecondaryPlacement,
+    marginY: settings.subMarginY,
   });
   useEffect(() => {
     clearImportedSubs();

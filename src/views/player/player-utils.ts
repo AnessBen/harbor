@@ -70,6 +70,7 @@ export async function pickBridge(
     fullDownload?: boolean;
     separateDisplay?: MonitorInfo | null;
     separateCoverTaskbar?: boolean;
+    cacheDir?: string;
     getEmbedRect?: () => Promise<MpvRect | null> | MpvRect | null;
   },
 ): Promise<{ bridge: PlayerBridge; engine: "html5" | "mpv" }> {

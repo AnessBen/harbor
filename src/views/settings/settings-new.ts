@@ -5,6 +5,9 @@ const NEW_BADGE_RESET_GENERATION = 1;
 const NEW_SECTIONS = new Set(["library", "badges", "theme", "tv", "plugins", "bigPicture"]);
 const NEW_SETTINGS = new Set([
   "plugins:use-plugins",
+  "plugins:outside-tab",
+  "plugins:poster-languages",
+  "plugins:poster-quality",
   "library:award-tab",
   "library:top-10",
   "theme:hero-video",

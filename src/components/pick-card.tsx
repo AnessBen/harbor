@@ -49,6 +49,7 @@ import { ClapperMini } from "./icons/clapper-mini";
 import { ImdbIcon } from "./icons/imdb-icon";
 import { MalLogo } from "./icons/mal-logo";
 import { Poster, useLocalizedPoster } from "./poster";
+import { ListingBadgeStrip } from "./listing-badge-strip";
 import { CardHoverOverlay, cardHoverPosterClass, type CardHoverStyle } from "./pick-card/card-hover";
 import { CustomHoverOverlay, customHoverPosterProps } from "./pick-card/custom-hover";
 import { ExpandingCardArtwork, useExpandingCard } from "./pick-card/use-expanding-card";
@@ -99,11 +100,15 @@ const PosterCard = memo(function PosterCard({
   flagRerun = false,
   awardLookupName,
   kids = false,
+  reason,
+  reasonDetail,
 }: {
   meta: Meta;
   flagRerun?: boolean;
   awardLookupName?: string;
   kids?: boolean;
+  reason?: string;
+  reasonDetail?: string;
 }) {
   const { openMeta, openPicker, openManga } = useView();
   const { open: openContextMenu } = useContextMenu();
@@ -605,6 +610,9 @@ const PosterCard = memo(function PosterCard({
             onReady={expandingCard.onArtworkReady}
             onError={expandingCard.onArtworkError}
           />
+          {/* A plugin's own line, read back and badged. Only a listing that carried extras has
+              anything here, so every other surface draws exactly what it drew before. */}
+          <ListingBadgeStrip meta={meta} />
         </Poster>
         {settings.cardHoverShine && (
           <div
@@ -716,16 +724,23 @@ const PosterCard = memo(function PosterCard({
         </div>
       </div>
       {!settings.hidePosterTitles && (
+        <div className="min-h-9">
           <p
             className={
               kids
-                ? "line-clamp-2 min-h-9 text-[15px] font-bold leading-snug text-[#0e3a43]"
-                : "line-clamp-2 min-h-9 text-[13px] font-medium leading-snug text-ink"
+                ? "line-clamp-2 text-[15px] font-bold leading-snug text-[#0e3a43]"
+                : `${reason && !kids ? "line-clamp-1" : "line-clamp-2"} text-[13px] font-medium leading-snug text-ink`
             }
           >
             {preferredTitle || translatedTitle || meta.name}
           </p>
-        )}
+          {reason && !kids && (
+            <p className="line-clamp-1 text-[11px] leading-tight text-ink-subtle" title={reasonDetail}>
+              {reason}
+            </p>
+          )}
+        </div>
+      )}
     </button>
   );
 });
@@ -1014,10 +1029,12 @@ export const PickCard = Object.assign(
     flagRerun?: boolean;
     awardLookupName?: string;
     kids?: boolean;
+    reason?: string;
+    reasonDetail?: string;
   }) {
     const { settings } = useSettings();
     if (settings.rowCardStyle === "tv" && !props.kids && props.meta.type !== "manga") {
-      return <TvCard meta={props.meta} kids={props.kids} />;
+      return <TvCard meta={props.meta} kids={props.kids} reason={props.reason} />;
     }
     return <PosterCard {...props} />;
   }),

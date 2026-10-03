@@ -1,4 +1,5 @@
 import { useEffect, useSyncExternalStore } from "react";
+import { detectAnimeForCw } from "@/lib/anime-detect";
 import { fetchSimklPlaybackItems } from "@/lib/simkl/playback";
 import { fetchTraktPlaybackItems } from "@/lib/trakt/playback";
 import {
@@ -32,6 +33,7 @@ function setItems(next: LibraryItem[]): void {
   if (next.length === 0 && items.length === 0) return;
   items = next;
   emit();
+  void detectAnimeForCw(next.filter((item) => !item.isAnime));
 }
 
 export function externalCwConnected(): boolean {
@@ -82,12 +84,12 @@ export function setExternalCwSources(mask: { trakt: boolean; simkl: boolean }): 
   void refreshExternalCw(true);
 }
 
-async function runRefresh(): Promise<boolean> {
-  const enabled: Array<() => Promise<LibraryItem[]>> = [];
-  if (getSimklSession() && sourceMask.simkl) enabled.push(fetchSimklPlaybackItems);
-  if (getTraktSession() && sourceMask.trakt) enabled.push(fetchTraktPlaybackItems);
+async function runRefresh(gen: number): Promise<boolean> {
+  const enabled: Array<{ source: "simkl" | "trakt"; fetch: () => Promise<LibraryItem[]> }> = [];
+  if (getSimklSession() && sourceMask.simkl) enabled.push({ source: "simkl", fetch: fetchSimklPlaybackItems });
+  if (getTraktSession() && sourceMask.trakt) enabled.push({ source: "trakt", fetch: fetchTraktPlaybackItems });
   const results = await Promise.all(
-    enabled.map(async (fetch) => {
+    enabled.map(async ({ fetch }) => {
       try {
         return await fetch();
       } catch {
@@ -95,12 +97,17 @@ async function runRefresh(): Promise<boolean> {
       }
     }),
   );
+  // A disabled source or superseded request must not publish its late response.
+  if (gen !== refreshGen) return true;
+  const complete = results.every((r) => r !== null);
+  fetchedAt = complete ? Date.now() : 0;
   const succeeded = results.filter((r): r is LibraryItem[] => r !== null);
   if (succeeded.length === 0) return false;
-  retryAttempt = 0;
-  fetchedAt = Date.now();
-  setItems(merge(succeeded));
-  return true;
+  const failedSources = new Set(enabled.filter((_, index) => results[index] === null).map(({ source }) => source));
+  const retained = items.filter((i) => i.external && failedSources.has(i.external));
+  setItems(merge([...succeeded, retained]));
+  if (complete) retryAttempt = 0;
+  return complete;
 }
 
 function cancelRetry(): void {
@@ -111,8 +118,8 @@ function cancelRetry(): void {
   retryAttempt = 0;
 }
 
-// After a total failure, retry at 1s/4s/10s so a cold start with a dead network
-// self-heals once connectivity returns instead of caching the failure for STALE_MS.
+// Retry failed trackers at 1s/4s/10s, including partial failures, so cold-start
+// progress can arrive without toggling settings or dropping previously loaded cards.
 function scheduleRetry(): void {
   if (retryTimer !== null) return;
   if (retryAttempt >= RETRY_DELAYS_MS.length) return;
@@ -121,32 +128,36 @@ function scheduleRetry(): void {
   retryAttempt += 1;
   retryTimer = setTimeout(() => {
     retryTimer = null;
-    void (async () => {
-      const ok = await runRefresh();
-      // A newer refresh supersedes this retry; let it own the outcome.
-      if (gen !== refreshGen) return;
-      if (!ok) scheduleRetry();
-    })();
+    if (gen === refreshGen) void startRefresh(gen);
   }, delay);
 }
 
+function startRefresh(gen: number): Promise<void> {
+  inflight = runRefresh(gen).then((ok) => {
+    if (gen === refreshGen && !ok) scheduleRetry();
+  }).finally(() => {
+    inflight = null;
+  });
+  return inflight;
+}
+
 export function refreshExternalCw(force = false): Promise<void> {
-  refreshGen += 1;
-  cancelRetry();
   if (!externalCwConnected()) {
+    refreshGen += 1;
+    cancelRetry();
     fetchedAt = 0;
     setItems(EMPTY);
     return Promise.resolve();
   }
-  if (inflight) return force ? inflight.then(() => refreshExternalCw(true)) : inflight;
+  if (inflight) {
+    if (!force) return inflight;
+    refreshGen += 1;
+    cancelRetry();
+    return inflight.then(() => refreshExternalCw(true));
+  }
   if (!force && fetchedAt > 0 && Date.now() - fetchedAt < STALE_MS) return Promise.resolve();
-  inflight = (async () => {
-    const ok = await runRefresh();
-    if (!ok) scheduleRetry();
-  })().finally(() => {
-    inflight = null;
-  });
-  return inflight;
+  cancelRetry();
+  return startRefresh(++refreshGen);
 }
 
 export function listExternalCw(): LibraryItem[] {

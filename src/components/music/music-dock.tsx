@@ -4,7 +4,6 @@ import { pushBackHandler } from "@/lib/back-intercept";
 import { useModalExit } from "@/components/modal-shell";
 import { artistCreditParts } from "@/lib/music/search-artists";
 import { MusicArtistLink } from "./music-artist-link";
-import { MusicDownloadButton } from "./music-download-button";
 import { useRecordingProfile } from "@/lib/music/use-recording-profile";
 import {
   useEffect,
@@ -16,25 +15,7 @@ import {
   type PointerEvent,
   type RefObject,
 } from "react";
-import {
-  Heart,
-  ChevronDown,
-  ChevronUp,
-  ListMusic,
-  LoaderCircle,
-  Pause,
-  Play,
-  Repeat,
-  Repeat1,
-  Shuffle,
-  SlidersHorizontal,
-  Speaker,
-  SkipBack,
-  SkipForward,
-  Volume2,
-  VolumeX,
-  X,
-} from "lucide-react";
+import { MusicGlyph } from "@/components/icons/music-glyph";
 import { MusicQueue, cycleMusicRepeat, toggleMusicShuffle, useMusicTransport } from "./music-queue";
 import { Poster } from "@/components/poster";
 import { CastIcon } from "@/components/player/cast-icon";
@@ -55,6 +36,7 @@ import {
   useMusicPlayer,
 } from "@/lib/music/player";
 import { useView } from "@/lib/view";
+import { useSettings } from "@/lib/settings";
 import { MusicSourcePicker } from "./music-source-picker";
 import { requestMusicConnection } from "./music-connections";
 import { MusicServiceLogo } from "./music-service-logo";
@@ -62,6 +44,9 @@ import { MusicQualityBadge } from "./music-quality-badge";
 import { useMusicTrackContextMenu } from "./music-track-menu";
 import { useMusicDockLayout } from "@/lib/music/dock-layout";
 import { MusicDockVisualizer } from "./music-dock-visualizer";
+import { MusicLikeButton } from "./music-like-button";
+import { MusicMikuVisualizer } from "./music-miku-visualizer";
+import { MusicGifVisualizer } from "./music-gif-visualizer";
 import { MusicDockOverflow, type MusicDockAction } from "./music-dock-overflow";
 import { getMusicPlaybackOrigin, musicTitleTarget } from "@/lib/music/playback-origin";
 import { requestMusicPlaylist } from "@/lib/music/navigation";
@@ -74,7 +59,8 @@ import { getMusicSpeakerState, subscribeMusicSpeakerState } from "@/lib/music/ca
 import "./music-dock.css";
 
 const DOCK_HEIGHT = 76;
-const TAB_HEIGHT = 32;
+const TAB_HEIGHT = 48;
+const SKIP_AFTER_SECONDS = 20;
 const SETTLE_MS = 1200;
 
 const MUSIC_TIME_FONT = {
@@ -154,6 +140,8 @@ export function MusicDock() {
   const { topKind, setView } = useView();
   const dockRef = useRef<HTMLElement | null>(null);
   const sourceButton = useRef<HTMLButtonElement | null>(null);
+  const [skipIn, setSkipIn] = useState<number | null>(null);
+  const [stayed, setStayed] = useState("");
   const [queueOpen, setQueueOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
@@ -170,6 +158,10 @@ export function MusicDock() {
   }, []);
   const closeExpanded = useCallback(() => setExpanded(false), []);
   const nowExit = useModalExit(closeExpanded, expanded);
+  // Playback ticks must not restart the exit timer and strand the dock off-screen.
+  const collapseDock = useCallback(() => setCollapsed(true), []);
+  const expandDock = useCallback(() => setCollapsed(false), []);
+  const collapseExit = useModalExit(collapseDock, !collapsed);
   useEffect(() => trackViewportBottom(), []);
   const reopenAfterBack = useRef(false);
   const backRestore = useRef<(() => void) | null>(null);
@@ -197,6 +189,7 @@ export function MusicDock() {
     }
     setExpanded(false);
   }, [topKind]);
+  const { settings: dockSettings } = useSettings();
   const appearance = useMusicAppearance();
   const dockParts = useMusicDockLayout();
   const { profile: recording, display } = useRecordingProfile(player.current);
@@ -211,6 +204,16 @@ export function MusicDock() {
   }, [player.volume]);
 
   const current = player.current;
+  const volumeCeiling = musicVolumeCeiling(current?.connectorId);
+  const [ceilingShift, setCeilingShift] = useState(false);
+  const lastCeiling = useRef(volumeCeiling);
+  useEffect(() => {
+    if (lastCeiling.current === volumeCeiling) return;
+    lastCeiling.current = volumeCeiling;
+    setCeilingShift(true);
+    const timer = window.setTimeout(() => setCeilingShift(false), 340);
+    return () => window.clearTimeout(timer);
+  }, [volumeCeiling]);
   // Mirrors the secondary controls so a narrow dock loses none of them, only their icons.
   const overflowActions = (): MusicDockAction[] => {
     const out: MusicDockAction[] = [];
@@ -218,7 +221,7 @@ export function MusicDock() {
       out.push({
         id: "queue",
         label: t("music.transport.openQueue"),
-        icon: <ListMusic size={17} />,
+        icon: <MusicGlyph name="queue" size={17} />,
         run: openQueue,
         active: queueOpen,
       });
@@ -226,7 +229,7 @@ export function MusicDock() {
       out.push({
         id: "like",
         label: t(liked ? "music.unsaveTrack" : "music.saveTrack"),
-        icon: <Heart size={17} fill={liked ? "currentColor" : "none"} />,
+        icon: <MusicGlyph name={liked ? "heart-filled" : "heart"} size={17} />,
         run: () => toggleMusicLiked(),
         active: liked,
       });
@@ -247,7 +250,7 @@ export function MusicDock() {
       out.push({
         id: "cast",
         label: t("music.cast.title"),
-        icon: <Speaker size={17} />,
+        icon: <MusicGlyph name="speaker" size={17} />,
         run: openSpeakers,
         active: speaker.active,
       });
@@ -255,7 +258,7 @@ export function MusicDock() {
       out.push({
         id: "audio",
         label: t("music.audio.title"),
-        icon: <SlidersHorizontal size={17} />,
+        icon: <MusicGlyph name="audio-settings" size={17} />,
         run: openAudio,
       });
     return out;
@@ -268,6 +271,26 @@ export function MusicDock() {
   }, [current?.id]);
   const visible = Boolean(current) && topKind !== "player" && topKind !== "picker";
   const inset = useDockInset(dockRef, visible, collapsed);
+  const stuckError = player.error && !player.error.startsWith("music.cast.") ? player.error : null;
+  const stuckKey = `${player.current?.connectorId ?? ""}:${player.current?.id ?? ""}`;
+  const hasNext = player.queueIndex >= 0 && player.queueIndex < player.queue.length - 1;
+  useEffect(() => {
+    if (!stuckError || !hasNext || stayed === stuckKey) {
+      setSkipIn(null);
+      return;
+    }
+    setSkipIn(SKIP_AFTER_SECONDS);
+    const timer = window.setInterval(() => {
+      setSkipIn((left) => {
+        if (left === null) return null;
+        if (left > 1) return left - 1;
+        window.clearInterval(timer);
+        nextMusic();
+        return null;
+      });
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [stuckError, hasNext, stuckKey, stayed]);
   const attachVolumeWheel = useCallback((node: HTMLSpanElement | null) => {
     if (!node) return;
     const adjust = (event: WheelEvent) => {
@@ -289,17 +312,45 @@ export function MusicDock() {
     const root = document.documentElement;
     if (visible) {
       root.dataset.musicDockActive = "on";
-      root.style.setProperty("--harbor-music-dock", `${collapsed ? TAB_HEIGHT : DOCK_HEIGHT}px`);
+      const fallback = collapsed ? TAB_HEIGHT : DOCK_HEIGHT;
+      const publish = (height: number) => {
+        root.style.setProperty("--harbor-music-dock", `${Math.max(0, Math.round(height))}px`);
+        // Minimised, the tab floats over the page instead of shortening it.
+        root.style.setProperty(
+          "--harbor-dock-gap",
+          collapsed
+            ? "var(--harbor-viewport-bottom, 0px)"
+            : `calc(var(--harbor-music-dock, 0px) + var(--harbor-viewport-bottom, 0px))`,
+        );
+      };
+      publish(fallback);
+      const node = dockRef.current;
+      if (node) {
+        publish(node.getBoundingClientRect().height || fallback);
+        const observer = new ResizeObserver((entries) => {
+          const measured = entries[0]?.contentRect.height ?? 0;
+          publish(measured || fallback);
+        });
+        observer.observe(node);
+        return () => {
+          observer.disconnect();
+          delete root.dataset.musicDockActive;
+          root.style.removeProperty("--harbor-music-dock");
+          root.style.removeProperty("--harbor-dock-gap");
+        };
+      }
     } else {
       setQueueOpen(false);
       setExpanded(false);
       setCollapsed(false);
       delete root.dataset.musicDockActive;
       root.style.removeProperty("--harbor-music-dock");
+      root.style.removeProperty("--harbor-dock-gap");
     }
     return () => {
       delete root.dataset.musicDockActive;
       root.style.removeProperty("--harbor-music-dock");
+      root.style.removeProperty("--harbor-dock-gap");
     };
   }, [visible, collapsed]);
 
@@ -325,6 +376,12 @@ export function MusicDock() {
       setExpanded(false);
       setView("music");
       requestMusicExplore({ kind: "album", track: display, album: recording?.album });
+    },
+    onMoreLikeThis: () => {
+      if (!display) return;
+      setExpanded(false);
+      setView("music");
+      requestMusicExplore({ kind: "similar", track: display });
     },
   });
 
@@ -382,9 +439,11 @@ export function MusicDock() {
   if (collapsed) {
     return (
       <aside
+        key="music-dock-tab"
         ref={dockRef}
         data-music-dock
         data-music-dock-tab
+        data-art-colors={artworkColor ? "on" : undefined}
         aria-label={t("music.player")}
         style={
           {
@@ -392,28 +451,66 @@ export function MusicDock() {
             insetInlineEnd: 0,
             height: TAB_HEIGHT,
             bottom: "var(--harbor-viewport-bottom, 0px)",
+            ...(artworkColor
+              ? { "--music-art-accent": artworkColor.color, "--music-art-ink": artworkColor.ink }
+              : {}),
           } as CSSProperties
         }
         className="pointer-events-none fixed bottom-0 z-[120] flex items-end"
       >
-        <button
-          type="button"
-          onClick={() => setCollapsed(false)}
-          aria-label={t("music.dock.show")}
-          title={`${t("music.dock.show")} · ${display.title}`}
-          className="music-dock-tab pointer-events-auto"
-        >
-          <ChevronUp size={15} aria-hidden="true" />
-          <span className="music-dock-tab-title">{display.title}</span>
-        </button>
+        <div className="music-dock-tab pointer-events-auto">
+          <span className="music-dock-tab-line" aria-hidden="true">
+            <span style={{ inlineSize: `${(position / duration) * 100}%` }} />
+          </span>
+          <button
+            type="button"
+            onClick={() => expandDock()}
+            aria-label={t("music.dock.show")}
+            title={`${t("music.dock.show")} · ${display.title}`}
+            className="music-dock-tab-chev"
+          >
+            <MusicGlyph name="expand" size={14} aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            tabIndex={-1}
+            aria-hidden="true"
+            onClick={() => expandDock()}
+            className="music-dock-tab-open"
+          >
+            <span className="music-dock-tab-art">
+              <Poster
+                src={display.artwork}
+                seed={`track:${current.connectorId ?? ""}:${current.sourceId ?? current.id}`}
+                ratio="square"
+                className="w-full [--poster-radius:0px]"
+              />
+            </span>
+            <span className="music-dock-tab-copy">
+              <span className="music-dock-tab-title">{display.title}</span>
+              <span className="music-dock-tab-artist">{display.artist}</span>
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={toggleMusicPlayback}
+            aria-label={t(playing ? "music.pause" : "music.play")}
+            title={t(playing ? "music.pause" : "music.play")}
+            className="music-dock-tab-play"
+          >
+            <MusicGlyph name={playing ? "pause" : "play"} size={15} aria-hidden="true" />
+          </button>
+        </div>
       </aside>
     );
   }
 
   return (
     <aside
+      key="music-dock-bar"
       ref={dockRef}
       data-music-dock
+      data-closing={collapseExit.closing || undefined}
       data-art-colors={artworkColor ? "on" : undefined}
       role={expanded ? "dialog" : undefined}
 
@@ -431,6 +528,11 @@ export function MusicDock() {
       }
       className="@container fixed bottom-0 z-[120] border-t border-edge bg-canvas text-ink"
     >
+      {appearance.gifVisualizer && appearance.gifId ? (
+        !expanded && <MusicGifVisualizer track={current} playing={player.phase === "playing"} />
+      ) : appearance.mikuVisualizer && (
+        <MusicMikuVisualizer track={current} playing={player.phase === "playing"} concealed={expanded} />
+      )}
       {expanded && (
         <MusicNowPlaying
           inset={inset}
@@ -470,11 +572,17 @@ export function MusicDock() {
         }}
       >
         <span className="music-dock-seek-track" aria-hidden="true">
-          <span className="block h-full bg-ink" style={{ width: percent }} />
-          <span
-            className="music-dock-seek-thumb"
-            style={{ insetInlineStart: `clamp(12px, ${percent}, calc(100% - 12px))` }}
-          />
+          {hoverFrac !== null && !resolving && (
+            <span className="music-dock-seek-preview" style={{ width: `${hoverFrac * 100}%` }} />
+          )}
+          <span className="music-dock-seek-fill" style={{ width: percent }} />
+          {dockSettings.musicSeekThumb &&
+            (dockSettings.musicSeekThumbHover === false || hoverFrac !== null || dragging) && (
+            <span
+              className="music-dock-seek-thumb"
+              style={{ insetInlineStart: `clamp(12px, ${percent}, calc(100% - 12px))` }}
+            />
+          )}
         </span>
         {hoverFrac !== null && !resolving && (
           <span
@@ -515,8 +623,8 @@ export function MusicDock() {
         />
       </div>
 
-      <div className="grid h-full grid-flow-col auto-cols-auto grid-cols-[minmax(0,1fr)] items-center gap-1 px-3 pt-2 pb-2 @[700px]:gap-2 @[700px]:px-5">
-        <div className="flex min-w-0 items-center gap-2">
+      <div className="grid h-full grid-cols-[1fr_auto_auto] items-center gap-1 px-3 pt-2 pb-2 @[700px]:gap-2 @[700px]:px-5 @[900px]:grid-cols-[1fr_auto_1fr]">
+        <div className="flex items-center gap-2 @[900px]:pe-4">
           <button
             type="button"
             data-music-dock-hide
@@ -526,10 +634,10 @@ export function MusicDock() {
             onClick={() => {
               setQueueOpen(false);
               setExpanded(false);
-              setCollapsed(true);
+              collapseExit.close();
             }}
           >
-            <ChevronDown size={19} aria-hidden="true" />
+            <MusicGlyph name="collapse" size={19} aria-hidden="true" />
           </button>
           <div className="music-dock-track flex min-w-0 flex-1 items-center gap-3 text-start">
             <button
@@ -551,7 +659,7 @@ export function MusicDock() {
                 className="w-full [--poster-radius:0px]"
               />
             </button>
-            <div className="flex min-w-0 max-w-[28ch] flex-1 flex-col">
+            <div className="flex min-w-0 max-w-[28ch] flex-col">
               <button
                 type="button"
                 onClick={() => {
@@ -560,6 +668,8 @@ export function MusicDock() {
                   const target = musicTitleTarget(getMusicPlaybackOrigin());
                   if (target.kind === "playlist")
                     requestMusicPlaylist(target.playlistId, display.id);
+                  else if (target.kind === "similar")
+                    requestMusicExplore({ kind: "similar", track: display });
                   else
                     requestMusicExplore({ kind: "album", track: display, album: recording?.album });
                 }}
@@ -581,6 +691,14 @@ export function MusicDock() {
                 }}
               />
             </div>
+            <MusicLikeButton
+              key={`${current.connectorId}:${current.sourceId ?? current.id}`}
+              dock
+              liked={liked}
+              onToggle={() => toggleMusicLiked()}
+              size={18}
+              className={`${dockParts.like ? "" : "hidden"} ${ICON_BUTTON}`}
+            />
             <MusicDockVisualizer
               track={current}
               enabled={appearance.dockVisualizer}
@@ -597,7 +715,7 @@ export function MusicDock() {
             aria-label={t("music.transport.shuffle")}
             className={`${dockParts.shuffle ? "hidden @[600px]:grid" : "hidden"} ${transport.shuffle ? ICON_BUTTON_ON : ICON_BUTTON}`}
           >
-            <Shuffle size={18} aria-hidden="true" />
+            <MusicGlyph name="shuffle" size={18} aria-hidden="true" />
           </button>
           <button
             type="button"
@@ -605,7 +723,7 @@ export function MusicDock() {
             aria-label={t("music.previous")}
             className={ICON_BUTTON}
           >
-            <SkipBack size={18} fill="currentColor" aria-hidden="true" />
+            <MusicGlyph name="previous" size={18} aria-hidden="true" />
           </button>
           <button
             type="button"
@@ -615,11 +733,11 @@ export function MusicDock() {
             className="music-dock-play grid h-11 w-11 shrink-0 place-items-center rounded-full bg-ink text-canvas transition-opacity duration-200 ease-out disabled:opacity-55"
           >
             {resolving ? (
-              <LoaderCircle size={20} className="animate-spin" aria-hidden="true" />
+              <MusicGlyph name="loading" size={20} className="animate-spin" aria-hidden="true" />
             ) : playing ? (
-              <Pause size={20} fill="currentColor" aria-hidden="true" />
+              <MusicGlyph name="pause" size={20} aria-hidden="true" />
             ) : (
-              <Play size={20} fill="currentColor" aria-hidden="true" />
+              <MusicGlyph name="play" size={20} aria-hidden="true" />
             )}
           </button>
           <button
@@ -628,7 +746,7 @@ export function MusicDock() {
             aria-label={t("music.next")}
             className={ICON_BUTTON}
           >
-            <SkipForward size={18} fill="currentColor" aria-hidden="true" />
+            <MusicGlyph name="next" size={18} aria-hidden="true" />
           </button>
           <button
             type="button"
@@ -639,9 +757,9 @@ export function MusicDock() {
             className={`${dockParts.repeat ? "hidden @[600px]:grid" : "hidden"} ${transport.repeat === "off" ? ICON_BUTTON : ICON_BUTTON_ON}`}
           >
             {transport.repeat === "one" ? (
-              <Repeat1 size={18} aria-hidden="true" />
+              <MusicGlyph name="repeat-one" size={18} aria-hidden="true" />
             ) : (
-              <Repeat size={18} aria-hidden="true" />
+              <MusicGlyph name="repeat" size={18} aria-hidden="true" />
             )}
           </button>
           <button
@@ -651,7 +769,7 @@ export function MusicDock() {
             aria-label={t("music.transport.openQueue")}
             className={`${speaker.active ? "hidden @[700px]:grid" : ""} @[1050px]:hidden ${queueOpen ? ICON_BUTTON_ON : ICON_BUTTON}`}
           >
-            <ListMusic size={18} aria-hidden="true" />
+            <MusicGlyph name="queue" size={18} aria-hidden="true" />
           </button>
           {speaker.active && speaker.device && (
             <button
@@ -668,7 +786,8 @@ export function MusicDock() {
           )}
         </div>
 
-        <div className="hidden min-w-0 items-center justify-end gap-1 @[700px]:flex">
+        <div className="flex items-center justify-end gap-1">
+        <div className="hidden items-center justify-end gap-1 @[700px]:flex">
           {dockParts.quality && !isMusicVideoActive() && (
             <span className="hidden shrink-0 @[1320px]:inline-flex">
               <MusicQualityBadge track={current} />
@@ -692,7 +811,7 @@ export function MusicDock() {
           {dockParts.time && (
             <span
               style={MUSIC_TIME_FONT}
-              className="hidden shrink-0 text-[15px] font-semibold tabular-nums text-ink @[820px]:block"
+              className="hidden shrink-0 ps-1 pe-1 text-[15px] font-semibold tabular-nums text-ink @[820px]:block"
             >
               {timeLabel(position)}
               <span className="mx-1 text-ink-subtle">/</span>
@@ -706,17 +825,9 @@ export function MusicDock() {
             aria-label={t("music.transport.openQueue")}
             className={`${dockParts.queue ? "hidden @[1050px]:grid" : "hidden"} ${queueOpen ? ICON_BUTTON_ON : ICON_BUTTON}`}
           >
-            <ListMusic size={18} aria-hidden="true" />
+            <MusicGlyph name="queue" size={18} aria-hidden="true" />
           </button>
-          <button
-            type="button"
-            onClick={() => toggleMusicLiked()}
-            aria-pressed={liked}
-            aria-label={liked ? t("music.unsaveTrack") : t("music.saveTrack")}
-            className={`${dockParts.like ? "hidden @[1150px]:grid" : "hidden"} ${ICON_BUTTON}`}
-          >
-            <Heart size={18} fill={liked ? "currentColor" : "none"} aria-hidden="true" />
-          </button>
+          <span className="music-dock-vol-wrap">
           <button
             type="button"
             onClick={() => setMusicVolume(player.volume > 0 ? 0 : audibleVolume.current)}
@@ -726,32 +837,47 @@ export function MusicDock() {
             className={ICON_BUTTON}
           >
             {player.volume === 0 ? (
-              <VolumeX size={18} aria-hidden="true" />
+              <MusicGlyph name="volume-mute" size={18} aria-hidden="true" />
             ) : (
-              <Volume2 size={18} aria-hidden="true" />
+              <MusicGlyph name="volume-high" size={18} aria-hidden="true" />
             )}
           </button>
+          <span className="music-dock-vol-pop">
           <span
             ref={attachVolumeWheel}
-            className={`music-dock-volume hidden h-11 w-20 shrink-0 items-center ${dockParts.volume ? "@[900px]:flex" : ""}`}
+            className={`music-dock-volume h-11 w-20 shrink-0 items-center ${dockParts.volume ? "flex" : "hidden"}`}
+            data-rescale={ceilingShift || undefined}
             title={`${t("music.volume")} · ${Math.round(player.volume * 100)}%`}
             onPointerMove={(event) =>
-              approachThumb(event, player.volume / musicVolumeCeiling(current.connectorId))
+              approachThumb(event, player.volume / volumeCeiling)
             }
             onPointerLeave={(event) =>
               event.currentTarget.style.removeProperty("--dock-thumb-approach")
             }
           >
+            <span className="music-dock-vol-rail" aria-hidden="true">
+              <span
+                className="music-dock-vol-fill"
+                style={{
+                  width: `calc(${Math.max(
+                    0,
+                    Math.min(1, player.volume / volumeCeiling),
+                  )} * (100% - 12px) + 12px)`,
+                }}
+              />
+            </span>
             <Slider
               value={player.volume}
               min={0}
-              max={musicVolumeCeiling(current.connectorId)}
+              max={volumeCeiling}
               step={0.02}
               onChange={setMusicVolume}
               disabled={speaker.active}
               ariaLabel={t("music.volume")}
               className="block w-full"
             />
+          </span>
+          </span>
           </span>
           {(dockParts.cast || speaker.active) && (
             <button
@@ -771,11 +897,10 @@ export function MusicDock() {
                   <CastIcon device={speaker.device} size={32} />
                 </span>
               ) : (
-                <Speaker size={18} aria-hidden="true" />
+                <MusicGlyph name="speaker" size={18} aria-hidden="true" />
               )}
             </button>
           )}
-          {dockParts.download && <MusicDownloadButton track={current} className={ICON_BUTTON} />}
           {dockParts.audio && (
             <button
               type="button"
@@ -785,7 +910,7 @@ export function MusicDock() {
               title={t("music.audio.title")}
               className={ICON_BUTTON}
             >
-              <SlidersHorizontal size={18} aria-hidden="true" />
+              <MusicGlyph name="audio-settings" size={18} aria-hidden="true" />
             </button>
           )}
         </div>
@@ -815,21 +940,40 @@ export function MusicDock() {
               .finally(() => setClosing(false));
           }}
         >
-          <X size={18} aria-hidden="true" />
+          <MusicGlyph name="close" size={18} aria-hidden="true" />
         </button>
+        </div>
       </div>
 
       {player.error && (
         <div
           role="alert"
           style={{ insetInlineStart: 16 }}
-          className="absolute bottom-full mb-2 flex max-w-[min(540px,90vw)] flex-wrap items-center gap-2 rounded-lg bg-elevated px-4 py-2 text-[13px]"
+          className="music-dock-alert absolute bottom-full mb-2 flex w-[min(560px,92vw)] flex-col gap-2.5 rounded-lg bg-elevated px-4 py-3 text-[13px]"
         >
-          <span className="min-w-0 flex-1 py-2 text-ink">
-            {player.error.startsWith("music.cast.")
-              ? t(player.error)
-              : t("music.recovery.failed", { source: musicSourceName(current) })}
-          </span>
+          <div className="flex min-w-0 items-start gap-2.5">
+            {!player.error.startsWith("music.cast.") && current?.connectorId && (
+              <MusicServiceLogo
+                source={current.connectorId}
+                size={18}
+                className="mt-[1px] shrink-0"
+              />
+            )}
+            <span className="min-w-0 flex-1 leading-snug text-ink">
+              {player.error.startsWith("music.cast.")
+                ? t(player.error)
+                : t("music.recovery.failed", { source: musicSourceName(current) })}
+            </span>
+            <button
+              type="button"
+              onClick={clearMusicError}
+              aria-label={t("music.error.dismiss")}
+              className="-me-1 -mt-1 grid size-8 shrink-0 place-items-center rounded-full text-ink-subtle transition-colors duration-200 ease-out hover:bg-raised hover:text-ink"
+            >
+              <MusicGlyph name="close" size={15} aria-hidden="true" />
+            </button>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
           {player.error.startsWith("music.cast.") && (
             <button
               type="button"
@@ -839,9 +983,26 @@ export function MusicDock() {
               {t("music.cast.title")}
             </button>
           )}
+          {skipIn !== null && (
+            <>
+              <span className="me-auto text-ink-muted">
+                {t("music.recovery.skipping", { seconds: skipIn })}
+              </span>
+              <button
+                type="button"
+                onClick={() => setStayed(stuckKey)}
+                className="rounded-md bg-raised px-3 py-2 font-semibold text-ink"
+              >
+                {t("music.recovery.stay")}
+              </button>
+            </>
+          )}
           <button
             type="button"
-            onClick={() => void playMusic(current, player.queue).catch(() => {})}
+            onClick={() => {
+              setStayed(stuckKey);
+              void playMusic(current, player.queue).catch(() => {});
+            }}
             className="rounded-md bg-raised px-3 py-2 font-semibold text-ink"
           >
             {t("common.retry")}
@@ -853,14 +1014,7 @@ export function MusicDock() {
           >
             {t("music.source.another")}
           </button>
-          <button
-            type="button"
-            onClick={clearMusicError}
-            aria-label={t("music.error.dismiss")}
-            className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-ink-subtle transition-colors duration-200 ease-out hover:bg-raised hover:text-ink"
-          >
-            <X size={16} aria-hidden="true" />
-          </button>
+          </div>
         </div>
       )}
 

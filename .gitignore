@@ -13,6 +13,7 @@ _backups/
 !.env.example
 
 target
+/.verify-target
 
 *.tsbuildinfo
 /vite.config.js
@@ -38,10 +39,18 @@ pnpm-debug.log*
 /src-tauri/binaries/ffprobe*
 /src-tauri/binaries/mpv-*
 /src-tauri/libmpv/libmpv-2.dll
+/src-tauri/resources/capstan/
 /src-tauri/fonts/*.otf
 /src-tauri/fonts/*.ttf
 local_docs/
 .diag/
+# Agent and dev scratch: lab harnesses, generated signal fixtures, working notes.
+# 174MB and none of it is product code.
+scratchpad/
+# Working notes, triage ledgers and local dev logs. Only *.md and *.log were
+# keeping this out of the tree by accident; make it explicit.
+_private/
+/src-tauri/tauri.dev.local.json
 
 # This repo is pnpm (see packageManager + CI). npm lockfiles must not be committed.
 package-lock.json

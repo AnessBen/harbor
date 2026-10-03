@@ -1,7 +1,9 @@
 import { SportsSelect } from "./sports/sports-select";
+import { SportsHotEventsSkeleton, SportsRailSkeleton } from "./sports/sports-skeletons";
 import { LeagueLogo } from "./sports/league-logo";
 import { lazy, Suspense, useMemo, useRef, useState, useEffect } from "react";
-import { ArrowUp, ArrowRight, CalendarDays, RefreshCw, Star } from "lucide-react";
+import { ArrowUp, ArrowRight, CalendarDays, Star } from "lucide-react";
+import { SportsRefreshButton } from "./sports/refresh-button";
 import { useT, useUiLanguage } from "@/lib/i18n";
 import { useSettings } from "@/lib/settings";
 import { useScrollMemory, useView } from "@/lib/view";
@@ -28,6 +30,7 @@ import {
   gamesInSportsSelection,
 } from "@/lib/sports/personalization";
 import { SportsAccessGate } from "./sports/access-gate";
+import { SportsNoProviderNote } from "./sports/no-provider-note";
 import { SportsPersonalizeHint } from "./sports/personalize-hint";
 
 const LIVE_SCOREBOARDS = liveScoreboardKeys(HUB_LEAGUES);
@@ -49,6 +52,7 @@ const EventDialog = lazy(() =>
 export function SportsView({ active = false }: { active?: boolean }) {
   return (
     <SportsAccessGate active={active}>
+      <SportsNoProviderNote />
       <SportsHubView active={active} />
     </SportsAccessGate>
   );
@@ -104,7 +108,7 @@ function SportsHubView({ active = false }: { active?: boolean }) {
   const personalGroups = HUB_GROUPS.filter(
     (g) => scope.groups.has(g.key) || (browsing && g.key === group),
   );
-  const esportsLeagues = selected.filter(
+  const esportsLeagues = leagues.filter(
     (key) => HUB_LEAGUES.find((l) => l.key === key)?.group === "esports",
   );
   useEffect(() => {
@@ -283,10 +287,7 @@ function SportsHubView({ active = false }: { active?: boolean }) {
             title={brokenLeagues.length ? brokenLeagues.join(", ") : undefined}
           >
             {busy ? (
-              <>
-                <span className="sh-status-dot" />
-                {t("Updating schedules…")}
-              </>
+              t("Updating schedules…")
             ) : failures || statusStale ? (
               t("Some schedules are unavailable")
             ) : (
@@ -294,14 +295,7 @@ function SportsHubView({ active = false }: { active?: boolean }) {
             )}
           </span>
         )}
-        <button
-          className="sh-icon"
-          aria-label={t("Refresh schedules")}
-          disabled={busy}
-          onClick={() => setRefresh((n) => n + 1)}
-        >
-          <RefreshCw size={16} />
-        </button>
+        <SportsRefreshButton busy={busy} onRefresh={() => setRefresh((n) => n + 1)} />
       </nav>
       {tab === "home" && group !== "esports" && (
         <HubCarousel
@@ -432,13 +426,7 @@ function SportsHubView({ active = false }: { active?: boolean }) {
           </div>
         )}
         {tab !== "explore" && tab !== "hot" && tab !== "live" && group === "esports" && (
-          <Suspense
-            fallback={
-              <div className="sh-lineups-pending" role="status">
-                {t("Loading matches…")}
-              </div>
-            }
-          >
+          <Suspense fallback={<SportsRailSkeleton />}>
             {browsing ? (
               <EsportsArena active={active && !setup} refresh={refresh} />
             ) : (
@@ -516,13 +504,7 @@ function SportsHubView({ active = false }: { active?: boolean }) {
             )}
             {pitchGame && <HubPitchSpotlight game={pitchGame} active={active} onOpen={open} />}
             {group === "all" && esportsLeagues.length > 0 && (
-              <Suspense
-                fallback={
-                  <div className="sh-lineups-pending" role="status">
-                    {t("Loading matches…")}
-                  </div>
-                }
-              >
+              <Suspense fallback={<SportsRailSkeleton />}>
                 <EsportsMatchRail
                   leagueKeys={esportsLeagues}
                   active={active && !setup && !event}
@@ -584,13 +566,7 @@ function SportsHubView({ active = false }: { active?: boolean }) {
               liveOnly
             />
             {(group === "all" || group === "esports") && (
-              <Suspense
-                fallback={
-                  <div className="sh-lineups-pending" role="status">
-                    {t("Loading matches…")}
-                  </div>
-                }
-              >
+              <Suspense fallback={<SportsRailSkeleton />}>
                 <EsportsMatchRail
                   liveOnly
                   active={active && !setup && !event}
@@ -618,13 +594,7 @@ function SportsHubView({ active = false }: { active?: boolean }) {
           />
         )}
         {tab === "hot" && (
-          <Suspense
-            fallback={
-              <div className="sh-lineups-pending" role="status">
-                {t("Loading highlights…")}
-              </div>
-            }
-          >
+          <Suspense fallback={<SportsHotEventsSkeleton />}>
             <HotEvents
               seed={all}
               active={active && !setup && !event}

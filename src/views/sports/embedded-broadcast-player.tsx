@@ -208,9 +208,15 @@ function BroadcastPlayer({
       aria-label={stream.title}
       role="region"
     >
-      <header {...drag.handlers}>
+      <header {...drag.handlers} data-tauri-drag-region={detached || undefined}>
         {!docked && !detached && (
-          <button type="button" onClick={restoreDock} aria-label={t("Back")} title={t("Back")}>
+          <button
+            type="button"
+            data-tauri-drag-region="false"
+            onClick={restoreDock}
+            aria-label={t("Back")}
+            title={t("Back")}
+          >
             <ArrowLeft size={18} />
           </button>
         )}
@@ -230,6 +236,7 @@ function BroadcastPlayer({
         {docked && (
           <button
             type="button"
+            data-tauri-drag-region="false"
             onClick={() => setMinimized((value) => !value)}
             aria-label={t(minimized ? "Restore video" : "Minimize player")}
             title={t(minimized ? "Restore video" : "Minimize player")}
@@ -239,6 +246,7 @@ function BroadcastPlayer({
         )}
         <button
           type="button"
+          data-tauri-drag-region="false"
           onClick={close}
           aria-label={t(detached ? "Exit PiP" : "Close")}
           title={t(detached ? "Exit PiP" : "Close")}
@@ -348,7 +356,7 @@ function BroadcastPlayer({
             <span>{t("Chat")}</span>
           </button>
         )}
-        {!detached && "__TAURI_INTERNALS__" in window && (
+        {!detached && embed && "__TAURI_INTERNALS__" in window && (
           <button
             type="button"
             onClick={() => void popOut()}

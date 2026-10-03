@@ -1,5 +1,7 @@
+import { Play } from "@/components/icons/play-filled";
 import { LEAGUE_LOGO_FALLBACKS } from "@/lib/sports/league-branding";
 import { racingVenue } from "@/lib/sports/racing-venues";
+import { isSetSport } from "@/lib/sports/score-detail";
 import { LeagueLogo } from "./league-logo";
 import { useEventVenuePhoto } from "./use-event-venue-photo";
 import { SportsHeroScenery } from "./sports-hero-scenery";
@@ -162,7 +164,16 @@ export function HubCard({
     (!game.away.name ||
       ["combat", "boxing", "esports", "golf", "motorsport"].includes(league?.group ?? ""));
 
-  const context = event ? [] : matchCardContext(game);
+  const setSport = isSetSport(league?.group);
+  const context = matchCardContext(game).filter(
+    (row) =>
+      !event ||
+      (row.kind !== "start" &&
+        !(
+          row.kind === "stage" &&
+          (game.context?.name ?? "").toLowerCase().includes(row.value.toLowerCase())
+        )),
+  );
 
   const sparse =
     !event &&
@@ -264,6 +275,14 @@ export function HubCard({
           <span className="sh-card-sub">
             {game.home.name} {game.away.name ? `· ${game.away.name}` : ""}
           </span>
+
+          {(game.home.record || game.away.record) && (
+            <span className="sh-card-records">
+              <span className="sr-only">{t("Overall Record")}: </span>
+              {game.home.record || "—"}
+              {game.away.name ? ` · ${game.away.record || "—"}` : ""}
+            </span>
+          )}
         </>
       ) : (
         <span className="sh-card-teams">
@@ -282,6 +301,10 @@ export function HubCard({
                   <strong>
                     {side.rank && <span className="sh-card-rank">#{side.rank}</span>}
 
+                    {setSport && side.serving && (
+                      <span className="sh-card-serving" aria-label={t("Serving")} />
+                    )}
+
                     {side.name}
                   </strong>
 
@@ -291,6 +314,19 @@ export function HubCard({
                       {side.record}
                     </small>
                   )}
+
+                  {setSport && side.periods?.length ? (
+                    <span className="sh-card-sets">
+                      {side.periods.map((entry) => (
+                        <b key={entry.period} data-won={entry.winner || undefined}>
+                          {entry.value}
+                          {entry.tiebreak && <sup>{entry.tiebreak}</sup>}
+                        </b>
+                      ))}
+
+                      {side.currentPoint && <em>{side.currentPoint}</em>}
+                    </span>
+                  ) : null}
                 </span>
               </TeamProfileLink>
 
@@ -570,11 +606,11 @@ export function HubHero({
           <button
             className="sh-button primary"
 
-            onClick={() => (game ? onOpen(game) : onCustomize)}
+            onClick={() => (game ? onOpen(game) : onCustomize())}
           >
             {t(game ? "Explore event" : "Choose your sports")}
 
-            <ArrowRight size={18} />
+            {game ? <Play size={18} /> : <ArrowRight size={18} />}
           </button>
 
           {game && (

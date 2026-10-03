@@ -1,12 +1,12 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Harbor",
-  "version": "0.9.127",
+  "version": "0.9.128",
   "identifier": "app.harbor",
   "build": {
     "beforeDevCommand": "pnpm dev",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "pnpm build",
+    "beforeBuildCommand": "pnpm build:desktop",
     "frontendDist": "../dist"
   },
   "app": {
@@ -57,7 +57,8 @@
     "resources": {
       "fonts/*": "fonts/",
       "THIRD-PARTY-NOTICES.txt": "notices/",
-      "resources/harbor-stream-blocker/": "resources/harbor-stream-blocker/"
+      "resources/harbor-stream-blocker/": "resources/harbor-stream-blocker/",
+      "resources/capstan/": "resources/capstan/"
     },
     "licenseFile": "installer/eula.txt",
     "icon": [
@@ -98,7 +99,7 @@
       }
     },
     "macOS": {
-      "minimumSystemVersion": "11.0",
+      "minimumSystemVersion": "12.0",
       "entitlements": "Entitlements.plist"
     },
     "windows": {

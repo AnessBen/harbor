@@ -1,11 +1,14 @@
 import type { MusicTrack, MusicAlbumRef, MusicArtistRef } from "./types";
+import { requestSpooktoberPlaylist } from "../spooktober-navigation";
 
 export type MusicExploreRequest = {
-  kind: "home" | "artist" | "album" | "videos" | "watch";
+  kind: "home" | "artist" | "album" | "videos" | "watch" | "similar";
   track: MusicTrack;
   queue?: MusicTrack[];
   album?: MusicAlbumRef;
   artist?: MusicArtistRef;
+  label?: string;
+  contextId?: string;
 };
 export const MUSIC_EXPLORE_EVENT = "harbor:music-explore";
 let pending: MusicExploreRequest | null = null;
@@ -44,10 +47,23 @@ export function takeMusicGenreRequest(): string | null {
   return name;
 }
 
+export const MUSIC_LABEL_EVENT = "harbor:music-label";
+let pendingLabel: { id: string; name: string } | null = null;
+export function requestMusicLabel(id: string, name: string) {
+  pendingLabel = { id, name };
+  window.dispatchEvent(new Event(MUSIC_LABEL_EVENT));
+}
+export function takeMusicLabelRequest(): { id: string; name: string } | null {
+  const label = pendingLabel;
+  pendingLabel = null;
+  return label;
+}
+
 export const MUSIC_PLAYLIST_EVENT = "harbor:music-playlist";
 let pendingPlaylist: { id: string; trackId?: string } | null = null;
 /** Open a playlist at a track, for the dock title when playback began in one. */
 export function requestMusicPlaylist(id: string, trackId?: string) {
+  if (requestSpooktoberPlaylist(id, trackId)) return;
   pendingPlaylist = { id, trackId };
   window.dispatchEvent(new Event(MUSIC_PLAYLIST_EVENT));
 }

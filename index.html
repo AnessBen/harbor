@@ -47,6 +47,33 @@
         pointer-events: none;
         transition: opacity 280ms ease-out;
       }
+      #harbor-boot-chrome {
+        position: fixed;
+        top: 8px;
+        right: 10px;
+        display: flex;
+        gap: 4px;
+        z-index: 10000;
+        -webkit-app-region: no-drag;
+      }
+      #harbor-boot-chrome button {
+        width: 32px;
+        height: 28px;
+        border: 0;
+        border-radius: 6px;
+        background: transparent;
+        color: #878d9c;
+        font: 12px/1 system-ui, sans-serif;
+        cursor: pointer;
+      }
+      #harbor-boot-chrome button:hover {
+        background: #1c1e25;
+        color: #e9ecf2;
+      }
+      #harbor-boot-chrome button[data-act="close"]:hover {
+        background: #c0392b;
+        color: #fff;
+      }
       #harbor-boot.gone {
         opacity: 0;
       }
@@ -95,6 +122,25 @@
         try {
           var p = new URLSearchParams(window.location.search);
           var hdrOverlay = p.get("harbor-overlay") === "1";
+          if (p.get("harbor-dj") === "1") {
+            var bar = document.createElement("div");
+            bar.id = "harbor-boot-chrome";
+            bar.innerHTML =
+              '<button type="button" data-act="min" aria-label="Minimise">&#8211;</button>' +
+              '<button type="button" data-act="close" aria-label="Close">&#10005;</button>';
+            bar.addEventListener("click", function (event) {
+              var act = event.target && event.target.getAttribute("data-act");
+              if (!act) return;
+              var api = window.__TAURI__ && window.__TAURI__.window;
+              var win = api && api.getCurrentWindow && api.getCurrentWindow();
+              if (!win) return;
+              if (act === "min") win.minimize();
+              else win.close();
+            });
+            document.addEventListener("DOMContentLoaded", function () {
+              document.body.appendChild(bar);
+            });
+          }
           if (p.get("harbor-modal") === "1" || hdrOverlay) {
             var s = document.createElement("style");
             s.textContent = "#harbor-boot{display:none !important}";

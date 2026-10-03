@@ -1,7 +1,9 @@
 import { useSportsEnabled } from "@/lib/sports/enabled";
 import { SportsAccessGate } from "@/views/sports/access-gate";
+import { SportsEventSkeleton } from "@/views/sports/sports-skeletons";
 import { SportsReminderLoop } from "@/components/sports-reminder-loop";
-import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazyView as lazy } from "@/lib/lazy-view";
 import { startIdleAway } from "@/lib/social/idle-away";
 import { FloatingBack } from "@/chrome/floating-back";
 import { ensureStaticHeroArt } from "@/lib/providers/anime-hero-art-static";
@@ -141,7 +143,8 @@ import { ThemeChromeBridge } from "@/components/theme-chrome-bridge";
 import type { MetaType } from "@/lib/cinemeta";
 import { useDiscordPresence } from "@/lib/discord/use-discord-presence";
 import { useWatchShare } from "@/lib/social/watch-presence";
-import { Home } from "@/views/home";
+import { usePluginCataloguesAvailable } from "@/lib/streams/plugins/available";
+import { SpooktoberHome } from "@/views/spooktober/spooktober-home";
 import { MusicDock } from "@/components/music/music-dock";
 import { ParentalProvider } from "@/lib/parental";
 import { TraktProvider } from "@/lib/trakt/provider";
@@ -163,6 +166,12 @@ import { BigPictureEntryButton } from "@/views/big-picture/bp-entry-button";
 import { releaseBigPictureFullscreen } from "@/views/big-picture/use-bp-fullscreen";
 import { getNavFocusTarget } from "@/lib/keyboard-navigation/geometry";
 import { SFX } from "@/lib/sfx";
+import {
+  startMusicTaskbarButtons,
+  syncMusicTaskbarArtwork,
+} from "@/lib/music/taskbar-buttons";
+import { resetMusicForProfile } from "@/lib/music/player";
+import { startMediaSessionWindowTracking } from "@/lib/media-session";
 
 const importAnime = () => import("@/views/anime");
 const importCalendar = () => import("@/views/calendar");
@@ -171,8 +180,10 @@ const importDetail = () => import("@/views/detail");
 const importAddons = () => import("@/views/addons");
 const importDiscover = () => import("@/views/discover");
 const importCatalogs = () => import("@/views/catalogs");
+const importPlugins = () => import("@/views/plugins");
 const importAward = () => import("@/views/award");
 const importAnimeAward = () => import("@/views/anime-award");
+const importCuratedList = () => import("@/views/curated-list");
 const importFilter = () => import("@/views/filter");
 const importBrands = () => import("@/views/brands");
 const importGrid = () => import("@/views/grid");
@@ -205,8 +216,12 @@ const DetailView = lazy(() => importDetail().then((m) => ({ default: m.DetailVie
 const AddonsView = lazy(() => importAddons().then((m) => ({ default: m.AddonsView })));
 const Discover = lazy(() => importDiscover().then((m) => ({ default: m.Discover })));
 const Catalogs = lazy(() => importCatalogs().then((m) => ({ default: m.Catalogs })));
+const PluginsView = lazy(() => importPlugins().then((m) => ({ default: m.Plugins })));
 const AwardView = lazy(() => importAward().then((m) => ({ default: m.AwardView })));
 const AnimeAwardView = lazy(() => importAnimeAward().then((m) => ({ default: m.AnimeAwardView })));
+const CuratedListView = lazy(() =>
+  importCuratedList().then((m) => ({ default: m.CuratedListView })),
+);
 const FilterView = lazy(() => importFilter().then((m) => ({ default: m.FilterView })));
 const BrandsView = lazy(() => importBrands().then((m) => ({ default: m.BrandsView })));
 const GridView = lazy(() => importGrid().then((m) => ({ default: m.GridView })));
@@ -298,6 +313,7 @@ function useViewPreloader(tmdbKey: string) {
       void importService();
       void importOnboarding();
       void importCatalogs();
+      void importPlugins();
       void importLibrary();
       void importCommunityCollections();
       void importDownloads();
@@ -760,6 +776,7 @@ function Shell({ onReady }: { onReady?: () => void }) {
     grid,
     awardType,
     animeAwardSource,
+    curatedListId,
     picker,
     player,
     setView,
@@ -783,6 +800,7 @@ function Shell({ onReady }: { onReady?: () => void }) {
   const bigPictureBootChecked = useRef(false);
   const uiScaleRef = useRef(settings.uiScale);
   const { activeProfile } = useProfiles();
+  const activeProfileForMusic = activeProfile?.id ?? null;
   const kid = activeProfile?.kid ?? null;
   const preview = useThemePreview();
   useEffect(() => {
@@ -820,12 +838,12 @@ function Shell({ onReady }: { onReady?: () => void }) {
   }, [onReady, topKind]);
 
   const handleTvBack = useCallback(() => {
-    if (stackKinds.length > 1 || topKind !== "home") {
+    if (canGoBack || topKind !== "home") {
       goBack();
       return true;
     }
     return false;
-  }, [goBack, stackKinds.length, topKind]);
+  }, [goBack, canGoBack, topKind]);
 
   const handleTvBackToNav = useCallback(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
@@ -1222,6 +1240,7 @@ function Shell({ onReady }: { onReady?: () => void }) {
         onDeepLinkInstall,
         onDeepLinkOpen,
         onDeepLinkOpenList,
+        onDeepLinkOpenMusic,
         onOpenLocalFile,
         onOpenProfileEdit,
         isProfileEditUrl,
@@ -1255,6 +1274,15 @@ function Shell({ onReady }: { onReady?: () => void }) {
           const stopOpenList = onDeepLinkOpenList(({ handle, listId }) => {
             openList(handle, listId);
           });
+          const stopOpenMusic = onDeepLinkOpenMusic((link) => {
+            setView("music");
+            void Promise.all([
+              import("@/lib/music/navigation"),
+              import("@/lib/music/deep-link"),
+            ]).then(([{ requestMusicSearch }, { musicDeepLinkQuery }]) =>
+              requestMusicSearch(musicDeepLinkQuery(link)),
+            );
+          });
           const stopEdit = onOpenProfileEdit(() => {
             const handle = currentAuthor()?.handle;
             if (handle) requestEditProfile(handle);
@@ -1276,6 +1304,7 @@ function Shell({ onReady }: { onReady?: () => void }) {
             stopListener();
             stopOpen();
             stopOpenList();
+            stopOpenMusic();
             stopEdit();
             stopFile();
           };
@@ -1338,6 +1367,7 @@ function Shell({ onReady }: { onReady?: () => void }) {
   const gridTop = topKind === "grid";
   const awardTop = topKind === "award";
   const animeAwardTop = topKind === "anime-award";
+  const curatedListTop = topKind === "curated-list";
   const settingsTop = topKind === "settings";
   const animeTop = topKind === "anime";
   const discoverTop = topKind === "discover";
@@ -1359,6 +1389,11 @@ function Shell({ onReady }: { onReady?: () => void }) {
   useEffect(() => {
     if (!sportsEnabled && (topKind === "sports" || topKind === "match-detail")) setView("live");
   }, [sportsEnabled, topKind, setView]);
+  const pluginCatalogues = usePluginCataloguesAvailable();
+  const pluginsTop = topKind === "plugins" && pluginCatalogues;
+  useEffect(() => {
+    if (!pluginCatalogues && topKind === "plugins") setView("home");
+  }, [pluginCatalogues, topKind, setView]);
   const liveTop = topKind === "live";
   const matchDetailTop = topKind === "match-detail";
   const vodTop = topKind === "vod";
@@ -1408,12 +1443,18 @@ function Shell({ onReady }: { onReady?: () => void }) {
     "data-layer-inactive": !top ? "" : undefined,
   });
 
+  useEffect(() => startMediaSessionWindowTracking(), []);
+  useEffect(() => startMusicTaskbarButtons(), []);
+  useEffect(() => syncMusicTaskbarArtwork(), [settings.musicArtworkAppIcon]);
+  useEffect(() => resetMusicForProfile(), [activeProfileForMusic]);
+
   const overlayPinned = useOverlayPinned();
   const settingsAlive = useIdleEvict(settingsTop, overlayPinned);
   const animeAlive = useIdleEvict(animeTop);
   const discoverAlive = useIdleEvict(discoverTop);
   const musicAlive = useIdleEvict(musicTop);
   const catalogsAlive = useIdleEvict(catalogsTop);
+  const pluginsAlive = useIdleEvict(pluginsTop);
   const addonsAlive = useIdleEvict(addonsTop);
   const calendarAlive = useIdleEvict(calendarTop);
   const wrappedAlive = useIdleEvict(wrappedTop);
@@ -1448,6 +1489,7 @@ function Shell({ onReady }: { onReady?: () => void }) {
   const gridAlive = useKeepAlive(gridTop, !!grid, stackKinds.includes("grid"));
   const awardAlive = useKeepAlive(awardTop, awardTop);
   const animeAwardAlive = useKeepAlive(animeAwardTop, animeAwardTop && !!animeAwardSource);
+  const curatedListAlive = useKeepAlive(curatedListTop, curatedListTop && !!curatedListId);
   const pickerAlive = useKeepAlive(pickerTop, !!picker);
   const moviesAlive = useIdleEvict(moviesTop);
   const kidsAlive = useIdleEvict(kidsTop);
@@ -1524,7 +1566,7 @@ function Shell({ onReady }: { onReady?: () => void }) {
           className={`relative flex min-h-0 min-w-0 flex-1 flex-col ${playerActive ? "invisible" : ""}`}
         >
           <div {...parkLayerProps(homeTop)}>
-            <Home active={homeTop} onReady={onReady} />
+            <SpooktoberHome active={homeTop} onReady={onReady} />
           </div>
           {settingsAlive && (
             <div {...layerProps(settingsTop)}>
@@ -1554,10 +1596,17 @@ function Shell({ onReady }: { onReady?: () => void }) {
               </Suspense>
             </div>
           )}
+          {pluginsAlive && (
+            <div {...layerProps(pluginsTop)}>
+              <Suspense fallback={null}>
+                <PluginsView active={pluginsTop} />
+              </Suspense>
+            </div>
+          )}
           {addonsAlive && (
             <div {...layerProps(addonsTop)}>
               <Suspense fallback={null}>
-                <AddonsView />
+                <AddonsView active={addonsTop} />
               </Suspense>
             </div>
           )}
@@ -1813,6 +1862,7 @@ function Shell({ onReady }: { onReady?: () => void }) {
                   season={episodeDetail.season}
                   episode={episodeDetail.episode}
                   seriesMeta={episodeDetail.seriesMeta}
+                  playback={episodeDetail.playback}
                 />
               </Suspense>
             </div>
@@ -1833,7 +1883,18 @@ function Shell({ onReady }: { onReady?: () => void }) {
           )}
           {matchDetailAlive && matchDetailGame && (
             <div className={layer(matchDetailTop)}>
-              <Suspense fallback={null}>
+              <Suspense
+                fallback={
+                  <SportsEventSkeleton
+                    shellBackAvailable={
+                      canGoBack &&
+                      !chromeHidden &&
+                      !immersive &&
+                      (themeHasTopbar || layout === "minui")
+                    }
+                  />
+                }
+              >
                 <SportsAccessGate active={matchDetailTop}>
                   <MatchDetailView
                     key={`match-${matchDetailGame.id}`}
@@ -1877,6 +1938,13 @@ function Shell({ onReady }: { onReady?: () => void }) {
                   key={`anime-award-${animeAwardSource}`}
                   sourceId={animeAwardSource}
                 />
+              </Suspense>
+            </div>
+          )}
+          {curatedListAlive && curatedListId && (
+            <div {...layerProps(curatedListTop)}>
+              <Suspense fallback={null}>
+                <CuratedListView key={`curated-list-${curatedListId}`} listId={curatedListId} />
               </Suspense>
             </div>
           )}

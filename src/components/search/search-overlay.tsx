@@ -1,6 +1,7 @@
 import { X, Loader2, CornerDownLeft, CalendarRange, Tag } from "lucide-react";
 import { Search } from "@/components/icons/search-icon";
 import { useEffect, useRef, useState } from "react";
+import { isTauri } from "@tauri-apps/api/core";
 import { createPortal } from "react-dom";
 import { TvModalClose } from "@/components/tv-modal-close";
 import { tvFocus } from "@/lib/keyboard-navigation";
@@ -13,6 +14,9 @@ import { metaLooksAnime } from "@/lib/anime-detect";
 import { AnimeRow } from "./anime-row";
 import { AnimeRelations } from "./anime-relations";
 import { MangaRow } from "./manga-row";
+import { MusicRow } from "./music-row";
+import { EBookRow } from "./ebook-row";
+import { SportsRow } from "./sports-row";
 import { CharacterGroup } from "./character-group";
 import { EmptyState } from "./empty-state";
 import { GuideModal } from "./guide-modal";
@@ -24,6 +28,12 @@ import { matchPersonForQuery, PersonTopMatch } from "./person-top-match";
 import { PeopleRow } from "./people-row";
 import { collectionForTitle, useCollectionHits } from "./use-collection-hits";
 import { MetaList } from "./meta-list";
+import {
+  SearchFilterBar,
+  type SearchFilter,
+  type SearchFilterKey,
+} from "./search-filter-bar";
+import { requestMusicSearch } from "@/lib/music/navigation";
 import { AddonHits } from "./addon-hits";
 import { AddonResults } from "./addon-results";
 import { MagnetCard } from "./magnet-card";
@@ -35,6 +45,7 @@ import { getSearchDisplayState } from "@/lib/search-display-state";
 import { AiExampleHint, SEARCH_EXAMPLES } from "@/components/ai-example-hint";
 import { useSettings } from "@/lib/settings";
 import { useExitPresence } from "@/lib/use-exit-presence";
+import { useWindowFullscreen } from "@/lib/use-window-fullscreen";
 import { isMagnetInput, isDirectVideoUrl } from "@/lib/torrent/magnet";
 
 export function SearchOverlay() {
@@ -52,17 +63,29 @@ export function SearchOverlay() {
   } = useSearch();
   const inputRef = useRef<HTMLInputElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
-  const { openFilter, openMeta, openPerson } = useView();
+  const backdropGesture = useRef<(() => void) | null>(null);
+  const { openFilter, openMeta, openPerson, setView } = useView();
   const [explore, setExplore] = useState<ExploreFrame[]>([]);
   const t = useT();
   const [guideOpen, setGuideOpen] = useState(false);
   const [aiActive, setAiActive] = useState(false);
   const [aiMode, setAiMode] = useState(false);
   const [aiRunSignal, setAiRunSignal] = useState(0);
+  const [mediaFilter, setMediaFilter] = useState<SearchFilter>("all");
+  useEffect(() => {
+    setMediaFilter("all");
+  }, [query]);
   const { settings, update } = useSettings();
   const { mounted, closing } = useExitPresence(open, 150);
+  const fullscreen = useWindowFullscreen();
+
+  useEffect(
+    () => () => backdropGesture.current?.(),
+    [open, closing, settings.dragAnywhere, fullscreen],
+  );
 
   const close = () => {
+    backdropGesture.current?.();
     if (query.trim() && results) recordRecent(query);
     setOpen(false);
   };
@@ -76,6 +99,7 @@ export function SearchOverlay() {
   };
 
   const commit = () => {
+    backdropGesture.current?.();
     if (query.trim() && results) recordRecent(query);
     closeForNavigation();
   };
@@ -127,7 +151,7 @@ export function SearchOverlay() {
         root.querySelectorAll<HTMLElement>(
           'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
         ),
-      ).filter((el) => el.getClientRects().length > 0);
+      ).filter((el) => el.tabIndex >= 0 && el.getClientRects().length > 0);
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key !== "Tab" || e.defaultPrevented) return;
       if (!(e.target instanceof Node) || !root.contains(e.target)) return;
@@ -156,31 +180,55 @@ export function SearchOverlay() {
   if (!mounted) return null;
 
   const beginDragOrClose = (e: React.MouseEvent) => {
-    if (e.target !== e.currentTarget) return;
-    if (e.button !== 0) return;
+    if (e.target !== e.currentTarget || e.button !== 0 || !open || closing) return;
+    e.preventDefault();
+    backdropGesture.current?.();
     const startX = e.clientX;
     const startY = e.clientY;
+    const canDrag = isTauri() && settings.dragAnywhere && !fullscreen;
+    let active = true;
+    let moved = false;
     let dragStarted = false;
+    const cleanup = () => {
+      active = false;
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+      window.removeEventListener("blur", cleanup);
+      if (backdropGesture.current === cleanup) backdropGesture.current = null;
+    };
     const onMove = (ev: MouseEvent) => {
+      if (!(ev.buttons & 1)) {
+        cleanup();
+        return;
+      }
       if (dragStarted) return;
       const dx = Math.abs(ev.clientX - startX);
       const dy = Math.abs(ev.clientY - startY);
-      if (dx > 6 || dy > 6) {
-        dragStarted = true;
-        window.removeEventListener("mousemove", onMove);
-        window.removeEventListener("mouseup", onUp);
-        import("@tauri-apps/api/window")
-          .then(({ getCurrentWindow }) => getCurrentWindow().startDragging())
-          .catch(() => {});
-      }
+      if (dx <= 6 && dy <= 6) return;
+      moved = true;
+      if (!canDrag) return;
+      dragStarted = true;
+      import("@tauri-apps/api/window")
+        .then(async ({ getCurrentWindow }) => {
+          if (!active) return;
+          const win = getCurrentWindow();
+          if (await win.isFullscreen().catch(() => true)) return;
+          // Releasing, closing or leaving the window cancels a pending native request.
+          if (!active) return;
+          cleanup();
+          await win.startDragging();
+        })
+        .catch(() => {});
     };
-    const onUp = () => {
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
-      if (!dragStarted) close();
+    const onUp = (ev: MouseEvent) => {
+      if (ev.button !== 0) return;
+      cleanup();
+      if (!moved) close();
     };
+    backdropGesture.current = cleanup;
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
+    window.addEventListener("blur", cleanup);
   };
 
   const pushExplore = (frame: ExploreFrame) => {
@@ -219,6 +267,31 @@ export function SearchOverlay() {
   };
 
   const trimmed = query.trim();
+  const filterCounts: Partial<Record<SearchFilterKey, number>> = currentResults
+    ? {
+        movies: currentResults.movies.length,
+        shows: currentResults.series.length,
+        people: currentResults.people.length,
+        live: currentResults.liveTv.length,
+        anime: currentResults.anime.length,
+        manga: currentResults.manga.length,
+        music: currentResults.music.length,
+        ebooks: currentResults.ebooks.length,
+        sports: currentResults.sports.length,
+      }
+    : {};
+  const addonFilter = mediaFilter.startsWith("addon:") ? mediaFilter.slice(6) : null;
+  const showKind = (key: SearchFilterKey) =>
+    !addonFilter && (mediaFilter === "all" || mediaFilter === key);
+  const addonPills = (currentResults?.addonGroups ?? []).map((group) => ({
+    id: group.id,
+    name: group.name,
+    logo: group.logo,
+    count: group.metas.length,
+  }));
+  const shownAddonGroups = (currentResults?.addonGroups ?? []).filter(
+    (group) => !addonFilter || group.id === addonFilter,
+  );
   const personMatch = matchPersonForQuery(currentResults?.people, trimmed);
   const topMatchIsAnime =
     !personMatch &&
@@ -245,7 +318,7 @@ export function SearchOverlay() {
         tabIndex={-1}
         aria-label={t("Close search")}
         onMouseDown={beginDragOrClose}
-        className={`harbor-search-backdrop absolute -inset-6 cursor-default ${
+        className={`harbor-search-backdrop no-press absolute -inset-6 cursor-default ${
           closing ? "harbor-search-scrim-out" : "harbor-search-scrim-in"
         }`}
       />
@@ -271,7 +344,6 @@ export function SearchOverlay() {
             <div className="relative flex-1">
               <input
                 ref={inputRef}
-                autoFocus
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
@@ -351,7 +423,7 @@ export function SearchOverlay() {
             )}
           </div>
 
-          <div className="relative isolate min-h-0 overflow-x-hidden overflow-y-auto px-7 py-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="harbor-search-body relative isolate min-h-0 overflow-x-hidden overflow-y-auto px-7 py-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {explore.length > 0 ? (
               <ExplorePane
                 key={explore.length}
@@ -366,13 +438,16 @@ export function SearchOverlay() {
                   commit();
                   openPerson(id);
                 }}
+                onOpenMusic={(q) => {
+                  commit();
+                  requestMusicSearch(q);
+                  setView("music");
+                }}
               />
             ) : (
               <>
                 {!trimmed && (
-                  <div className="harbor-search-section">
-                    <EmptyState onClose={close} onOpenGuide={() => setGuideOpen(true)} />
-                  </div>
+                  <EmptyState onClose={close} onOpenGuide={() => setGuideOpen(true)} />
                 )}
 
                 {magnetInput && (
@@ -436,7 +511,13 @@ export function SearchOverlay() {
                   !aiMode &&
                   currentResults && (
                     <div className="harbor-search-section flex flex-col gap-6 pb-2">
-                      {personMatch ? (
+                      <SearchFilterBar
+                        counts={filterCounts}
+                        addons={addonPills}
+                        value={mediaFilter}
+                        onChange={setMediaFilter}
+                      />
+                      {mediaFilter === "all" && personMatch ? (
                         <PersonTopMatch
                           person={personMatch}
                           onClose={commit}
@@ -445,7 +526,7 @@ export function SearchOverlay() {
                           }
                         />
                       ) : (
-                        currentResults.topMatch && (
+                        mediaFilter === "all" && currentResults.topMatch && (
                           <TopMatch
                             match={currentResults.topMatch}
                             onClose={commit}
@@ -470,30 +551,41 @@ export function SearchOverlay() {
                           />
                         )
                       )}
-                      {topAnime && <AnimeRelations anime={topAnime} onClose={commit} />}
-                      <LiveTvRow items={currentResults.liveTv} onClose={commit} />
+                      {showKind("anime") && topAnime && (
+                        <AnimeRelations anime={topAnime} onClose={commit} />
+                      )}
+                      <LiveTvRow
+                        items={showKind("live") ? currentResults.liveTv : []}
+                        onClose={commit}
+                      />
                       <AddonHits hits={currentResults.addons} onClose={commit} />
                       <PeopleRow
                         people={
-                          personMatch
-                            ? currentResults.people.filter((p) => p.id !== personMatch.id)
-                            : currentResults.people
+                          !showKind("people")
+                            ? []
+                            : personMatch
+                              ? currentResults.people.filter((p) => p.id !== personMatch.id)
+                              : currentResults.people
                         }
                         onClose={commit}
                         onOpenPerson={(p) =>
                           pushExplore({ kind: "person", id: p.id, name: p.name })
                         }
                       />
-                      <div className="grid gap-8 lg:grid-cols-2">
+                      <div
+                        className={`grid gap-8 ${
+                          showKind("movies") && showKind("shows") ? "lg:grid-cols-2" : ""
+                        }`}
+                      >
                         <MetaList
                           title={t("Movies")}
-                          items={currentResults.movies}
+                          items={showKind("movies") ? currentResults.movies : []}
                           onClose={commit}
                           stagger
                         />
                         <MetaList
                           title={t("Series")}
-                          items={currentResults.series}
+                          items={showKind("shows") ? currentResults.series : []}
                           onClose={commit}
                           stagger
                         />
@@ -511,10 +603,13 @@ export function SearchOverlay() {
                           }
                         />
                       )}
-                      <AnimeRow items={currentResults.anime} onClose={commit} />
-                      <MangaRow items={currentResults.manga} onClose={commit} />
+                      <AnimeRow items={showKind("anime") ? currentResults.anime : []} onClose={commit} />
+                      <MangaRow items={showKind("manga") ? currentResults.manga : []} onClose={commit} />
+                      <MusicRow items={showKind("music") ? currentResults.music : []} onClose={commit} />
+                      <EBookRow items={showKind("ebooks") ? currentResults.ebooks : []} onClose={commit} />
+                      <SportsRow items={showKind("sports") ? currentResults.sports : []} onClose={commit} />
                       <CharacterGroup items={currentResults.characters} onClose={commit} />
-                      <AddonResults groups={currentResults.addonGroups} onClose={commit} />
+                      <AddonResults groups={shownAddonGroups} onClose={commit} />
                     </div>
                   )}
 

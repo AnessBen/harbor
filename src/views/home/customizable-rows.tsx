@@ -127,7 +127,7 @@ function RowTitle({ row, title }: { row: HomeRow; title: string }) {
     );
   return (
     <button
-      onClick={() => openGrid({ title, fetcher: row.fetcher!, initial: row.metas })}
+      onClick={() => openGrid({ title, fetcher: row.fetcher!, initial: row.metas, initialPage: 0 })}
       className="group/see inline-flex items-center gap-1.5 text-ink transition-colors hover:text-ink-muted"
     >
       {title}
@@ -245,7 +245,7 @@ export function CustomizableRows({
         const title = displayRowTitle(row, row.key in customization.renamed, t);
         const eager = rowIndex < 2;
         const viewAll = row.fetcher
-          ? () => openGrid({ title, fetcher: row.fetcher!, initial: row.metas })
+          ? () => openGrid({ title, fetcher: row.fetcher!, initial: row.metas, initialPage: 0 })
           : undefined;
         const ranked = (customization.numerals ?? []).includes(row.key) && metas.length >= 10;
         let rowEl;
