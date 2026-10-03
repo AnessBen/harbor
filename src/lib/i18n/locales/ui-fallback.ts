@@ -1,5 +1,20 @@
 // Newly introduced UI copy remains usable until each locale provides an override.
 const uiFallback: Record<string, string> = {
+  "Big Picture display": "Big Picture display",
+  "Which monitor Big Picture opens on at startup.":
+    "Which monitor Big Picture opens on at startup.",
+  "Separate window display": "Separate window display",
+  "Which monitor the separate mpv window opens on. Harbor's own window stays where it is.":
+    "Which monitor the separate mpv window opens on. Harbor's own window stays where it is.",
+  "Cover the taskbar": "Cover the taskbar",
+  "Span the whole screen including the taskbar. Turn off to keep the taskbar visible on that monitor.":
+    "Span the whole screen including the taskbar. Turn off to keep the taskbar visible on that monitor.",
+  "True HDR, separate window is selected. That mode always plays in its own window, so mpv cannot be embedded. Choose a different HDR mode to change this.":
+    "True HDR, separate window is selected. That mode always plays in its own window, so mpv cannot be embedded. Choose a different HDR mode to change this.",
+  "Follow Harbor": "Follow Harbor",
+  "Open on the same monitor as Harbor": "Open on the same monitor as Harbor",
+  "Open on {name}": "Open on {name}",
+  "Primary": "Primary",
   "A source couldn't be reached": "A source couldn't be reached",
   "{n} sources couldn't be reached": "{n} sources couldn't be reached",
   "blocked by the network policy": "blocked by the network policy",
@@ -43,7 +58,7 @@ const uiFallback: Record<string, string> = {
   "Click to choose": "Click to choose",
   "Default drifts through backdrops from what's trending. Boat plays a hand drawn illustration. Custom plays your own videos, GIFs, or images.":
     "Default drifts through backdrops from what's trending. Boat plays a hand drawn illustration. Custom plays your own videos, GIFs, or images.",
-  Boat: "Boat",
+  "Boat": "Boat",
   "Your screensavers": "Your screensavers",
   "Add videos, GIFs, or images from this computer. Videos loop with the sound off, and everything fills the screen.":
     "Add videos, GIFs, or images from this computer. Videos loop with the sound off, and everything fills the screen.",
@@ -51,9 +66,9 @@ const uiFallback: Record<string, string> = {
     "Nothing added yet. The default screensaver plays until you add one.",
   "Add video, GIF, or image": "Add video, GIF, or image",
   "Try it now": "Try it now",
-  GIF: "GIF",
+  "GIF": "GIF",
   "{kind} · In use": "{kind} · In use",
-  Use: "Use",
+  "Use": "Use",
   "Who's watching background": "Who's watching background",
   "Shown behind the profile picker only. It does not change the app theme or wallpaper.":
     "Shown behind the profile picker only. It does not change the app theme or wallpaper.",
@@ -153,7 +168,7 @@ const uiFallback: Record<string, string> = {
     "No match on your extensions. Edit the query above or check the language filter in the manga tab.",
   "Everything from {name}": "Everything from {name}",
   "Filter, sort and search the full catalogue": "Filter, sort and search the full catalogue",
-  Launch: "Launch",
+  "Launch": "Launch",
   "Start Harbor in the couch-friendly Big Picture layout whenever the app opens.":
     "Start Harbor in the couch-friendly Big Picture layout whenever the app opens.",
   "Animate backdrop art on Big Picture screens.": "Animate backdrop art on Big Picture screens.",
@@ -186,7 +201,7 @@ const uiFallback: Record<string, string> = {
   "Reorder extensions": "Reorder extensions",
   "Reset order": "Reset order",
   "Filter sources...": "Filter sources...",
-  Scanlator: "Scanlator",
+  "Scanlator": "Scanlator",
   "Resolving pages": "Resolving pages",
   "Match manga": "Match manga",
   "Choose a match, or select None to skip": "Choose a match, or select None to skip",
@@ -215,7 +230,7 @@ const uiFallback: Record<string, string> = {
   "Choose whether the content advisory appears in full color or a restrained monochrome tone.":
     "Choose whether the content advisory appears in full color or a restrained monochrome tone.",
   "Content advisory theme": "Content advisory theme",
-  Monochrome: "Monochrome",
+  "Monochrome": "Monochrome",
   "#": "#",
   "%": "%",
   "1 minute": "1 minute",
@@ -246,7 +261,7 @@ const uiFallback: Record<string, string> = {
   "API-Sports": "API-Sports",
   "API-Sports key": "API-Sports key",
   "API-Sports · leagues ESPN does not carry": "API-Sports · leagues ESPN does not carry",
-  Acknowledgements: "Acknowledgements",
+  "Acknowledgements": "Acknowledgements",
   "Add a Discord or Telegram destination first. Rules need somewhere to send their alerts.":
     "Add a Discord or Telegram destination first. Rules need somewhere to send their alerts.",
   "Add a Discord webhook URL on the Destinations tab first.":
@@ -291,12 +306,12 @@ const uiFallback: Record<string, string> = {
   "Attach a stream": "Attach a stream",
   "Auto uses mpv when Harbor can reach it and falls back to the built in player. Pick one yourself if playback misbehaves.":
     "Auto uses mpv when Harbor can reach it and falls back to the built in player. Pick one yourself if playback misbehaves.",
-  Automatic: "Automatic",
-  Avatar: "Avatar",
+  "Automatic": "Automatic",
+  "Avatar": "Avatar",
   "Badge art packs you installed from the community store. Remove one to put its badges back to Harbor's default.":
     "Badge art packs you installed from the community store. Remove one to put its badges back to Harbor's default.",
   "Badges you have changed": "Badges you have changed",
-  Bench: "Bench",
+  "Bench": "Bench",
   "Both shows direct, debrid, and peer-to-peer results together. Direct/debrid keeps torrents out of the way unless nothing else is available. P2P puts torrents first.":
     "Both shows direct, debrid, and peer-to-peer results together. Direct/debrid keeps torrents out of the way unless nothing else is available. P2P puts torrents first.",
   "Bring your Letterboxd watchlist, diary, liked films and lists into Harbor through the Stremboxd bridge.":
@@ -317,7 +332,7 @@ const uiFallback: Record<string, string> = {
     "Caps how many score chips a poster shows. Extras drop off the end of the chip. You have {n} turned on.",
   "Caps what Harbor asks {name} to send. Original streams the file exactly as it is stored.":
     "Caps what Harbor asks {name} to send. Original streams the file exactly as it is stored.",
-  Carousel: "Carousel",
+  "Carousel": "Carousel",
   "Centered along the top edge, clear of the subtitles.":
     "Centered along the top edge, clear of the subtitles.",
   "Change the ratio while watching": "Change the ratio while watching",
@@ -343,12 +358,12 @@ const uiFallback: Record<string, string> = {
     "Clearing these is always safe. Nothing you downloaded on purpose is removed.",
   "Cloudflare is a single origin, so on a very fast line this can read lower than a multi-server test. Uses up to 150 MB, with a 90 second cooldown.":
     "Cloudflare is a single origin, so on a very fast line this can read lower than a multi-server test. Uses up to 150 MB, with a 90 second cooldown.",
-  Colored: "Colored",
+  "Colored": "Colored",
   "Colors your name, your cursor in Watch Together, and the ring around your avatar.":
     "Colors your name, your cursor in Watch Together, and the ring around your avatar.",
   "Comments and reviews posted by other Trakt members.":
     "Comments and reviews posted by other Trakt members.",
-  Compatibility: "Compatibility",
+  "Compatibility": "Compatibility",
   "Connect Discord or Telegram and Harbor posts a message when something you follow is about to drop. Hit Send test to send yourself a sample first.":
     "Connect Discord or Telegram and Harbor posts a message when something you follow is about to drop. Hit Send test to send yourself a sample first.",
   "Connect Jellyfin, Emby, and Plex libraries on this device. Credentials stay in native secret storage. Each server keeps its own refresh schedule, and cached titles stay available while a server is offline.":
@@ -389,34 +404,34 @@ const uiFallback: Record<string, string> = {
     "Describe what Harbor did instead, including any message on screen.",
   "Didn't get it? Send another code": "Didn't get it? Send another code",
   "Direct media link": "Direct media link",
-  Direct3D: "Direct3D",
+  "Direct3D": "Direct3D",
   "Directed by {names}": "Directed by {names}",
   "Discord confirmed. Pick a username and password to finish.":
     "Discord confirmed. Pick a username and password to finish.",
   "Discord linked": "Discord linked",
-  Display: "Display",
+  "Display": "Display",
   "Displays the raw release filename under each source in the condensed picker. Off keeps rows compact. The Stremio layout always shows it.":
     "Displays the raw release filename under each source in the condensed picker. Off keeps rows compact. The Stremio layout always shows it.",
-  Donate: "Donate",
+  "Donate": "Donate",
   "Download folder": "Download folder",
   "Downloaded and ready to use. Re-download to pick up a newer version from the author.":
     "Downloaded and ready to use. Re-download to pick up a newer version from the author.",
-  Draws: "Draws",
-  Drew: "Drew",
+  "Draws": "Draws",
+  "Drew": "Drew",
   "Each title gets its own folder holding its EPUB or PDF.":
     "Each title gets its own folder holding its EPUB or PDF.",
   "Egyptian, Qatari, Emirati and Korean football plus the KHL on the sports page.":
     "Egyptian, Qatari, Emirati and Korean football plus the KHL on the sports page.",
   "ElfHosted plans": "ElfHosted plans",
-  Elsewhere: "Elsewhere",
+  "Elsewhere": "Elsewhere",
   "Email address or Discord handle": "Email address or Discord handle",
   "Embedded player": "Embedded player",
   "Enable the Books API on your app. Lists refresh weekly.":
     "Enable the Books API on your app. Lists refresh weekly.",
   "Enter a full http:// or https:// address.": "Enter a full http:// or https:// address.",
   "Enter your code": "Enter your code",
-  Essentials: "Essentials",
-  Estimated: "Estimated",
+  "Essentials": "Essentials",
+  "Estimated": "Estimated",
   "Every change on this page shows up here first. The art you pick below rides on rows exactly like this one.":
     "Every change on this page shows up here first. The art you pick below rides on rows exactly like this one.",
   "Every format badge Harbor can show on streams. Pick one to swap its art, hide it, or put it back. Changes apply everywhere badges appear.":
@@ -471,13 +486,13 @@ const uiFallback: Record<string, string> = {
   "Full pack format reference: docs/avatar-packs.md in the Harbor repository.":
     "Full pack format reference: docs/avatar-packs.md in the Harbor repository.",
   "Full time": "Full time",
-  GB: "GB",
-  GD: "GD",
-  GP: "GP",
+  "GB": "GB",
+  "GD": "GD",
+  "GP": "GP",
   "GPU (compatibility)": "GPU (compatibility)",
   "GPU next": "GPU next",
-  Goals: "Goals",
-  Graphics: "Graphics",
+  "Goals": "Goals",
+  "Graphics": "Graphics",
   "Groups Refresh beside Back at the start of the picker header. Off keeps it at the far end, across from Back.":
     "Groups Refresh beside Back at the start of the picker header. Off keeps it at the far end, across from Back.",
   "Harbor did not draw its own icons. Two people did, and they are worth hiring.":
@@ -572,7 +587,7 @@ const uiFallback: Record<string, string> = {
   "How the navigation icons behave.": "How the navigation icons behave.",
   "How thick the timeline sits at the bottom of the player.":
     "How thick the timeline sits at the bottom of the player.",
-  Hue: "Hue",
+  "Hue": "Hue",
   "If a stream or the video player misbehaves, the log usually names the cause.":
     "If a stream or the video player misbehaves, the log usually names the cause.",
   "If this account has Discord linked, we'll DM you a code to reset your password without the recovery key.":
@@ -589,7 +604,7 @@ const uiFallback: Record<string, string> = {
     "Include film releases from every source you turned on above.",
   "Include series premieres and new episodes. Anime is counted separately.":
     "Include series premieres and new episodes. Anime is counted separately.",
-  Independence: "Independence",
+  "Independence": "Independence",
   "Instant playback preparation": "Instant playback preparation",
   "Instant starts the best-ranked stream straight away. Pick a source opens the stream list every time, so you choose the release, quality and provider yourself.":
     "Instant starts the best-ranked stream straight away. Pick a source opens the stream list every time, so you choose the release, quality and provider yourself.",
@@ -597,14 +612,14 @@ const uiFallback: Record<string, string> = {
   "Keeps subtitles visible when the player shrinks into the small floating window. Turn off to hide them there.":
     "Keeps subtitles visible when the player shrinks into the small floating window. Turn off to hide them there.",
   "Keyboard size": "Keyboard size",
-  L: "L",
+  "L": "L",
   "Latest chapters": "Latest chapters",
   "Letterboxd asked for a second step. Enter the six digit code, then connect again.":
     "Letterboxd asked for a second step. Enter the six digit code, then connect again.",
   "Licence texts": "Licence texts",
   "Lift subtitles clear of a letterbox bar or a burned-in logo.":
     "Lift subtitles clear of a letterbox bar or a burned-in logo.",
-  Lineups: "Lineups",
+  "Lineups": "Lineups",
   "Link Discord": "Link Discord",
   "Linked as {username}": "Linked as {username}",
   "Linked to your Harbor account.": "Linked to your Harbor account.",
@@ -617,7 +632,7 @@ const uiFallback: Record<string, string> = {
     "Loads a backup file and restores exactly what it contains, without touching the rest of your setup. Your Stremio sign-in on this device stays as is.",
   "Look any of them up before you give, or find a cause of your own.":
     "Look any of them up before you give, or find a cause of your own.",
-  Lost: "Lost",
+  "Lost": "Lost",
   "Low end lifted, for weight on speakers that do not have it.":
     "Low end lifted, for weight on speakers that do not have it.",
   "Low end pulled back, kinder to small speakers and to the neighbours.":
@@ -630,17 +645,17 @@ const uiFallback: Record<string, string> = {
   "Match report": "Match report",
   "Match stats": "Match stats",
   "Measure this connection": "Measure this connection",
-  Meetings: "Meetings",
+  "Meetings": "Meetings",
   "Mid range lifted, so dialogue sits forward of the music and effects.":
     "Mid range lifted, so dialogue sits forward of the music and effects.",
   "Modern renderer with higher-quality processing. The right choice for almost every machine.":
     "Modern renderer with higher-quality processing. The right choice for almost every machine.",
   "Monochrome (White)": "Monochrome (White)",
-  Motion: "Motion",
+  "Motion": "Motion",
   "MyAnimeList is a free site for tracking the anime you watch. Open it to read more or to make an account.":
     "MyAnimeList is a free site for tracking the anime you watch. Open it to read more or to make an account.",
-  NR: "NR",
-  NRR: "NRR",
+  "NR": "NR",
+  "NRR": "NRR",
   "Name of the badge": "Name of the badge",
   "Name or pattern": "Name or pattern",
   "Name what broke in one sentence. Maintainers read this line first.":
@@ -679,7 +694,7 @@ const uiFallback: Record<string, string> = {
     "Nvidia RTX GPUs only. Upconverts SDR video to HDR on the GPU (turn on RTX Video HDR in the Nvidia app; needs GPU decode). Experimental. Unavailable while SVP is active for the current video.",
   "Nvidia RTX GPUs only. Upscales SDR video with AI on the GPU (turn on RTX Video Super Resolution in the Nvidia app; needs GPU decode). Experimental. Unavailable while SVP is active for the current video.":
     "Nvidia RTX GPUs only. Upscales SDR video with AI on the GPU (turn on RTX Video Super Resolution in the Nvidia app; needs GPU decode). Experimental. Unavailable while SVP is active for the current video.",
-  OTL: "OTL",
+  "OTL": "OTL",
   "Off the row": "Off the row",
   "Older, simpler renderer. Use it only if the modern one shows a black screen, wrong colors, or won't start on your graphics card.":
     "Older, simpler renderer. Use it only if the modern one shows a black screen, wrong colors, or won't start on your graphics card.",
@@ -696,7 +711,7 @@ const uiFallback: Record<string, string> = {
   "Open myanimelist.net": "Open myanimelist.net",
   "Open simkl.com": "Open simkl.com",
   "Open trakt.tv": "Open trakt.tv",
-  OpenGL: "OpenGL",
+  "OpenGL": "OpenGL",
   "Opens Stremio's donation page in your browser.":
     "Opens Stremio's donation page in your browser.",
   "Opens anilist.co in your browser, where you can read what AniList does and make a free account.":
@@ -709,13 +724,13 @@ const uiFallback: Record<string, string> = {
     "Opens trakt.tv in your browser, where you can read what Trakt does and make a free account.",
   "Optional. Point at a png, webp, or svg to show a picture instead of a text badge.":
     "Optional. Point at a png, webp, or svg to show a picture instead of a text badge.",
-  P: "P",
-  PCT: "PCT",
-  PD: "PD",
-  PTS: "PTS",
+  "P": "P",
+  "PCT": "PCT",
+  "PD": "PD",
+  "PTS": "PTS",
   "Page metadata": "Page metadata",
   "Page source": "Page source",
-  Pages: "Pages",
+  "Pages": "Pages",
   "Paste a link to a png, webp, or svg. Harbor will use it for this badge everywhere streams show format chips.":
     "Paste a link to a png, webp, or svg. Harbor will use it for this badge everywhere streams show format chips.",
   "Paste a stream": "Paste a stream",
@@ -745,7 +760,7 @@ const uiFallback: Record<string, string> = {
     "Pick which languages Harbor looks for first, and which ones it falls back to.",
   "Pick who this rule watches. With nobody picked, everyone you track counts.":
     "Pick who this rule watches. With nobody picked, everyone you track counts.",
-  Picked: "Picked",
+  "Picked": "Picked",
   "Pin this competition": "Pin this competition",
   "Play opens the stream list so you pick the release yourself.":
     "Play opens the stream list so you pick the release yourself.",
@@ -783,7 +798,7 @@ const uiFallback: Record<string, string> = {
   "Recommended: sign in with Plex": "Recommended: sign in with Plex",
   "Recover via Discord": "Recover via Discord",
   "Recover via a code sent to Discord": "Recover via a code sent to Discord",
-  Red: "Red",
+  "Red": "Red",
   "Red cards": "Red cards",
   "Refresh every": "Refresh every",
   "Refresh this library": "Refresh this library",
@@ -791,21 +806,21 @@ const uiFallback: Record<string, string> = {
   "Remove comment": "Remove comment",
   "Remove from your teams": "Remove from your teams",
   "Remove this stream": "Remove this stream",
-  Renderer: "Renderer",
+  "Renderer": "Renderer",
   "Rendering backend": "Rendering backend",
   "Renders mpv inline so playback lives in Harbor itself. Turn off to open it in a separate window instead.":
     "Renders mpv inline so playback lives in Harbor itself. Turn off to open it in a separate window instead.",
   "Renders subtitles in a heavier weight. Turn off to use your font's normal weight.":
     "Renders subtitles in a heavier weight. Turn off to use your font's normal weight.",
   "Replace selected data?": "Replace selected data?",
-  Required: "Required",
+  "Required": "Required",
   "Reset size": "Reset size",
   "Resolved from {host}": "Resolved from {host}",
   "Rest the cursor on a poster to peek at the rating, story, and quick actions without opening it. Off by default.":
     "Rest the cursor on a poster to peek at the rating, story, and quick actions without opening it. Off by default.",
   "Right in the middle of the picture, hard to miss.":
     "Right in the middle of the picture, hard to miss.",
-  Role: "Role",
+  "Role": "Role",
   "Rule is active": "Rule is active",
   "Rule name": "Rule name",
   "Rulesets bring a full badge set with their own matching. Art remaps only swap the pictures on Harbor's built-in badges. Anything shared as a badges.json link imports here too.":
@@ -899,11 +914,11 @@ const uiFallback: Record<string, string> = {
   "Size of the controller on-screen keyboard.": "Size of the controller on-screen keyboard.",
   "Small outlined pills that slide in under the title.":
     "Small outlined pills that slide in under the title.",
-  Software: "Software",
+  "Software": "Software",
   "Source extension": "Source extension",
   "Space in use": "Space in use",
-  Standings: "Standings",
-  Starter: "Starter",
+  "Standings": "Standings",
+  "Starter": "Starter",
   "Starting soon": "Starting soon",
   "Still watching check-in": "Still watching check-in",
   "Stops syncing on this device. Your library stays safe in your Stremio account.":
@@ -920,7 +935,7 @@ const uiFallback: Record<string, string> = {
   "Switch relay": "Switch relay",
   "Switch to sharing? This profile will use {name}'s library, watchlist and addons. Its own data is kept but hidden until you switch back.":
     "Switch to sharing? This profile will use {name}'s library, watchlist and addons. Its own data is kept but hidden until you switch back.",
-  T: "T",
+  "T": "T",
   "TMDB, Fanart, TVDB, OMDb and RPDB supply posters, artwork and ratings. Adding your own free keys makes artwork load faster and more completely.":
     "TMDB, Fanart, TVDB, OMDb and RPDB supply posters, artwork and ratings. Adding your own free keys makes artwork load faster and more completely.",
   "Takes effect the next time Harbor starts.": "Takes effect the next time Harbor starts.",
@@ -999,12 +1014,12 @@ const uiFallback: Record<string, string> = {
     "This file restores its {n} saved entries and replaces only those parts of your setup. Anything it does not contain stays exactly as it is.",
   "Tile your own artwork across the timeline instead of a plain fill.":
     "Tile your own artwork across the timeline instead of a plain fill.",
-  Timeline: "Timeline",
+  "Timeline": "Timeline",
   "Titles you are part-way through in your local downloads, even offline.":
     "Titles you are part-way through in your local downloads, even offline.",
   "Torrentio 4K": "Torrentio 4K",
   "Trakt progress": "Trakt progress",
-  Trigger: "Trigger",
+  "Trigger": "Trigger",
   "Tucked into the upper corner, clear of the subtitles.":
     "Tucked into the upper corner, clear of the subtitles.",
   "Turn on AniList comments first.": "Turn on AniList comments first.",
@@ -1024,7 +1039,7 @@ const uiFallback: Record<string, string> = {
     "Unavailable while Continue Watching is kept private to each profile, because Trakt progress is shared across every profile on this account.",
   "Unavailable while Continue Watching is kept private to each profile.":
     "Unavailable while Continue Watching is kept private to each profile.",
-  Unlink: "Unlink",
+  "Unlink": "Unlink",
   "Unpin this competition": "Unpin this competition",
   "Up to 3840 × 2160 when the source has it. Takes a beat longer to start.":
     "Up to 3840 × 2160 when the source has it. Takes a beat longer to start.",
@@ -1042,8 +1057,8 @@ const uiFallback: Record<string, string> = {
   "Using these": "Using these",
   "Video element": "Video element",
   "Volume {n}": "Volume {n}",
-  Vulkan: "Vulkan",
-  W: "W",
+  "Vulkan": "Vulkan",
+  "W": "W",
   "Warming up…": "Warming up…",
   "Watched history": "Watched history",
   "Watchlist ({n})": "Watchlist ({n})",
@@ -1085,9 +1100,9 @@ const uiFallback: Record<string, string> = {
   "Your preferences, layout state, and small lookup caches. Clearing caches shrinks this.":
     "Your preferences, layout state, and small lookup caches. Clearing caches shrinks this.",
   "Your teams": "Your teams",
-  at: "at",
+  "at": "at",
   "contains login credentials": "contains login credentials",
-  icons: "icons",
+  "icons": "icons",
   "in 4d 6h": "in 4d 6h",
   "in {d}d": "in {d}d",
   "in {d}d {h}h": "in {d}d {h}h",
@@ -1097,8 +1112,8 @@ const uiFallback: Record<string, string> = {
   "in {n}m": "in {n}m",
   "in {n}s": "in {n}s",
   "nowhere yet": "nowhere yet",
-  username: "username",
-  vs: "vs",
+  "username": "username",
+  "vs": "vs",
   "{count} installed. Their results are merged in with everything else.":
     "{count} installed. Their results are merged in with everything else.",
   "{ms} ms": "{ms} ms",
@@ -1122,7 +1137,7 @@ const uiFallback: Record<string, string> = {
   "Ten-foot uses large controls built for a remote across the room. Desktop keeps the same player you use in the normal window, which is quicker with a mouse and keyboard.":
     "Ten-foot uses large controls built for a remote across the room. Desktop keeps the same player you use in the normal window, which is quicker with a mouse and keyboard.",
   "Ten-foot": "Ten-foot",
-  Desktop: "Desktop",
+  "Desktop": "Desktop",
 };
 
 export default uiFallback;
