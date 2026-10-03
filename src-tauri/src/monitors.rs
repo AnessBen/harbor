@@ -446,8 +446,8 @@ pub fn resolve_or_default(saved: Option<&MonitorInfo>) -> Option<ResolvedMonitor
 /// so a following fullscreen/framing lands on the right screen.
 ///
 /// Windows-only; a no-op elsewhere. Idempotent when the monitor is gone (the
-/// event is simply not applied). Deliberately does *not* touch fullscreen state:
-/// Big Picture drives that itself right after.
+/// event is simply not applied). Leaves fullscreen before moving; Big Picture
+/// enters fullscreen on the selected display immediately afterwards.
 pub fn move_window_to_monitor(
     window: &tauri::WebviewWindow,
     resolved: &ResolvedMonitorTarget,
@@ -475,6 +475,7 @@ pub struct ResolvedMonitorTarget {
     pub height: u32,
 }
 
+#[cfg(windows)]
 impl From<ResolvedMonitor> for ResolvedMonitorTarget {
     fn from(r: ResolvedMonitor) -> Self {
         Self {

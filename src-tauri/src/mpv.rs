@@ -783,6 +783,8 @@ pub async fn mpv_start(
         })
     };
     #[cfg(not(windows))]
+    let separate_screen_for_init = None;
+    #[cfg(not(windows))]
     let separate_screen_size_for_init = None;
     if let Err(error) = crate::music::pause_for_video(&app).await {
         eprintln!("[harbor::music] could not pause for video: {error}");
@@ -1696,6 +1698,7 @@ pub async fn mpv_set_geometry(
     // rect measured inside Harbor's layout, which must never be pushed onto the
     // standalone VO window (it sized it to a fraction of the chosen monitor).
     // The window is fixed on its display via the pre-init `screen` option instead.
+    #[cfg(any(windows, target_os = "linux"))]
     {
         let separate = {
             let g = _state.inner.lock().await;

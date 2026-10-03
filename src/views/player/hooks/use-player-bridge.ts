@@ -143,8 +143,7 @@ export function usePlayerBridge(params: {
           ),
           ...generalShaderChain(settings),
         ],
-        macEdr:
-          isMacDesktop() && embedActive && settings.playerMacEdr && !settings.playerHdrToSdr,
+        macEdr: isMacDesktop() && embedActive && settings.playerMacEdr && !settings.playerHdrToSdr,
         fullDownload: settings.torrentFullDownload,
         separateDisplay:
           settings.playerSeparateDisplay.mode === "explicit"

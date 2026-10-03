@@ -4864,7 +4864,15 @@ const SETTINGS_OPTIONS: SettingsOption[] = [
     section: "player",
     tab: "play",
     anchorTitle: "Streams",
-    keywords: ["debrid cache", "video cache", "buffer folder", "system drive full", "cache location", "remux", "mpv cache"],
+    keywords: [
+      "debrid cache",
+      "video cache",
+      "buffer folder",
+      "system drive full",
+      "cache location",
+      "remux",
+      "mpv cache",
+    ],
   },
   {
     label: "Download the whole file while streaming",
@@ -5562,13 +5570,7 @@ const SETTINGS_OPTIONS: SettingsOption[] = [
   {
     label: "Open in Big Picture",
     section: "bigPicture",
-    keywords: [
-      "big picture",
-      "couch mode",
-      "ten foot",
-      "startup layout",
-      "start in big picture",
-    ],
+    keywords: ["big picture", "couch mode", "ten foot", "startup layout", "start in big picture"],
   },
   {
     label: "Big Picture display",

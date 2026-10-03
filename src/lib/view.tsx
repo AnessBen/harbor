@@ -201,7 +201,14 @@ export type Frame =
       seasonEntryId?: string;
     }
   | { kind: "addon-collection"; meta: Meta }
-  | { kind: "episode-detail"; seriesId: string; season: number; episode: number; seriesMeta?: Meta; playback?: EpisodeDetailPlayback }
+  | {
+      kind: "episode-detail";
+      seriesId: string;
+      season: number;
+      episode: number;
+      seriesMeta?: Meta;
+      playback?: EpisodeDetailPlayback;
+    }
   | { kind: "person"; id: number }
   | { kind: "profile"; handle: string }
   | { kind: "feed" }
@@ -269,8 +276,20 @@ type ViewValue = {
       exact?: boolean;
     },
   ) => void;
-  episodeDetail: { seriesId: string; season: number; episode: number; seriesMeta?: Meta; playback?: EpisodeDetailPlayback } | null;
-  openEpisodeDetail: (seriesId: string, season: number, episode: number, seriesMeta?: Meta, playback?: EpisodeDetailPlayback) => void;
+  episodeDetail: {
+    seriesId: string;
+    season: number;
+    episode: number;
+    seriesMeta?: Meta;
+    playback?: EpisodeDetailPlayback;
+  } | null;
+  openEpisodeDetail: (
+    seriesId: string,
+    season: number,
+    episode: number,
+    seriesMeta?: Meta,
+    playback?: EpisodeDetailPlayback,
+  ) => void;
   promoteMetaToRoot: () => void;
   personId: number | null;
   openPerson: (id: number | null) => void;
@@ -965,8 +984,8 @@ export function ViewProvider({ children }: { children: ReactNode }) {
         setNavStack((cur) => {
           const t = cur[cur.length - 1];
           if (t.kind === "meta" && t.meta.id === target.id) return cur;
-          const returningToSeries = t.kind === "episode-detail" &&
-            (t.seriesMeta?.id ?? t.seriesId) === target.id;
+          const returningToSeries =
+            t.kind === "episode-detail" && (t.seriesMeta?.id ?? t.seriesId) === target.id;
           if (returningToSeries) {
             // The episode's series link returns to its parent, not another history entry.
             for (let i = cur.length - 2; i >= 0; i--) {
@@ -1135,7 +1154,13 @@ export function ViewProvider({ children }: { children: ReactNode }) {
   );
 
   const openEpisodeDetail = useCallback(
-    (seriesId: string, season: number, episode: number, seriesMeta?: Meta, playback?: EpisodeDetailPlayback) => {
+    (
+      seriesId: string,
+      season: number,
+      episode: number,
+      seriesMeta?: Meta,
+      playback?: EpisodeDetailPlayback,
+    ) => {
       setNavStack((cur) => {
         const t = cur[cur.length - 1];
         if (
@@ -1150,7 +1175,14 @@ export function ViewProvider({ children }: { children: ReactNode }) {
         ) {
           return cur;
         }
-        return pushFrame(cur, { kind: "episode-detail", seriesId, season, episode, seriesMeta, playback });
+        return pushFrame(cur, {
+          kind: "episode-detail",
+          seriesId,
+          season,
+          episode,
+          seriesMeta,
+          playback,
+        });
       });
     },
     [setNavStack],

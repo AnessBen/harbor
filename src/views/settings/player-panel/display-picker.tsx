@@ -129,7 +129,9 @@ export function DisplayPickerRow({
             key={m.id}
             icon={<Monitor size={26} strokeWidth={1.8} />}
             name={monitorCardName(m)}
-            detail={m.isPrimary ? `${monitorResolution(m)} · ${t("Primary")}` : monitorResolution(m)}
+            detail={
+              m.isPrimary ? `${monitorResolution(m)} · ${t("Primary")}` : monitorResolution(m)
+            }
             selected={selectedId === m.id}
             onSelect={() => onChange({ mode: "explicit", monitor: m })}
             ariaLabel={t("Open on {name}", { name: monitorCardName(m) })}

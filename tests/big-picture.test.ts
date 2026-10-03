@@ -337,7 +337,11 @@ test("Big Picture stays mounted but hidden and inert while playback is open", ()
 });
 
 test("Big Picture comes back visible and navigable when playback closes", () => {
-  const idle = bigPictureChromeState({ active: true, kidProfileActive: false, playbackOpen: false });
+  const idle = bigPictureChromeState({
+    active: true,
+    kidProfileActive: false,
+    playbackOpen: false,
+  });
   assert.deepEqual(idle, { mounted: true, hidden: false, navigationEnabled: true });
 });
 
@@ -382,8 +386,5 @@ test("Big Picture autostart is a launch-only check, not a live setting reaction"
     /const alreadyBooted = bigPictureBootChecked\.current;\s*\n\s*bigPictureBootChecked\.current = true;/,
   );
   // The old shape set the flag only when it actually booted, which is the bug.
-  assert.doesNotMatch(
-    app,
-    /if \(!go\) return;\s*\n\s*bigPictureBootChecked\.current = true;/,
-  );
+  assert.doesNotMatch(app, /if \(!go\) return;\s*\n\s*bigPictureBootChecked\.current = true;/);
 });
