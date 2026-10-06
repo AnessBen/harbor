@@ -1,10 +1,14 @@
 import type { ReactNode } from "react";
-import { Popcorn } from "lucide-react";
+import { useSportsEnabled } from "@/lib/sports/enabled";
+import { usePluginCataloguesAvailable } from "@/lib/streams/plugins/available";
+import { SportsNavIcon } from "@/components/icons/sports-nav-icon";
+import { Popcorn, Puzzle } from "lucide-react";
 import { NavGlyph } from "@/components/icons/nav-glyph";
 import { NavLottie } from "@/components/icons/nav-lottie";
 import lotHome from "@/assets/lottie/nav/home.json";
 import lotCatalogs from "@/assets/lottie/nav/catalogs.json";
 import lotMovies from "@/assets/lottie/nav/movies.json";
+import lotMusic from "@/assets/lottie/nav/music.json";
 import lotShows from "@/assets/lottie/nav/shows.json";
 import lotAnime from "@/assets/lottie/nav/anime.json";
 import lotManga from "@/assets/lottie/nav/manga.json";
@@ -52,13 +56,16 @@ export type NavItemId =
   | "home"
   | "discover"
   | "catalogs"
+  | "plugins"
   | "movies"
   | "shows"
+  | "music"
   | "kids"
   | "anime"
   | "manga"
   | "ebook"
   | "live"
+  | "sports"
   | "vod"
   | "calendar"
   | "library"
@@ -72,7 +79,7 @@ export type NavItem = {
   label: string;
   render: (active: boolean, hovered?: boolean) => ReactNode;
   view: View;
-  hideKey?: "anime" | "liveTv" | "manga";
+  hideKey?: "anime" | "sports";
   parentalKey?: LockableTab;
   pinGated?: boolean;
 };
@@ -84,7 +91,14 @@ export type NavCustomization = {
 };
 
 const NAV_ITEMS_ALL: NavItem[] = [
-  { id: "home", label: "nav.home", render: (active, hovered) => <NavLottie data={lotHome} hovered={hovered} fallback={<HomeIcon active={active} />} />, view: "home" },
+  {
+    id: "home",
+    label: "nav.home",
+    render: (active, hovered) => (
+      <NavLottie data={lotHome} hovered={hovered} fallback={<HomeIcon active={active} />} />
+    ),
+    view: "home",
+  },
   {
     id: "discover",
     label: "nav.discover",
@@ -95,21 +109,35 @@ const NAV_ITEMS_ALL: NavItem[] = [
   {
     id: "catalogs",
     label: "nav.catalogs",
-    render: (active, hovered) => <NavLottie data={lotCatalogs} hovered={hovered} fallback={<CatalogsIcon active={active} />} />,
+    render: (active, hovered) => (
+      <NavLottie data={lotCatalogs} hovered={hovered} fallback={<CatalogsIcon active={active} />} />
+    ),
     view: "catalogs",
     parentalKey: "discover",
   },
   {
+    id: "plugins",
+    label: "nav.plugins",
+    render: (active) => (
+      <Puzzle size={26} strokeWidth={2.2} className={active ? "" : "opacity-70"} />
+    ),
+    view: "plugins",
+  },
+  {
     id: "movies",
     label: "nav.movies",
-    render: (active, hovered) => <NavLottie data={lotMovies} hovered={hovered} fallback={<MoviesIcon active={active} />} />,
+    render: (active, hovered) => (
+      <NavLottie data={lotMovies} hovered={hovered} fallback={<MoviesIcon active={active} />} />
+    ),
     view: "movies",
     parentalKey: "movies",
   },
   {
     id: "shows",
     label: "nav.shows",
-    render: (active, hovered) => <NavLottie data={lotShows} hovered={hovered} loop fallback={<TvIcon active={active} />} />,
+    render: (active, hovered) => (
+      <NavLottie data={lotShows} hovered={hovered} loop fallback={<TvIcon active={active} />} />
+    ),
     view: "shows",
     parentalKey: "shows",
   },
@@ -124,83 +152,159 @@ const NAV_ITEMS_ALL: NavItem[] = [
   {
     id: "anime",
     label: "nav.anime",
-    render: (active, hovered) => <NavLottie data={lotAnime} hovered={hovered} fallback={<AnimeIcon active={active} />} />,
+    render: (active, hovered) => (
+      <NavLottie data={lotAnime} hovered={hovered} fallback={<AnimeIcon active={active} />} />
+    ),
     view: "anime",
-    hideKey: "anime",
     parentalKey: "anime",
   },
   {
     id: "manga",
     label: "nav.manga",
-    render: (_active, hovered) => <NavLottie data={lotManga} hovered={hovered} fallback={<NavGlyph name="manga" className="h-[26px] w-[26px] p-[2px]" />} />,
+    render: (_active, hovered) => (
+      <NavLottie
+        data={lotManga}
+        hovered={hovered}
+        fallback={<NavGlyph name="manga" className="h-[26px] w-[26px] p-[2px]" />}
+      />
+    ),
     view: "manga",
-    hideKey: "manga",
     parentalKey: "anime",
   },
   {
     id: "ebook",
     label: "nav.ebook",
-    render: (_active, hovered) => <NavLottie data={lotEbook} hovered={hovered} fallback={<NavGlyph name="ebook" className="h-[26px] w-[26px] p-[2px]" />} />,
+    render: (_active, hovered) => (
+      <NavLottie
+        data={lotEbook}
+        hovered={hovered}
+        fallback={<NavGlyph name="ebook" className="h-[26px] w-[26px] p-[2px]" />}
+      />
+    ),
     view: "ebook",
     parentalKey: "anime",
   },
   {
+    id: "music",
+    label: "nav.music",
+    render: (_active, hovered) => (
+      <NavLottie
+        data={lotMusic}
+        hovered={hovered}
+        fallback={<NavGlyph name="music" className="h-[26px] w-[26px] p-[2px]" />}
+      />
+    ),
+    view: "music",
+  },
+  {
     id: "live",
     label: "nav.live",
-    render: (active, hovered) => <NavLottie data={lotLiveTv} hovered={hovered} loop fallback={<LiveTvIcon active={active} />} />,
+    render: (active, hovered) => (
+      <NavLottie
+        data={lotLiveTv}
+        hovered={hovered}
+        loop
+        fallback={<LiveTvIcon active={active} />}
+      />
+    ),
     view: "live",
-    hideKey: "liveTv",
     parentalKey: "liveTv",
+  },
+  {
+    id: "sports",
+    label: "nav.sports",
+    render: (active, hovered) => <SportsNavIcon active={active} hovered={hovered} />,
+    view: "sports",
+    hideKey: "sports",
+    parentalKey: "sports",
   },
   {
     id: "vod",
     label: "nav.playlists",
-    render: (active, hovered) => <NavLottie data={lotPlaylists} hovered={hovered} fallback={<PlaylistVodIcon active={active} />} />,
+    render: (active, hovered) => (
+      <NavLottie
+        data={lotPlaylists}
+        hovered={hovered}
+        fallback={<PlaylistVodIcon active={active} />}
+      />
+    ),
     view: "vod",
   },
   {
     id: "calendar",
     label: "nav.calendar",
-    render: (active, hovered) => <NavLottie data={lotCalendar} hovered={hovered} fallback={<CalendarNavIcon active={active} />} />,
+    render: (active, hovered) => (
+      <NavLottie
+        data={lotCalendar}
+        hovered={hovered}
+        fallback={<CalendarNavIcon active={active} />}
+      />
+    ),
     view: "calendar",
     parentalKey: "calendar",
   },
   {
     id: "library",
     label: "nav.library",
-    render: (active, hovered) => <NavLottie data={lotLibrary} hovered={hovered} fallback={<LibraryIcon active={active} />} />,
+    render: (active, hovered) => (
+      <NavLottie data={lotLibrary} hovered={hovered} fallback={<LibraryIcon active={active} />} />
+    ),
     view: "library",
     parentalKey: "library",
   },
   {
     id: "collections",
     label: "Collections",
-    render: (_active, hovered) => <NavLottie data={lotCollections} hovered={hovered} fallback={<NavGlyph name="collections" className="h-[26px] w-[26px] p-[2px]" />} />,
+    render: (_active, hovered) => (
+      <NavLottie
+        data={lotCollections}
+        hovered={hovered}
+        fallback={<NavGlyph name="collections" className="h-[26px] w-[26px] p-[2px]" />}
+      />
+    ),
     view: "collections-hub",
   },
   {
     id: "downloads",
     label: "nav.downloads",
-    render: (active, hovered) => <NavLottie data={lotDownloads} hovered={hovered} fallback={<DownloadsNavIcon active={active} />} />,
+    render: (active, hovered) => (
+      <NavLottie
+        data={lotDownloads}
+        hovered={hovered}
+        fallback={<DownloadsNavIcon active={active} />}
+      />
+    ),
     view: "downloads",
   },
   {
     id: "addons",
     label: "nav.addons",
-    render: (active, hovered) => <NavLottie data={lotAddons} hovered={hovered} fallback={<AddonsIcon active={active} />} />,
+    render: (active, hovered) => (
+      <NavLottie data={lotAddons} hovered={hovered} fallback={<AddonsIcon active={active} />} />
+    ),
     view: "addons",
     parentalKey: "addons",
   },
   {
     id: "settings",
     label: "nav.settings",
-    render: (active, hovered) => <NavLottie data={lotSettings} hovered={hovered} fallback={<SettingsIcon active={active} />} />,
+    render: (active, hovered) => (
+      <NavLottie data={lotSettings} hovered={hovered} fallback={<SettingsIcon active={active} />} />
+    ),
     view: "settings",
     pinGated: true,
   },
 ];
 
 export const NAV_ITEMS: NavItem[] = NAV_ITEMS_ALL;
+export function useAvailableNavItems(): NavItem[] {
+  const sportsEnabled = useSportsEnabled();
+  const pluginCatalogs = usePluginCataloguesAvailable();
+  return NAV_ITEMS.filter(
+    (item) =>
+      (item.id !== "sports" || sportsEnabled) && (item.id !== "plugins" || pluginCatalogs),
+  );
+}
 
 export function applyNavCustomization(items: NavItem[], cfg: NavCustomization): NavItem[] {
   const shown = items

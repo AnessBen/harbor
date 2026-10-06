@@ -1,10 +1,47 @@
+import mediaStart from "./en/media-start";
+import spooktober from "./en/spooktober";
+import music from "./en/music";
 import settingsRefinements from "./en/settings-refinements";
 
+import nytTv from "./en/nyt-tv";
+import curatedLists from "./en/curated-lists";
+import filmRegistry from "./en/film-registry";
+import personCraft from "./en/person-craft";
+import country from "./en/country";
+import adaptation from "./en/adaptation";
+import production from "./en/production";
+import criticism from "./en/criticism";
+import soundtrack from "./en/soundtrack";
+
 const en: Record<string, string> = {
-  "Build identity. Useful when filing a bug report.": "Build identity. Useful when filing a bug report.",
+  "sports.guide.athletes": "Athletes",
+  "sports.guide.athlete": "Athlete",
+  "sports.guide.athleteCount": "{n} athletes",
+  "sports.guide.athleteIntro": "Athletes from published events and standings.",
+  "sports.guide.viewAthletes": "View all athletes",
+  "sports.guide.searchAthletes": "Search athletes",
+  "sports.guide.noAthleteMatch": "No athletes match your search.",
+  "sports.guide.noAthletes": "This feed has not published an athlete list.",
+  "sports.boxing.wins": "Wins",
+  "sports.boxing.losses": "Losses",
+  "sports.boxing.draws": "Draws",
+  "sports.boxing.knockouts": "KOs",
+  "sports.boxing.tba": "Fighter to be announced",
+  "Translations": "Translations",
+  "Translating…": "Translating…",
+  "Showing {lang}": "Showing {lang}",
+  "Show all": "Show all",
+  ...mediaStart,
+  ...spooktober,
+  ...videoCast,
+  ...music,
+  Soccer: "Football",
+  "Build identity. Useful when filing a bug report.":
+    "Build identity. Useful when filing a bug report.",
   "nav.home": "Home",
   "nav.discover": "Discover",
   "nav.catalogs": "Catalogs",
+  "nav.plugins": "Plugins",
   "nav.movies": "Movies",
   "nav.shows": "Shows",
   "nav.people": "Top People",
@@ -293,6 +330,16 @@ const en: Record<string, string> = {
   "update.of": "{downloaded} of {total}",
   "mpv.conf": "mpv.conf",
   ...settingsRefinements,
+  ...nytTv,
+  ...curatedLists,
+  ...filmRegistry,
+  ...adaptation,
+  ...production,
+  ...criticism,
+  ...soundtrack,
+  ...country,
+  ...personCraft,
 };
 
 export default en;
+import videoCast from "./en/video-cast";

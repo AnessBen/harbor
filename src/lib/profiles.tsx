@@ -49,6 +49,9 @@ const PROFILE_KEY_PREFIXES = [
   "harbor.auth.",
   "harbor.theme-session.",
   "harbor.localcw.v1.",
+  "harbor.localcw.private.v1.",
+  "harbor.resume.private.v1.",
+  "harbor.cw.dismissed.private.v1.",
   "harbor.favorites.v1.",
   "harbor.charfavorites.v1.",
   "harbor.mangafav.v1.",
@@ -442,6 +445,40 @@ function migrateLegacyStremioAuth(profiles: Profile[]): void {
 }
 
 const Ctx = createContext<ProfilesValue | null>(null);
+
+// Auxiliary player windows follow the selected profile. They must never run the
+// application's launch selection, migration or roster persistence a second time.
+export function CompanionProfilesProvider({ children }: { children: ReactNode }) {
+  const [state, setState] = useState(readState);
+  useEffect(() => {
+    const refresh = (event: StorageEvent) => {
+      if (event.key === STORAGE_KEY || event.key === null) setState(readState());
+    };
+    window.addEventListener("storage", refresh);
+    return () => window.removeEventListener("storage", refresh);
+  }, []);
+  const value = useMemo<ProfilesValue>(() => {
+    const mainWindowOnly = (): never => {
+      throw new Error("Profile changes must be made in the main Harbor window");
+    };
+    return {
+      ...state,
+      activeProfile: state.profiles.find((p) => p.id === state.activeId) ?? null,
+      pickerOpen: false,
+      pickerView: { kind: "list" },
+      sessionUnlockedIds: new Set(),
+      openPicker: mainWindowOnly,
+      setPickerView: mainWindowOnly,
+      closePicker: mainWindowOnly,
+      selectProfile: mainWindowOnly,
+      createProfile: mainWindowOnly,
+      updateProfile: mainWindowOnly,
+      deleteProfile: mainWindowOnly,
+      setPrimary: mainWindowOnly,
+    };
+  }, [state]);
+  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+}
 
 export function ProfilesProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<ProfilesState>(() => {

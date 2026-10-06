@@ -1,9 +1,10 @@
 import { useSubTabs } from "./sub-tabs";
 import { StreamCacheSection } from "./player-panel/p2p-advanced-section";
 import { Check, Database, HardDrive, Trash2 } from "./icons";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useT } from "@/lib/i18n";
-import { clearPickerCache } from "@/lib/picker-cache";
+import { clearPickerCache, pickerCacheCount } from "@/lib/picker-cache";
+import { clearThumbCache, getThumbCacheSize, type ThumbCacheSize } from "@/lib/remote-image-proxy";
 import { clearMangaCache } from "@/lib/manga/api";
 import { clearEpg } from "@/lib/iptv/epg-store";
 import { clearPlaylistCache } from "@/lib/iptv/store";
@@ -35,7 +36,29 @@ function fmtPercent(pct: number): string {
   return pct >= 10 ? `${Math.round(pct)}%` : `${pct.toFixed(1)}%`;
 }
 
-function localStorageBreakdown(): { total: number; top: { key: string; bytes: number }[] } {
+/** One cache writes an entry per request, so families collapse into a single readable row. */
+const FAMILIES = [
+  "harbor.ebook.openlibrary.",
+  "harbor.ebook.",
+  "harbor.cinemeta.",
+  "harbor.awards.",
+  "harbor.music.",
+  "harbor.addon.",
+];
+
+const FAMILY_NAMES: Record<string, string> = {
+  "harbor.ebook.openlibrary.": "eBook lookup cache",
+  "harbor.ebook.": "eBook data",
+  "harbor.cinemeta.": "Cinemeta meta",
+  "harbor.awards.": "Awards cache",
+  "harbor.music.": "Music preferences",
+  "harbor.addon.": "Addon data",
+};
+
+function localStorageBreakdown(): {
+  total: number;
+  top: { key: string; bytes: number; count: number }[];
+} {
   let total = 0;
   const rows: { key: string; bytes: number }[] = [];
   try {
@@ -49,11 +72,23 @@ function localStorageBreakdown(): { total: number; top: { key: string; bytes: nu
   } catch {
     return { total: 0, top: [] };
   }
-  rows.sort((a, b) => b.bytes - a.bytes);
-  return { total, top: rows.slice(0, 6) };
+  const grouped = new Map<string, { key: string; bytes: number; count: number }>();
+  for (const row of rows) {
+    const family = FAMILIES.find((prefix) => row.key.startsWith(prefix)) ?? row.key;
+    const held = grouped.get(family);
+    if (held) {
+      held.bytes += row.bytes;
+      held.count += 1;
+    } else {
+      grouped.set(family, { key: family, bytes: row.bytes, count: 1 });
+    }
+  }
+  const top = [...grouped.values()].sort((a, b) => b.bytes - a.bytes).slice(0, 6);
+  return { total, top };
 }
 
 function friendlyKey(key: string): string {
+  if (FAMILY_NAMES[key]) return FAMILY_NAMES[key];
   const known: Record<string, string> = {
     "harbor.jikancatalog2": "Anime catalog cache",
     "harbor.awards.wikidata": "Awards cache",
@@ -71,16 +106,19 @@ function friendlyKey(key: string): string {
     .replace(/[-_.]/g, " ")
     .trim();
   if (!words) return key;
-  return words.charAt(0).toUpperCase() + words.slice(1);
+  const label = words.charAt(0).toUpperCase() + words.slice(1);
+  return label.length > 48 ? `${label.slice(0, 47)}…` : label;
 }
 
 function ClearRow({
   title,
   sub,
+  usage,
   onClear,
 }: {
   title: string;
   sub: string;
+  usage?: ReactNode;
   onClear: () => void;
 }) {
   const t = useT();
@@ -106,22 +144,21 @@ function ClearRow({
       setArmed(true);
       return;
     }
-    setArmed(false);
-    setFailed(false);
     try {
       onClear();
       setDone(true);
+      setFailed(false);
     } catch {
       setFailed(true);
     }
+    setArmed(false);
   };
 
   return (
-    <SettingRow label={title} desc={<>{sub}{failed && <span role="alert" className="mt-1 block text-danger">{t("Could not clear this cache. Try again.")}</span>}</>}>
+    <SettingRow label={title} desc={<>{sub}{failed && <span role="alert" className="mt-1 block text-danger">{t("Could not clear this cache. Try again.")}</span>}{usage && <span className="mt-1.5 block text-[12.5px] tabular-nums text-ink-subtle">{usage}</span>}</>}>
       <button
         type="button"
         onClick={click}
-        onBlur={() => setArmed(false)}
         aria-label={done ? t("{name} cleared", { name: title }) : armed ? t("Confirm clearing {name}", { name: title }) : t("Clear {name}", { name: title })}
         className={done ? CLEAR_DONE : armed ? CLEAR_ARMED : CLEAR_IDLE}
       >
@@ -158,6 +195,43 @@ export function StoragePanel() {
   }, [tick]);
 
   const ls = useMemo(() => localStorageBreakdown(), [tick]);
+  const THUMB_CACHE_CAP_BYTES = 256 * 1024 * 1024;
+
+  const cacheUsage = useMemo(() => {
+    const bytesOfKey = (key: string) => {
+      try {
+        return (localStorage.getItem(key)?.length ?? 0) * 2 + key.length * 2;
+      } catch {
+        return 0;
+      }
+    };
+    const bytesOfPrefix = (prefix: string) => {
+      let total = 0;
+      try {
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && key.startsWith(prefix)) total += bytesOfKey(key);
+        }
+      } catch {}
+      return total;
+    };
+    return {
+      picker: pickerCacheCount(),
+      manga: bytesOfPrefix("harbor.manga.cache.v2."),
+      dead: bytesOfKey("harbor.dead-streams.v1"),
+    };
+  }, [tick]);
+
+  const [thumbSize, setThumbSize] = useState<ThumbCacheSize | null>(null);
+  useEffect(() => {
+    let alive = true;
+    void getThumbCacheSize().then((size) => {
+      if (alive) setThumbSize(size);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [tick]);
   const pct = estimate && estimate.quota > 0 ? Math.min(100, (estimate.usage / estimate.quota) * 100) : 0;
 
   useSubTabs(
@@ -224,7 +298,11 @@ export function StoragePanel() {
             >
               <SettingGroup>
                 {ls.top.map((row) => (
-                  <SettingRow key={row.key} label={t(friendlyKey(row.key))}>
+                  <SettingRow
+                    key={row.key}
+                    label={t(friendlyKey(row.key))}
+                    desc={row.count > 1 ? t("{count} entries", { count: row.count }) : undefined}
+                  >
                     <span className={READOUT}>{fmtBytes(row.bytes)}</span>
                   </SettingRow>
                 ))}
@@ -252,6 +330,7 @@ export function StoragePanel() {
               sub={t(
                 "Remembered source lists per title. Clears stale results after changing addons or debrid.",
               )}
+              usage={t("{n} entries", { n: cacheUsage.picker })}
               onClear={() => {
                 clearPickerCache();
                 refresh();
@@ -260,9 +339,37 @@ export function StoragePanel() {
             <ClearRow
               title={t("Manga browse cache")}
               sub={t("Cached chapter lists and browse pages. Downloads stay untouched.")}
+              usage={fmtBytes(cacheUsage.manga)}
               onClear={() => {
                 clearMangaCache();
                 refresh();
+              }}
+            />
+            <ClearRow
+              title={t("Poster thumbnails")}
+              sub={t(
+                "Resized cover cache, kept 30 days up to size limits. Rebuilds as you browse.",
+              )}
+              usage={
+                thumbSize == null ? undefined : (
+                  <>
+                    {t("{size} across {n} files", {
+                      size: fmtBytes(thumbSize.bytes),
+                      n: thumbSize.files,
+                    })}
+                    <span className="mt-1.5 block h-1.5 w-full max-w-[280px] overflow-hidden rounded-full bg-raised">
+                      <span
+                        className="block h-full rounded-full bg-accent"
+                        style={{
+                          width: `${Math.min(100, (thumbSize.bytes / THUMB_CACHE_CAP_BYTES) * 100)}%`,
+                        }}
+                      />
+                    </span>
+                  </>
+                )
+              }
+              onClear={() => {
+                void clearThumbCache().finally(() => refresh());
               }}
             />
             <ClearRow
@@ -280,6 +387,7 @@ export function StoragePanel() {
             <ClearRow
               title={t("Dead stream marks")}
               sub={t("Sources Harbor flagged as broken. Clear to give them another chance.")}
+              usage={fmtBytes(cacheUsage.dead)}
               onClear={() => {
                 clearDeadStreams();
                 refresh();

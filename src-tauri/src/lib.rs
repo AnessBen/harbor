@@ -1,3 +1,5 @@
+#[cfg(desktop)]
+mod ytmusic;
 // Modules that build on every target, desktop and Android alike. Nothing in
 // here may reach a `#[cfg(desktop)]` tauri API: every Window setter (show,
 // hide, close, set_size, set_position, set_focus, set_always_on_top,
@@ -18,6 +20,7 @@ mod http_redirect;
 mod local_lib;
 mod media_server;
 mod power;
+mod privacy;
 mod proc_guard;
 mod proc_mem;
 mod settings_store;
@@ -26,6 +29,7 @@ mod streams;
 mod stremio_auth;
 mod subtitle_credentials;
 mod temp_prune;
+mod thumb_cache;
 mod torrent_engine;
 mod transcode;
 mod web_server;
@@ -46,6 +50,8 @@ mod asr_model;
 mod browser;
 mod browser_args;
 #[cfg(desktop)]
+mod capstan;
+#[cfg(desktop)]
 mod captions;
 #[cfg(desktop)]
 mod cast;
@@ -62,11 +68,15 @@ mod discord_rp;
 #[cfg(desktop)]
 mod display_fit;
 #[cfg(desktop)]
+mod dj_deck;
+#[cfg(desktop)]
 mod dlna;
 #[cfg(desktop)]
 mod dvr;
 #[cfg(desktop)]
 mod fullscreen;
+#[cfg(desktop)]
+mod monitors;
 #[cfg(desktop)]
 mod harbor_lan;
 #[cfg(desktop)]
@@ -75,9 +85,13 @@ mod hdr_overlay;
 mod installer_handoff;
 #[cfg(desktop)]
 mod media_controls;
+#[cfg(target_os = "windows")]
+mod taskbar;
 mod modal_overlay;
 #[cfg(desktop)]
 mod mpv;
+#[cfg(desktop)]
+mod playback_cache;
 #[cfg(target_os = "linux")]
 mod mpv_render_linux;
 #[cfg(target_os = "macos")]
@@ -85,7 +99,10 @@ mod mpv_render_mac;
 #[cfg(desktop)]
 mod multiview;
 #[cfg(desktop)]
+mod music;
+#[cfg(desktop)]
 mod pip;
+mod pip_window;
 #[cfg(target_os = "macos")]
 mod pip_mac;
 #[cfg(desktop)]
@@ -146,6 +163,7 @@ pub(crate) fn shutdown_services(app: &tauri::AppHandle) {
     thumbs::shutdown(app);
     multiview::shutdown(app);
     dvr::shutdown(app);
+    music::shutdown(app);
     stream_proxy::shutdown(app);
     cast_server::stop();
     torrent_engine::stop();
@@ -334,7 +352,74 @@ unsafe extern "system" fn maxguard_subclass_proc(
             mmi.ptMaxSize.y = mi.rcWork.bottom - mi.rcWork.top;
         }
     }
+    if matches!(
+        msg,
+        windows::Win32::UI::WindowsAndMessaging::WM_NCPAINT
+            | windows::Win32::UI::WindowsAndMessaging::WM_NCACTIVATE
+    ) && MAXGUARD_CLAMP.load(std::sync::atomic::Ordering::Relaxed)
+    {
+        paint_main_taskbar_gap(hwnd);
+    }
     res
+}
+
+#[cfg(windows)]
+unsafe fn paint_main_taskbar_gap(hwnd: windows::Win32::Foundation::HWND) {
+    use windows::Win32::Foundation::{POINT, RECT};
+    use windows::Win32::Graphics::Gdi::{
+        ClientToScreen, FillRect, GetMonitorInfoW, GetStockObject, GetWindowDC, MonitorFromWindow,
+        ReleaseDC, BLACK_BRUSH, HBRUSH, MONITORINFO, MONITOR_DEFAULTTONEAREST,
+    };
+    use windows::Win32::UI::WindowsAndMessaging::{GetClientRect, GetWindowRect, IsZoomed};
+    if !IsZoomed(hwnd).as_bool() {
+        return;
+    }
+    let mut client = RECT::default();
+    let mut outer = RECT::default();
+    let mut origin = POINT::default();
+    let mut monitor = MONITORINFO {
+        cbSize: std::mem::size_of::<MONITORINFO>() as u32,
+        ..Default::default()
+    };
+    if GetClientRect(hwnd, &mut client).is_err()
+        || GetWindowRect(hwnd, &mut outer).is_err()
+        || !ClientToScreen(hwnd, &mut origin).as_bool()
+        || !GetMonitorInfoW(
+            MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST),
+            &mut monitor,
+        )
+        .as_bool()
+    {
+        return;
+    }
+    let work = monitor.rcWork;
+    // Tao reserves one nonclient pixel for an auto-hidden taskbar. The WebView
+    // cannot paint it. Own that strip's paint without changing its hit testing,
+    // the client bounds, or the normal restored-window frame.
+    if origin.x != work.left
+        || origin.y != work.top
+        || origin.x + client.right != work.right
+        || origin.y + client.bottom != work.bottom - 1
+        || outer.left > work.left
+        || outer.right < work.right
+        || outer.top > work.bottom - 1
+        || outer.bottom < work.bottom
+    {
+        return;
+    }
+    let dc = GetWindowDC(Some(hwnd));
+    if dc.0.is_null() {
+        return;
+    }
+    let strip = RECT {
+        left: work.left - outer.left,
+        right: work.right - outer.left,
+        top: work.bottom - 1 - outer.top,
+        bottom: work.bottom - outer.top,
+    };
+    let brush = HBRUSH(GetStockObject(BLACK_BRUSH).0);
+    let _ = FillRect(dc, &strip, brush);
+    let _ = ReleaseDC(Some(hwnd), dc);
 }
 
 #[cfg(windows)]
@@ -358,6 +443,37 @@ fn install_maximize_guard(app: &tauri::AppHandle) {
         );
     }
     eprintln!("[harbor::maxguard] WM_GETMINMAXINFO work-area guard installed");
+}
+
+// Opt-in geometry-only diagnostics: never log player URLs or account data.
+#[cfg(windows)]
+fn log_main_geometry(app: &tauri::AppHandle, reason: &'static str) {
+    use tauri::Manager;
+    static ENABLED: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    if !*ENABLED.get_or_init(|| std::env::var_os("HARBOR_WINDOW_DIAGNOSTICS").is_some()) {
+        return;
+    }
+    let Some(window) = app.get_webview_window("main") else {
+        return;
+    };
+    let native_window = window.clone();
+    let _ = window.with_webview(move |webview| unsafe {
+        let Ok(hwnd) = native_window.hwnd() else { return };
+        use windows::Win32::Foundation::{POINT, RECT};
+        use windows::Win32::Graphics::Gdi::{ClientToScreen, GetMonitorInfoW, MonitorFromWindow, MONITORINFO, MONITOR_DEFAULTTONEAREST};
+        use windows::Win32::UI::WindowsAndMessaging::{GetClientRect, GetWindowRect, IsZoomed};
+        let mut outer = RECT::default();
+        let mut client = RECT::default();
+        let mut origin = POINT::default();
+        let mut bounds = RECT::default();
+        let mut monitor = MONITORINFO { cbSize: std::mem::size_of::<MONITORINFO>() as u32, ..Default::default() };
+        let outer_ok = GetWindowRect(hwnd, &mut outer).is_ok();
+        let client_ok = GetClientRect(hwnd, &mut client).is_ok();
+        let origin_ok = ClientToScreen(hwnd, &mut origin).as_bool();
+        let monitor_ok = GetMonitorInfoW(MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST), &mut monitor).as_bool();
+        let bounds_ok = webview.controller().Bounds(&mut bounds).is_ok();
+        eprintln!("[harbor::window-geometry] {reason} zoomed={} outer={outer:?}/{outer_ok} client={client:?}/{client_ok} origin={origin:?}/{origin_ok} webview={bounds:?}/{bounds_ok} monitor={:?} work={:?}/{monitor_ok}", IsZoomed(hwnd).as_bool(), monitor.rcMonitor, monitor.rcWork);
+    });
 }
 
 #[tauri::command]
@@ -600,6 +716,7 @@ pub fn run() {
 
 #[cfg(desktop)]
 pub fn run() {
+    if music::try_run_connector_worker() { return; }
     {
         let args: Vec<String> = std::env::args().skip(1).collect();
         if let Some(p) = media_file_from_args(&args) {
@@ -616,6 +733,7 @@ pub fn run() {
     win_graphics::configure_windows_graphics();
     let _ = rustls::crypto::ring::default_provider().install_default();
     trailer::sweep_cache();
+    std::thread::spawn(trailer::sweep_ytdlp_extractions);
     std::thread::spawn(temp_prune::sweep_temp);
 
     let proxy_state = tauri::async_runtime::block_on(stream_proxy::ProxyState::start())
@@ -625,6 +743,7 @@ pub fn run() {
         });
     let mpv_state = mpv::MpvState::new();
     let pip_state = pip::PipState::new();
+    let pip_window_state = pip_window::PipWindowState::default();
     let fullscreen_state = fullscreen::FullscreenState::new();
     let thumbs_state = thumbs::ThumbsState::new();
     let dvr_state = dvr::DvrState::new();
@@ -662,18 +781,23 @@ pub fn run() {
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
-        .plugin(
-            tauri_plugin_window_state::Builder::default()
-                .with_state_flags(
-                    tauri_plugin_window_state::StateFlags::SIZE
-                        | tauri_plugin_window_state::StateFlags::POSITION
-                        | tauri_plugin_window_state::StateFlags::MAXIMIZED,
-                )
-                .build(),
-        )
+        .plugin({
+            let builder = tauri_plugin_window_state::Builder::default().with_denylist(&["harbor-ytmusic-embed"]).with_state_flags(
+                tauri_plugin_window_state::StateFlags::SIZE
+                    | tauri_plugin_window_state::StateFlags::POSITION
+                    | tauri_plugin_window_state::StateFlags::MAXIMIZED,
+            );
+            // Restore the Windows main window only after its maximize guard is
+            // installed, so startup uses the same work-area rules as user maximize.
+            #[cfg(windows)]
+            let builder = builder.skip_initial_state("main");
+            builder.build()
+        })
         .manage(proxy_state)
         .manage(mpv_state)
+        .manage(music::MusicState::new())
         .manage(pip_state)
+        .manage(pip_window_state)
         .manage(fullscreen_state)
         .manage(thumbs_state)
         .manage(dvr_state)
@@ -695,6 +819,7 @@ pub fn run() {
     });
 
     app_builder
+        .plugin(privacy::init())
         .on_page_load(|webview, payload| {
             if webview.label() == "main"
                 && matches!(payload.event(), tauri::webview::PageLoadEvent::Finished)
@@ -708,8 +833,7 @@ pub fn run() {
             }
             proc_guard::init();
             proc_guard::reap_orphans();
-            display_fit::install(app.handle());
-            install_reveal_failsafe(app.handle());
+            music::initialize(app.handle()).map_err(std::io::Error::other)?;
             #[cfg(windows)]
             {
                 use tauri_plugin_deep_link::DeepLinkExt;
@@ -730,6 +854,20 @@ pub fn run() {
             make_main_transparent(&app.handle());
             #[cfg(windows)]
             install_maximize_guard(&app.handle());
+            #[cfg(windows)]
+            {
+                use tauri::Manager;
+                use tauri_plugin_window_state::{StateFlags, WindowExt};
+                if let Some(window) = app.get_webview_window("main") {
+                    if let Err(error) = window.restore_state(
+                        StateFlags::SIZE | StateFlags::POSITION | StateFlags::MAXIMIZED,
+                    ) {
+                        eprintln!("[harbor::window] startup restore failed: {error}");
+                    }
+                }
+            }
+            display_fit::install(app.handle());
+            install_reveal_failsafe(app.handle());
             ensure_window_on_screen(&app.handle());
             #[cfg(target_os = "macos")]
             {
@@ -758,6 +896,8 @@ pub fn run() {
                 });
             }
             media_controls::ensure_started_on_setup(&app.handle());
+            #[cfg(target_os = "windows")]
+            taskbar::init(&app.handle());
             {
                 let handle = app.handle().clone();
                 std::thread::spawn(move || discord_rp::run_loop(handle));
@@ -774,6 +914,31 @@ pub fn run() {
                 return;
             }
             use tauri::Manager;
+            #[cfg(windows)]
+            if matches!(
+                event,
+                tauri::WindowEvent::Moved(_)
+                    | tauri::WindowEvent::Resized(_)
+                    | tauri::WindowEvent::ScaleFactorChanged { .. }
+            ) && window
+                .app_handle()
+                .get_webview_window(hdr_overlay::HDR_OVERLAY_LABEL)
+                .is_some()
+            {
+                let app = window.app_handle().clone();
+                tauri::async_runtime::spawn(async move {
+                    let _ = hdr_overlay::hdr_overlay_sync(app).await;
+                });
+            }
+            #[cfg(windows)]
+            match event {
+                tauri::WindowEvent::Resized(_) => log_main_geometry(window.app_handle(), "resized"),
+                tauri::WindowEvent::Moved(_) => log_main_geometry(window.app_handle(), "moved"),
+                tauri::WindowEvent::Focused(true) => {
+                    log_main_geometry(window.app_handle(), "focused")
+                }
+                _ => {}
+            }
             match event {
                 tauri::WindowEvent::CloseRequested { api, .. } => {
                     if tray::close_to_tray() {
@@ -823,7 +988,11 @@ pub fn run() {
             }
         })
         .invoke_handler(tauri::generate_handler![
+            privacy::privacy_status,
+            privacy::privacy_set_enabled,
             set_maximize_clamp,
+            monitors::list_monitors,
+            monitors::move_main_to_monitor,
             crash_report::take_startup_crash_report,
             fonts::install_sub_font,
             fonts::remove_sub_font,
@@ -886,6 +1055,101 @@ pub fn run() {
             diagnostics::diagnostics_collect,
             diagnostics::diagnostics_cleanup,
             trailer::fetch_trailer,
+            music::music_health,
+            music::music_source_candidates,
+            music::music_spotify_status,
+            music::music_spotify_connect,
+            music::music_spotify_disconnect,
+            music::music_spotify_devices,
+            music::music_spotify_set_device,
+            music::music_spotify_device,
+            music::music_spotify_library_page,
+            music::music_spotify_create_playlist,
+            music::music_spotify_add_to_playlist,
+            music::music_lastfm_auth,
+            music::music_lastfm_complete_auth,
+            music::music_lastfm_status,
+            music::run_connector_worker,
+            music::music_search,
+            music::music_resolve_stream,
+            music::music_db_init,
+            music::music_track_upsert,
+            music::music_track_get,
+            music::music_resolve_cached,
+            music::music_get_liked,
+            music::music_set_liked,
+            music::music_get_recents,
+            music::music_add_recent,
+            music::music_get_queue,
+            music::music_set_queue,
+            music::music_list_albums,
+            music::music_list_artists,
+            music::music_list_playlists,
+            music::music_create_playlist,
+            music::music_add_to_playlist,
+            music::music_add_tracks_to_playlist,
+            music::music_rename_playlist,
+            music::music_delete_playlist,
+            music::music_reorder_playlist,
+            music::music_remove_from_playlist,
+            music::music_import_m3u,
+            music::music_export_m3u,
+            music::music_play_track,
+            music::music_engine_pause,
+            music::music_paused_for_video,
+            music::music_resume_after_video,
+            music::music_engine_seek,
+            music::music_deck_loop,
+            music::music_deck_scratch,
+            music::music_prewarm_track,
+            music::music_scratch_window,
+            music::music_scratch_hold,
+            music::music_cable_status,
+            music::music_cable_create,
+            music::music_cable_destroy,
+            music::music_deck_play,
+            music::music_deck_pause,
+            music::music_deck_seek,
+            music::music_deck_volume,
+            music::music_deck_stop,
+            music::music_deck_states,
+            music::music_deck_primary,
+            music::music_deck_crossfade,
+            music::music_deck_crossfade_get,
+            music::music_fx_set,
+            music::music_fx_clear,
+            music::music_fx_get,
+            music::music_engine_set_volume,
+            music::music_audio_devices,
+            music::music_audio_settings_get,
+            music::music_audio_meter_set_enabled,
+            music::music_audio_meter_snapshot,
+            music::music_audio_settings_set,
+            music::music_export_filtered,
+            music::music_broadcast_targets,
+            music::music_broadcast_start,
+            music::music_broadcast_stop,
+            music::music_broadcast_status,
+            dj_deck::dj_deck_open,
+            dj_deck::dj_deck_close,
+            music::music_engine_stop,
+            music::music_home_rows,
+            music::music_browse_connector,
+            music::music_album_tracks,
+            music::music_artist_top,
+            music::music_artist_catalog,
+            music::music_artist_rows,
+            music::music_catalog_playlist_tracks,
+            music::music_station_tracks,
+            music::music_search_typed,
+            music::music_video_stream,
+            music::music_search_videos,
+            music::music_search_video_page,
+            music::music_connections,
+            music::music_connect,
+            music::music_disconnect,
+            music::music_local_scan,
+            music::music_local_collection,
             temp_prune::temp_usage_bytes,
             temp_prune::temp_clear,
             download::download_start,
@@ -929,12 +1193,14 @@ pub fn run() {
             modal_overlay::modal_overlay_sync,
             modal_overlay::modal_overlay_get_pending,
             hdr_overlay::hdr_overlay_open,
+            hdr_overlay::hdr_overlay_show,
             hdr_overlay::hdr_overlay_close,
             hdr_overlay::hdr_overlay_hide,
             hdr_overlay::hdr_overlay_sync,
             hdr_overlay::hdr_overlay_emit_props,
             hdr_overlay::hdr_overlay_emit_action,
             mpv::mpv_sub_add,
+            mpv::mpv_sub_remove,
             mpv::sub_download,
             mpv::mpv_stop,
             mpv::mpv_release_media,
@@ -945,10 +1211,25 @@ pub fn run() {
             pip::pip_publish_state,
             pip::window_pip_enter,
             pip::window_pip_exit,
+            pip_window::pip_window_enter,
+            pip_window::pip_window_exit,
+            pip_window::pip_window_fit,
+            pip_window::pip_window_active,
             fullscreen::window_fullscreen_enter,
             fullscreen::window_fullscreen_exit,
             browser::browser_open,
             browser::browser_close,
+            ytmusic::ytmusic_open,
+            ytmusic::ytmusic_close,
+            ytmusic::ytmusic_is_open,
+            #[cfg(windows)]
+            ytmusic::ytmusic_embed,
+            #[cfg(windows)]
+            ytmusic::ytmusic_set_geometry,
+            #[cfg(windows)]
+            ytmusic::ytmusic_unembed,
+            #[cfg(windows)]
+            ytmusic::ytmusic_set_visible,
             thumbs::thumbs_set_url,
             thumbs::thumbs_spawn_eager,
             thumbs::thumbs_get,
@@ -967,12 +1248,26 @@ pub fn run() {
             multiview::multiview_stop_all,
             http_fetch::harbor_fetch,
             http_fetch::harbor_upload,
+            http_fetch::clear_thumb_cache,
+            http_fetch::thumb_cache_size,
             subtitle_credentials::subtitle_credential_bind,
             subtitle_credentials::subtitle_credentials_clear,
             cf_solver::cf_report,
+            capstan::capstan_ping,
+            capstan::capstan_install,
+            capstan::capstan_uninstall,
+            capstan::capstan_extensions,
+            capstan::capstan_providers,
+            capstan::capstan_search,
+            capstan::capstan_load,
+            capstan::capstan_load_links,
+            capstan::capstan_catalogue,
+            capstan::capstan_catalogue_page,
             discord_rp::discord_set_presence,
             discord_rp::discord_clear,
             media_controls::media_controls_update,
+            media_controls::media_controls_music_state,
+            media_controls::media_controls_music_art,
             media_controls::media_controls_seeked,
             media_controls::media_controls_clear,
             gamepad::gamepad_list,

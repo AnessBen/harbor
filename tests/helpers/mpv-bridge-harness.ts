@@ -81,10 +81,26 @@ export function mpvBridgeHarness(prefs = { volume: 0.35, muted: false }) {
         return () => handlers.delete(name);
       },
     },
-    "@/lib/subtitles/prepare": { prepareSubtitle: (input: { url: string }) => prepare(input) },
+    "@/lib/subtitles/prepare": {
+      prepareSubtitle: (input: { url: string }) => prepare(input),
+      SubtitlePreparationError: class SubtitlePreparationError extends Error {
+        reason: string;
+        constructor(reason: string, message: string) {
+          super(message);
+          this.name = "SubtitlePreparationError";
+          this.reason = reason;
+        }
+      },
+    },
     "@/lib/subtitles/provider-auth": { subtitleTrackDownloadHeaders: () => undefined },
     "@/lib/subtitles/prepared-registry": { takePreparedSubtitle: () => null },
     "@/lib/subtitles/limit-signal": { markLimitReached() {} },
+    "@/lib/subtitles/pending-subs": {
+      markPendingSub() {},
+      clearPendingSub() {},
+      wasPendingSub: () => false,
+    },
+    "@/lib/subtitles/translation-jobs": { registerTranslationJob() {} },
     "./mpv-failure": failures,
     "@/lib/platform": {
       isWindowsDesktop: () => true,
@@ -110,7 +126,8 @@ export function mpvBridgeHarness(prefs = { volume: 0.35, muted: false }) {
   };
   const module = { exports: {} as { createMpvBridge: () => PlayerBridge } };
   const windowEvents = new EventTarget();
-  new Function("require", "module", "exports", "window", "console", compiled)(
+  const documentEvents = new EventTarget();
+  new Function("require", "module", "exports", "window", "console", "document", compiled)(
     (id: string) => {
       if (!(id in dependencies)) throw new Error(`Unexpected dependency: ${id}`);
       return dependencies[id];
@@ -126,6 +143,10 @@ export function mpvBridgeHarness(prefs = { volume: 0.35, muted: false }) {
       },
     },
     { warn() {}, info() {} },
+    {
+      addEventListener: documentEvents.addEventListener.bind(documentEvents),
+      removeEventListener: documentEvents.removeEventListener.bind(documentEvents),
+    },
   );
   const bridge = module.exports.createMpvBridge();
   let snapshot: PlayerSnapshot = snapshots.emptySnapshot;
@@ -137,6 +158,9 @@ export function mpvBridgeHarness(prefs = { volume: 0.35, muted: false }) {
     commands,
     errors,
     snapshot: () => snapshot,
+    emitEvent(event: Record<string, unknown>) {
+      handlers.get("mpv://event")?.({ payload: event });
+    },
     emit(name: string, data: unknown) {
       properties.set(name, data);
       handlers.get("mpv://event")?.({ payload: { event: "property-change", name, data } });

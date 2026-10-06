@@ -17,11 +17,12 @@ type Node = { title?: string; year?: number; ids?: Ids };
 
 type RawSession = {
   progress?: number;
+  paused_at?: string;
   watched_at?: string;
   movie?: Node;
   show?: Node;
   anime?: Node;
-  episode?: { season?: number; number?: number };
+  episode?: { season?: number; number?: number; episode?: number };
 };
 
 const DURATION_MS = { movie: 6_300_000, series: 2_640_000 };
@@ -79,7 +80,7 @@ function buildItem(
 function toLibraryItem(raw: RawSession): LibraryItem | null {
   const pct = Math.min(100, Math.max(0, raw.progress ?? 0));
   if (pct < 1 || pct > 98) return null;
-  const when = raw.watched_at ?? new Date(0).toISOString();
+  const when = raw.paused_at ?? raw.watched_at ?? new Date(0).toISOString();
 
   if (raw.movie) {
     const id = movieMetaId(raw.movie.ids);
@@ -115,7 +116,7 @@ function toLibraryItem(raw: RawSession): LibraryItem | null {
       DURATION_MS.series,
       when,
       raw.episode?.season,
-      raw.episode?.number,
+      raw.episode?.number ?? raw.episode?.episode,
       !raw.show,
     );
   }
@@ -144,10 +145,10 @@ export async function fetchSimklPlaybackItems(): Promise<LibraryItem[]> {
     items.push(item);
     // A dismissed card must not be resurrected by this backfill: dismiss clears the
     // resume entry, and rewriting it with t=now would manufacture fresh activity that
-    // beats the dismissal. Genuine new progress still surfaces via watched_at/ratio.
+    // beats the dismissal. Genuine new progress still surfaces via paused_at/ratio.
     if (isCwDismissed(item)) continue;
     // Newer-wins backfill: overwrite a stale entry when the remote pause is newer
-    // (watched_at) or, when the stored entry has no usable timestamp, further ahead.
+    // (paused_at) or, when the stored entry has no usable timestamp, further ahead.
     const existing = readResumeEntry(item._id, item.state.season, item.state.episode);
     const remoteT = Date.parse(item.state.lastWatched ?? "");
     const remoteValid = Number.isFinite(remoteT) && remoteT > 0;

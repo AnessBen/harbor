@@ -8,7 +8,7 @@ use libmpv2::events::{Event, EventContext, PropertyData};
 use libmpv2::mpv_node::MpvNode;
 use libmpv2::{Format, Mpv, MpvInitializer};
 
-fn mpv_argv_command(mpv: &Mpv, argv: &[&str]) -> Result<(), String> {
+pub(crate) fn mpv_argv_command(mpv: &Mpv, argv: &[&str]) -> Result<(), String> {
     let cstrings: Vec<CString> = argv
         .iter()
         .map(|s| CString::new(*s).map_err(|e| format!("cstring: {}", e)))
@@ -52,11 +52,15 @@ pub struct MpvStartArgs {
     pub mac_edr: Option<bool>,
     pub is_live: Option<bool>,
     pub full_download: Option<bool>,
+    pub cache_dir: Option<String>,
     pub startup_profile: Option<String>,
     pub headers: Option<HashMap<String, String>>,
     pub extra_options: Option<String>,
     pub renderer: Option<String>,
     pub force_yuv420p: Option<bool>,
+    pub separate_display: Option<crate::monitors::MonitorInfo>,
+    /// Fill the whole monitor (cover the taskbar) instead of the work area.
+    pub separate_cover_taskbar: Option<bool>,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -148,6 +152,10 @@ pub struct MpvSub {
 
 pub struct MpvState {
     inner: Arc<Mutex<Option<MpvSession>>>,
+    // Serialize start/stop while the session lock is released for a display switch.
+    // Property reads still use only `inner`, so they remain responsive.
+    #[cfg(windows)]
+    lifecycle: Mutex<()>,
 }
 
 struct MpvSession {
@@ -159,14 +167,39 @@ struct MpvSession {
     /// script-reported state at teardown: only an off->on flip waits.
     #[cfg(windows)]
     hdr_baseline_on: bool,
+    /// Monitor this session's video is actually on, as a raw `HMONITOR` value
+    /// (kept as `isize` so the session stays `Send`). Embedded -> "main"'s
+    /// monitor; separate window -> the chosen monitor (or "main"'s when
+    /// Automatic). The HDR flip and its restore key off this, not off "main",
+    /// so a separate player on another display flips the right screen.
+    #[cfg(windows)]
+    hdr_monitor: Option<isize>,
 }
 
 impl MpvState {
     pub fn new() -> Self {
         Self {
             inner: Arc::new(Mutex::new(None)),
+            #[cfg(windows)]
+            lifecycle: Mutex::new(()),
         }
     }
+
+    /// The live handle, so the render target can be moved to another window without
+    /// restarting playback. A second session would re-open the stream and seek.
+    #[cfg(any(target_os = "macos", target_os = "linux"))]
+    pub(crate) async fn ctx_addr(&self) -> Option<usize> {
+        let guard = self.inner.lock().await;
+        guard.as_ref().map(|session| session.mpv.ctx.as_ptr() as usize)
+    }
+}
+
+#[cfg(target_os = "macos")]
+static MAC_EDR_ACTIVE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+#[cfg(target_os = "macos")]
+pub(crate) fn mac_edr_active() -> bool {
+    MAC_EDR_ACTIVE.load(std::sync::atomic::Ordering::Relaxed)
 }
 
 const OBSERVED_PROPS: &[(&str, u64, PropertyKind)] = &[
@@ -310,14 +343,24 @@ pub async fn mpv_audio_devices(state: State<'_, MpvState>) -> Result<Vec<AudioDe
     Ok(read_audio_devices(&mpv))
 }
 
+fn mpv_header_field(name: &str, value: &str) -> String {
+    // mpv parses this option as a comma-separated string list. An unescaped
+    // Accept-Language comma creates an invalid second HTTP header (HTTP 400).
+    format!("{name}: {value}").replace('\\', "\\\\").replace(',', "\\,")
+}
+
 fn apply_pre_init(
     init: &MpvInitializer,
     args: &MpvStartArgs,
     embed_hwnd: Option<&str>,
     separate_screen: Option<i32>,
+    separate_screen_size: Option<(u32, u32)>,
 ) -> Result<(), String> {
     #[cfg(not(windows))]
-    let _ = separate_screen;
+    {
+        let _ = separate_screen;
+        let _ = separate_screen_size;
+    }
     // Property sets here are best-effort. Some builds of mpv (e.g. Flatpak's
     // meson build without Lua) omit optional properties like `osc`. Treat
     // PROPERTY_NOT_FOUND as non-fatal so the player still initializes.
@@ -348,7 +391,7 @@ fn apply_pre_init(
             if k.eq_ignore_ascii_case("user-agent") {
                 user_agent = v.clone();
             } else {
-                header_fields.push(format!("{}: {}", k, v));
+                header_fields.push(mpv_header_field(k, v));
             }
         }
     }
@@ -427,6 +470,17 @@ fn apply_pre_init(
         #[cfg(windows)]
         if let Some(idx) = separate_screen {
             set("screen", idx.to_string().as_str());
+            // Size the VO window to the monitor's exact physical pixels. mpv
+            // applies the monitor's DPI factor to `geometry` by default (a
+            // 3840x2160 monitor at 225% became a 3648x2052 window), so scaling
+            // is turned off for the separate window and the requested WxH is
+            // then honoured literally. keepaspect-window (default yes) would
+            // also snap the window back to the video's aspect and leave a gap.
+            if let Some((w, h)) = separate_screen_size {
+                set("hidpi-window-scale", "no");
+                set("keepaspect-window", "no");
+                set("geometry", format!("{w}x{h}").as_str());
+            }
         }
     }
 
@@ -658,16 +712,92 @@ pub async fn mpv_start(
     state: State<'_, MpvState>,
     args: MpvStartArgs,
 ) -> Result<(), String> {
+    #[cfg(windows)]
+    let _lifecycle = state.lifecycle.lock().await;
+    let want_embed = args.embed.unwrap_or(false);
+    // Resolve the monitor this session's video lands on before anything reads HDR
+    // state. Embedded mpv is a child of "main"; a separate window goes to the
+    // chosen display, or "main"'s when the setting is Automatic or the monitor is
+    // gone. HDR must key off this monitor, not off "main", or a separate player on
+    // another display flips the wrong screen.
+    #[cfg(windows)]
+    let target_monitor = if want_embed {
+        app.get_webview_window("main")
+            .and_then(|w| w.hwnd().ok())
+            .and_then(|h| crate::monitors::resolve_for_hwnd(h.0 as isize))
+    } else {
+        crate::monitors::resolve_or_default(args.separate_display.as_ref()).or_else(|| {
+            app.get_webview_window("main")
+                .and_then(|w| w.hwnd().ok())
+                .and_then(|h| crate::monitors::resolve_for_hwnd(h.0 as isize))
+        })
+    };
+    let playback_cache = if args.is_live.unwrap_or(false) {
+        None
+    } else {
+        let base = app.path().app_cache_dir().map_err(|e| e.to_string())?;
+        let dir = crate::playback_cache::cache_dir(&base, args.cache_dir.as_deref())?;
+        crate::playback_cache::prepare_dir(&dir)?;
+        Some(dir)
+    };
     // OS-level HDR state before this transition begins. Compared at teardown
     // against the script-reported state: only off->on waits for restore.
     #[cfg(windows)]
-    let hdr_baseline_on = app
-        .get_webview_window("main")
-        .and_then(|w| w.hwnd().ok())
-        .map(|h| monitor_hdr_active(h.0 as isize))
+    let hdr_baseline_on = target_monitor
+        .map(|m| monitor_hdr_active(m.hmon))
         .unwrap_or(false);
+    #[cfg(windows)]
+    let hdr_monitor = target_monitor.map(|m| m.hmon.0 as isize);
+    #[cfg(windows)]
+    let separate_screen_for_init = if want_embed {
+        None
+    } else {
+        target_monitor.map(|m| m.screen_index)
+    };
+    // Fill the whole monitor by default; the setting drops to the work area so
+    // the taskbar stays visible on that display.
+    #[cfg(windows)]
+    let separate_cover_taskbar = args.separate_cover_taskbar.unwrap_or(true);
+    #[cfg(windows)]
+    let separate_screen_size_for_init = if want_embed {
+        None
+    } else {
+        target_monitor.map(|m| {
+            if separate_cover_taskbar {
+                (m.width, m.height)
+            } else {
+                (m.work_width, m.work_height)
+            }
+        })
+    };
+    #[cfg(windows)]
+    let separate_screen_pos_for_init = if want_embed {
+        None
+    } else {
+        target_monitor.map(|m| {
+            if separate_cover_taskbar {
+                (m.x, m.y)
+            } else {
+                (m.work_x, m.work_y)
+            }
+        })
+    };
+    #[cfg(not(windows))]
+    let separate_screen_for_init = None;
+    #[cfg(not(windows))]
+    let separate_screen_size_for_init = None;
+    if let Err(error) = crate::music::pause_for_video(&app).await {
+        eprintln!("[harbor::music] could not pause for video: {error}");
+    }
     let mut g = state.inner.lock().await;
-    if let Some(prev) = g.take() {
+    let prev = g.take();
+    // Windows releases the session lock across the SDR restore: a display mode
+    // switch can take seconds, and every property poll would queue behind it.
+    #[cfg(windows)]
+    {
+        drop(g);
+    }
+    if let Some(prev) = prev {
         #[cfg(target_os = "macos")]
         {
             let (tx, rx) = std::sync::mpsc::sync_channel::<()>(1);
@@ -698,13 +828,21 @@ pub async fn mpv_start(
         #[cfg(windows)]
         {
             let was_off = !prev.hdr_baseline_on;
+            let prev_monitor = prev.hdr_monitor;
             let _ = prev.mpv.command("quit", &[]);
             drop(prev);
-            restore_display_sdr_if_flipped(&app, was_off);
+            restore_display_sdr_if_flipped(&app, was_off, prev_monitor).await;
+        }
+    }
+    #[cfg(windows)]
+    let mut g = state.inner.lock().await;
+
+    if let Some(dir) = &playback_cache {
+        if args.cache_dir.as_deref().is_some_and(|s| !s.trim().is_empty()) {
+            let _ = crate::temp_prune::sweep_mpv_cache(dir.clone());
         }
     }
 
-    let want_embed = args.embed.unwrap_or(false);
     let embed_hwnd = if want_embed {
         get_main_hwnd_str(&app)
     } else {
@@ -717,19 +855,6 @@ pub async fn mpv_start(
         embed_hwnd
     );
     let embed_hwnd_for_init = embed_hwnd.clone();
-    // Resolve the display the Harbor window sits on before init: Windows
-    // creates the separate player's VO window during mpv_initialize, so the
-    // win32 `screen` ordinal must be known here to fix it pre-init.
-    #[cfg(windows)]
-    let separate_screen_for_init = if want_embed {
-        None
-    } else {
-        app.get_webview_window("main")
-            .and_then(|w| w.hwnd().ok())
-            .and_then(|h| monitor_index_of_hwnd(h.0 as isize))
-    };
-    #[cfg(not(windows))]
-    let separate_screen_for_init = None;
     let args_for_init = args.clone();
     let init_err: Arc<std::sync::Mutex<Option<String>>> = Arc::new(std::sync::Mutex::new(None));
     let init_err_cap = init_err.clone();
@@ -741,6 +866,7 @@ pub async fn mpv_start(
             &args_for_init,
             embed_hwnd_for_init.as_deref(),
             separate_screen_for_init,
+            separate_screen_size_for_init,
         ) {
             eprintln!("[harbor::mpv] pre-init failed: {}", e);
             if let Ok(mut g) = init_err_cap.lock() {
@@ -759,6 +885,14 @@ pub async fn mpv_start(
         eprintln!("[harbor::mpv] init error: {}", msg);
         msg
     })?;
+
+    if let Some(dir) = &playback_cache {
+        let path = dir.to_str().ok_or("Playback cache folder is not valid UTF-8")?;
+        // The option was renamed in mpv 0.41. Support both installed versions.
+        mpv.set_property("demuxer-cache-dir", path)
+            .or_else(|_| mpv.set_property("cache-dir", path))
+            .map_err(|e| format!("Cannot configure playback cache folder: {e}"))?;
+    }
 
     unsafe {
         let level = std::ffi::CString::new("warn").unwrap();
@@ -793,6 +927,27 @@ pub async fn mpv_start(
         let _ = mpv.set_property("force-window", "no");
     }
 
+    // Size the separate window by setting its OS window rect directly. mpv's own
+    // `geometry` cannot fill a scaled monitor: it clamps the borderless window to
+    // the monitor *work area* (a 3840x2160 monitor with a taskbar reports
+    // `max content size: 3840x2052`) and re-applies `keepaspect-window`, so the
+    // requested 3840x2160 came back as 3648x2052. SetWindowPos bypasses all of
+    // that and pins the VO window to the monitor's true pixel bounds.
+    #[cfg(windows)]
+    if !want_embed {
+        if let Some((w, h)) = separate_screen_size_for_init {
+            let x = separate_screen_pos_for_init.map(|p| p.0).unwrap_or(0);
+            let y = separate_screen_pos_for_init.map(|p| p.1).unwrap_or(0);
+            match size_separate_mpv_window(x, y, w as i32, h as i32) {
+                Some(()) => eprintln!(
+                    "[harbor::mpv] separate window sized via SetWindowPos {}x{}+{}+{}",
+                    w, h, x, y
+                ),
+                None => eprintln!("[harbor::mpv] separate window VO not found yet; relying on mpv geometry"),
+            }
+        }
+    }
+
     #[cfg(target_os = "macos")]
     if use_render_api {
         let window = app
@@ -803,6 +958,7 @@ pub async fn mpv_start(
             .map_err(|e| format!("ns_window: {:?}", e))? as i64;
         let mpv_ctx_addr: usize = mpv.ctx.as_ptr() as usize;
         let mac_edr = args.mac_edr.unwrap_or(false);
+        MAC_EDR_ACTIVE.store(mac_edr, std::sync::atomic::Ordering::Relaxed);
         let (tx, rx) = std::sync::mpsc::sync_channel::<Result<(), String>>(1);
         let _ = app.run_on_main_thread(move || {
             let res = match std::ptr::NonNull::new(mpv_ctx_addr as *mut libmpv2_sys::mpv_handle) {
@@ -930,19 +1086,6 @@ pub async fn mpv_start(
                 "30"
             },
         );
-        if let Ok(base) = app.path().app_cache_dir() {
-            let dvr = base.join("mpv-cache");
-            let _ = std::fs::create_dir_all(&dvr);
-            if let Some(s) = dvr.to_str() {
-                // mpv renamed this to demuxer-cache-dir; the old name is
-                // rejected (M_PROPERTY_UNKNOWN) on 0.41, which leaves
-                // cache-on-disk enabled with no directory and logs
-                // "Failed to create file cache" on every load.
-                if mpv.set_property("demuxer-cache-dir", s).is_err() {
-                    let _ = mpv.set_property("cache-dir", s);
-                }
-            }
-        }
         let _ = mpv.set_property("cache-on-disk", "yes");
         let _ = mpv.set_property("network-timeout", network_timeout_for(&args.url));
         // No reconnect_streamed: on AES-128 HLS every segment ends in a normal
@@ -1015,6 +1158,8 @@ pub async fn mpv_start(
         event_ctx,
         want_embed,
         args.mac_edr.unwrap_or(false),
+        #[cfg(windows)]
+        hdr_monitor,
     );
 
     eprintln!(
@@ -1050,6 +1195,8 @@ pub async fn mpv_start(
         embedded: use_render_api,
         #[cfg(windows)]
         hdr_baseline_on,
+        #[cfg(windows)]
+        hdr_monitor,
     });
     drop(g);
 
@@ -1077,33 +1224,34 @@ fn reassert_hdr_colorspace(mpv: &Arc<Mpv>) {
 /// opened on the same display (via the `screen` option), so the same monitor
 /// check works for both modes.
 #[cfg(windows)]
-fn restore_display_sdr_if_flipped(app: &AppHandle, was_off: bool) {
+async fn restore_display_sdr_if_flipped(
+    _app: &AppHandle,
+    was_off: bool,
+    hdr_monitor: Option<isize>,
+) {
     if !was_off {
         eprintln!("[harbor::mpv] skip display restore (baseline HDR was on)");
         return;
     }
-    // Give mpv's teardown (and the script's own shutdown toggle) a moment to
-    // settle, then force the display back to SDR ourselves if it is still on.
-    std::thread::sleep(Duration::from_millis(150));
-    // The Harbor window's monitor is the one the script flipped in both
-    // modes: embedded mpv renders as a child of "main", and the
-    // separate-window player is placed on "main"'s display at init.
-    let window = match app.get_webview_window("main") {
-        Some(w) => w,
-        None => return,
-    };
-    let hwnd = match window.hwnd() {
-        Ok(h) => h,
-        Err(_) => return,
-    };
-    if !monitor_hdr_active(hwnd.0 as isize) {
-        eprintln!("[harbor::mpv] display already SDR after quit");
+    tokio::time::sleep(Duration::from_millis(150)).await;
+    let Some(hmon_raw) = hdr_monitor else {
         return;
-    }
-    if set_monitor_advanced_color(hwnd.0 as isize, false) {
-        eprintln!("[harbor::mpv] display restored to SDR via DisplayConfig");
-    } else {
-        eprintln!("[harbor::mpv] DisplayConfig SDR restore failed");
+    };
+    // DisplayConfig drives a display mode switch that can block for seconds;
+    // it never runs on the async runtime's worker threads.
+    let restored = tokio::task::spawn_blocking(move || {
+        let hmon = windows::Win32::Graphics::Gdi::HMONITOR(hmon_raw as *mut _);
+        if !monitor_hdr_active(hmon) {
+            return None;
+        }
+        Some(set_monitor_advanced_color(hmon, false))
+    })
+    .await
+    .unwrap_or(None);
+    match restored {
+        None => eprintln!("[harbor::mpv] display already SDR after quit"),
+        Some(true) => eprintln!("[harbor::mpv] display restored to SDR via DisplayConfig"),
+        Some(false) => eprintln!("[harbor::mpv] DisplayConfig SDR restore failed"),
     }
 }
 
@@ -1160,6 +1308,7 @@ fn spawn_event_loop(
     mut ctx: EventContext,
     embedded: bool,
     mac_edr: bool,
+    #[cfg(windows)] hdr_monitor: Option<isize>,
 ) {
     std::thread::spawn(move || {
         let mut last_timepos: Option<std::time::Instant> = None;
@@ -1220,7 +1369,6 @@ fn spawn_event_loop(
                                     + 1;
                                 let gen_arc = reassert_gen.clone();
                                 let mpv2 = mpv_keepalive.clone();
-                                let app3 = app.clone();
                                 std::thread::spawn(move || {
                                     std::thread::sleep(Duration::from_millis(250));
                                     if gen_arc.load(std::sync::atomic::Ordering::Relaxed) != gen {
@@ -1232,10 +1380,14 @@ fn spawn_event_loop(
                                     if gamma != "pq" && gamma != "hlg" {
                                         return;
                                     }
-                                    let hdr = app3
-                                        .get_webview_window("main")
-                                        .and_then(|w| w.hwnd().ok())
-                                        .map(|h| monitor_hdr_active(h.0 as isize))
+                                    let hdr = hdr_monitor
+                                        .map(|raw| {
+                                            monitor_hdr_active(
+                                                windows::Win32::Graphics::Gdi::HMONITOR(
+                                                    raw as *mut _,
+                                                ),
+                                            )
+                                        })
                                         .unwrap_or(false);
                                     if hdr {
                                         reassert_hdr_colorspace(&mpv2);
@@ -1251,8 +1403,10 @@ fn spawn_event_loop(
                                 let gamma = mpv_keepalive
                                     .get_property::<String>("video-params/gamma")
                                     .unwrap_or_default();
-                                let active = gamma == "pq" || gamma == "hlg";
-                                apply_mac_edr(&app, &mpv_keepalive, active);
+                                if !gamma.is_empty() {
+                                    let active = gamma == "pq" || gamma == "hlg";
+                                    apply_mac_edr(&app, &mpv_keepalive, active);
+                                }
                             }
                         }
                     }
@@ -1513,14 +1667,13 @@ pub async fn mpv_set_geometry(
     }
     #[cfg(target_os = "macos")]
     {
-        let (tx, rx) = std::sync::mpsc::sync_channel(1);
         app.run_on_main_thread(move || {
-            let _ = tx.send(crate::mpv_render_mac::resize_to(geom));
+            if let Err(error) = crate::mpv_render_mac::resize_to(geom) {
+                eprintln!("[harbor::mpv] macOS resize rejected: {error}");
+            }
         })
         .map_err(|error| format!("failed to schedule macOS mpv resize: {error}"))?;
-        return rx
-            .recv_timeout(std::time::Duration::from_millis(300))
-            .map_err(|error| format!("timed out waiting for macOS mpv resize: {error}"))?;
+        return Ok(());
     }
     #[cfg(target_os = "linux")]
     {
@@ -1540,6 +1693,21 @@ pub async fn mpv_set_geometry(
     }
     #[cfg(all(not(windows), not(target_os = "macos")))]
     let _ = app;
+
+    // Separate window: mpv owns its own placement. The `geom` here is the embed
+    // rect measured inside Harbor's layout, which must never be pushed onto the
+    // standalone VO window (it sized it to a fraction of the chosen monitor).
+    // The window is fixed on its display via the pre-init `screen` option instead.
+    #[cfg(any(windows, target_os = "linux"))]
+    {
+        let separate = {
+            let g = _state.inner.lock().await;
+            g.as_ref().map(|s| !s.embedded).unwrap_or(false)
+        };
+        if separate {
+            return Ok(());
+        }
+    }
 
     #[cfg(not(target_os = "macos"))]
     {
@@ -1667,7 +1835,9 @@ pub async fn display_hdr_active(_app: AppHandle) -> Result<bool, String> {
             Ok(h) => h,
             Err(_) => return Ok(false),
         };
-        return Ok(monitor_hdr_active(hwnd.0 as isize));
+        return Ok(crate::monitors::resolve_for_hwnd(hwnd.0 as isize)
+            .map(|m| monitor_hdr_active(m.hmon))
+            .unwrap_or(false));
     }
     #[cfg(not(windows))]
     {
@@ -1675,72 +1845,87 @@ pub async fn display_hdr_active(_app: AppHandle) -> Result<bool, String> {
     }
 }
 
-/// 1-based-safe EnumDisplayMonitors ordinal of the display `hwnd` sits on, the
-/// same enumeration order mpv's win32 backend uses for the `screen` option
-/// (its `get_monitor_proc` counts 0-based from EnumDisplayMonitors). None when
-/// the window's monitor cannot be resolved.
+/// Find mpv's top-level VO window (class `mpv`, owned by this process) and set
+/// its rect to the given pixel bounds. Returns None when the window is not up
+/// yet, so the caller can fall back to mpv's own geometry.
 #[cfg(windows)]
-fn monitor_index_of_hwnd(hwnd_raw: isize) -> Option<i32> {
-    use windows::core::BOOL;
-    use windows::Win32::Foundation::{HWND, LPARAM, RECT};
-    use windows::Win32::Graphics::Gdi::{
-        EnumDisplayMonitors, MonitorFromWindow, HMONITOR, MONITOR_DEFAULTTONEAREST,
+fn size_separate_mpv_window(x: i32, y: i32, w: i32, h: i32) -> Option<()> {
+    use windows::Win32::Foundation::{HWND, LPARAM};
+    use windows::Win32::UI::WindowsAndMessaging::{
+        EnumWindows, GetClassNameW, GetWindowThreadProcessId, SetWindowPos, HWND_TOP,
+        SWP_FRAMECHANGED, SWP_NOACTIVATE, SWP_NOZORDER,
     };
+    use windows::core::BOOL;
+
+    let own_pid = std::process::id();
 
     struct State {
-        target: isize,
-        index: i32,
-        found: Option<i32>,
-    }
-
-    let hwnd = HWND(hwnd_raw as *mut _);
-    let target = unsafe { MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST) };
-    if target.is_invalid() {
-        return None;
+        own_pid: u32,
+        found: Option<isize>,
     }
     let mut state = State {
-        target: target.0 as isize,
-        index: 0,
+        own_pid,
         found: None,
     };
     let state_ptr = &mut state as *mut State;
 
-    unsafe extern "system" fn enum_proc(
-        hmon: HMONITOR,
-        _hdc: windows::Win32::Graphics::Gdi::HDC,
-        _rc: *mut RECT,
-        lparam: LPARAM,
-    ) -> BOOL {
-        // Mirrors mpv's get_monitor_proc: monitors are counted in
-        // EnumDisplayMonitors order, 0-based; stop on the target.
-        let state = &mut *(lparam.0 as *mut State);
-        if hmon.0 as isize == state.target {
-            state.found = Some(state.index);
+    unsafe extern "system" fn enum_proc(hwnd: HWND, lparam: LPARAM) -> BOOL {
+        let s = &mut *(lparam.0 as *mut State);
+        if s.found.is_some() {
             return BOOL(0);
         }
-        state.index += 1;
+        let mut pid = 0u32;
+        GetWindowThreadProcessId(hwnd, Some(&mut pid));
+        if pid != s.own_pid {
+            return BOOL(1);
+        }
+        let mut class_buf = [0u16; 256];
+        let class_len = GetClassNameW(hwnd, &mut class_buf);
+        let class_name = String::from_utf16_lossy(&class_buf[..class_len as usize]);
+        if class_name == "mpv" || class_name.starts_with("mpv ") {
+            s.found = Some(hwnd.0 as isize);
+            return BOOL(0);
+        }
         BOOL(1)
     }
 
-    let _ = unsafe { EnumDisplayMonitors(None, None, Some(enum_proc), LPARAM(state_ptr as isize)) };
-    state.found
+    unsafe {
+        let _ = EnumWindows(Some(enum_proc), LPARAM(state_ptr as isize));
+    }
+    let target = HWND(state.found? as *mut _);
+    unsafe {
+        SetWindowPos(
+            target,
+            Some(HWND_TOP),
+            x,
+            y,
+            w,
+            h,
+            SWP_NOACTIVATE | SWP_NOZORDER | SWP_FRAMECHANGED,
+        )
+        .ok()
+        .map(|_| ())
+    }
 }
 
 #[cfg(windows)]
-fn monitor_hdr_active(hwnd_raw: isize) -> bool {
+fn monitor_hdr_active(hmon: windows::Win32::Graphics::Gdi::HMONITOR) -> bool {
     use windows::core::Interface;
-    use windows::Win32::Foundation::{HWND, RECT};
     use windows::Win32::Graphics::Dxgi::Common::DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020;
     use windows::Win32::Graphics::Dxgi::{
         CreateDXGIFactory1, IDXGIFactory1, IDXGIOutput6, DXGI_ERROR_NOT_FOUND,
     };
-    use windows::Win32::Graphics::Gdi::{MonitorFromWindow, MONITOR_DEFAULTTONEAREST};
-    use windows::Win32::UI::WindowsAndMessaging::GetWindowRect;
+    use windows::Win32::Graphics::Gdi::{GetMonitorInfoW, MONITORINFOEXW};
 
-    let hwnd = HWND(hwnd_raw as *mut _);
-    let target_monitor = unsafe { MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST) };
-    let mut win_rect = RECT::default();
-    let have_win_rect = unsafe { GetWindowRect(hwnd, &mut win_rect).is_ok() };
+    // Fallback rect is the monitor's own desktop rect, not a window rect: GDI and
+    // DXGI HMONITOR handles can differ on multi-GPU, so when the handles do not
+    // compare equal we test the monitor's centre against each output's desktop
+    // rectangle instead.
+    let mut mi = MONITORINFOEXW::default();
+    mi.monitorInfo.cbSize = std::mem::size_of::<MONITORINFOEXW>() as u32;
+    let have_rect = hmon.0 as isize != 0
+        && unsafe { GetMonitorInfoW(hmon, &mut mi.monitorInfo) }.as_bool();
+    let mon_rect = mi.monitorInfo.rcMonitor;
 
     let factory: IDXGIFactory1 = match unsafe { CreateDXGIFactory1() } {
         Ok(f) => f,
@@ -1773,12 +1958,12 @@ fn monitor_hdr_active(hwnd_raw: isize) -> bool {
                 Err(_) => continue,
             };
 
-            let monitor_matches = !target_monitor.is_invalid()
-                && desc.Monitor.0 as isize == target_monitor.0 as isize;
-            let rect_matches = have_win_rect && {
+            let monitor_matches = hmon.0 as isize != 0
+                && desc.Monitor.0 as isize == hmon.0 as isize;
+            let rect_matches = have_rect && {
                 let d = desc.DesktopCoordinates;
-                let cx = (win_rect.left + win_rect.right) / 2;
-                let cy = (win_rect.top + win_rect.bottom) / 2;
+                let cx = (mon_rect.left + mon_rect.right) / 2;
+                let cy = (mon_rect.top + mon_rect.bottom) / 2;
                 cx >= d.left && cx < d.right && cy >= d.top && cy < d.bottom
             };
             if monitor_matches || rect_matches {
@@ -1794,7 +1979,10 @@ fn monitor_hdr_active(hwnd_raw: isize) -> bool {
 /// Windows Settings and display-info.dll use; Harbor calls it as an
 /// authoritative restore after mpv teardown.
 #[cfg(windows)]
-fn set_monitor_advanced_color(hwnd_raw: isize, enable: bool) -> bool {
+fn set_monitor_advanced_color(
+    hmon: windows::Win32::Graphics::Gdi::HMONITOR,
+    enable: bool,
+) -> bool {
     use windows::Win32::Devices::Display::{
         DisplayConfigGetDeviceInfo, DisplayConfigSetDeviceInfo, GetDisplayConfigBufferSizes,
         QueryDisplayConfig, DISPLAYCONFIG_DEVICE_INFO_GET_SOURCE_NAME,
@@ -1802,11 +1990,8 @@ fn set_monitor_advanced_color(hwnd_raw: isize, enable: bool) -> bool {
         DISPLAYCONFIG_PATH_INFO, DISPLAYCONFIG_SET_ADVANCED_COLOR_STATE,
         DISPLAYCONFIG_SOURCE_DEVICE_NAME, QDC_ONLY_ACTIVE_PATHS,
     };
-    use windows::Win32::Foundation::HWND;
     use windows::Win32::Foundation::WIN32_ERROR;
-    use windows::Win32::Graphics::Gdi::{
-        GetMonitorInfoW, MonitorFromWindow, MONITORINFOEXW, MONITOR_DEFAULTTONEAREST,
-    };
+    use windows::Win32::Graphics::Gdi::{GetMonitorInfoW, MONITORINFOEXW};
 
     fn wide_to_string(raw: &[u16]) -> String {
         String::from_utf16_lossy(
@@ -1817,9 +2002,7 @@ fn set_monitor_advanced_color(hwnd_raw: isize, enable: bool) -> bool {
         )
     }
 
-    let hwnd = HWND(hwnd_raw as *mut _);
-    let hmon = unsafe { MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST) };
-    if hmon.is_invalid() {
+    if hmon.0 as isize == 0 {
         return false;
     }
     let mut mi = MONITORINFOEXW::default();
@@ -2375,6 +2558,27 @@ pub async fn mpv_sub_add(
     Ok(())
 }
 
+/// Remove an external subtitle track by its mpv track id.
+///
+/// A provider subtitle can be re-fetched (for example a translating addon that only
+/// serves the finished file once it is ready). Removing the previous track first lets
+/// the refreshed subtitle replace it instead of stacking a duplicate. mpv only allows
+/// this for external subtitle files, which is exactly the case here.
+#[tauri::command]
+pub async fn mpv_sub_remove(state: State<'_, MpvState>, id: String) -> Result<(), String> {
+    let mpv = {
+        let g = state.inner.lock().await;
+        g.as_ref()
+            .map(|s| s.mpv.clone())
+            .ok_or_else(|| "mpv not started".to_string())?
+    };
+    let id = id.trim();
+    if id.is_empty() {
+        return Err("sub-remove requires a track id".to_string());
+    }
+    mpv_argv_command(&mpv, &["sub-remove", id])
+}
+
 fn sub_cache_dir() -> PathBuf {
     let dir = std::env::temp_dir().join("harbor-subs");
     let _ = std::fs::create_dir_all(&dir);
@@ -2768,6 +2972,8 @@ pub async fn sub_download(
 
 #[tauri::command]
 pub async fn mpv_stop(app: AppHandle, state: State<'_, MpvState>) -> Result<(), String> {
+    #[cfg(windows)]
+    let _lifecycle = state.lifecycle.lock().await;
     let mut g = state.inner.lock().await;
     if let Some(session) = g.take() {
         #[cfg(target_os = "macos")]
@@ -2800,10 +3006,11 @@ pub async fn mpv_stop(app: AppHandle, state: State<'_, MpvState>) -> Result<(), 
         #[cfg(windows)]
         {
             let was_off = !session.hdr_baseline_on;
+            let session_monitor = session.hdr_monitor;
             let _ = session.mpv.command("quit", &[]);
             drop(session);
             drop(g);
-            restore_display_sdr_if_flipped(&app, was_off);
+            restore_display_sdr_if_flipped(&app, was_off, session_monitor).await;
         }
     }
     #[cfg(windows)]
@@ -3100,6 +3307,7 @@ fn position_embedded_mpv_child(app: &AppHandle, css: MpvGeometry) -> Result<(), 
     // there was nothing to position at all.
     if found.is_empty() {
         eprintln!("[harbor::mpv] no mpv child window to position");
+        return Err("Native video window is not ready".to_string());
     }
     if let Some(&first) = found.first() {
         for &leftover in found.iter().skip(1) {
@@ -3270,6 +3478,13 @@ mod geometry_tests {
 mod event_backoff_tests {
     use super::{record_event_poll_success, EventErrorBackoff, MPV_EVENT_MAX_CONSECUTIVE_ERRORS};
     use std::time::Duration;
+
+    #[test]
+    fn http_headers_preserve_commas_and_backslashes_in_mpv_string_lists() {
+        assert_eq!(super::mpv_header_field("Accept-Language", "en-US,en;q=0.9"), "Accept-Language: en-US\\,en;q=0.9");
+        assert_eq!(super::mpv_header_field("X-Path", r"one\two,three"), r"X-Path: one\\two\,three");
+        assert_eq!(super::mpv_header_field("Accept", "*/*"), "Accept: */*");
+    }
 
     #[test]
     fn event_error_backoff_grows_caps_and_resets() {

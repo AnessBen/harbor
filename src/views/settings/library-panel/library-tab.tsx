@@ -1,7 +1,6 @@
 import animeCatIcon from "@/assets/category/anime.svg";
-import livetvCatIcon from "@/assets/category/livetv.svg";
 import adultCatIcon from "@/assets/category/adult.svg";
-import { BookOpen, Download, HardDrive, Minus, Plus } from "../icons";
+import { Download, HardDrive, Minus, Plus } from "../icons";
 import { useProfiles } from "@/lib/profiles";
 import { useSettings } from "@/lib/settings";
 import { useSampleArtwork } from "@/lib/sample-artwork";
@@ -33,13 +32,9 @@ export function LibraryTab() {
     { value: "original", label: t("Original") },
   ];
 
-  const setMinFileSize = (v: number) =>
-    update({ localMinFileSizeMb: Math.max(0, Math.round(v)) });
+  const setMinFileSize = (v: number) => update({ localMinFileSizeMb: Math.max(0, Math.round(v)) });
 
-  const pushHideContent = (
-    key: "anime" | "liveTv" | "adult" | "manga",
-    value: boolean,
-  ) => {
+  const pushHideContent = (key: "anime" | "adult", value: boolean) => {
     const next = { ...settings.hideContent, [key]: value };
     update({ hideContent: next });
     if (activeProfile) updateProfile(activeProfile.id, { hideContent: next });
@@ -50,31 +45,17 @@ export function LibraryTab() {
       <Section
         title={t("Content filters")}
         subtitle={t(
-          "Hide entire categories. Toggling these also removes the matching sidebar entries and rails.",
+          "Hide categories from recommendations. Customize tabs separately in the sidebar.",
         )}
       >
         <ToggleRow
           label={t("Hide anime")}
           leading={<CatIcon src={animeCatIcon} />}
           sub={t(
-            "Removes the Anime tab and every anime title from all rows everywhere: Home, Discover, Top 10, and catalogs. Western animation like Pixar is kept, and you can still find anime by searching.",
+            "Hides anime titles from Home, Discover, Top 10, and catalogs. Western animation stays visible. To hide the Anime tab, edit the sidebar.",
           )}
           value={settings.hideContent.anime}
           onChange={(v) => pushHideContent("anime", v)}
-        />
-        <ToggleRow
-          label={t("Hide manga")}
-          leading={<BookOpen size={20} strokeWidth={2} />}
-          sub={t("Removes the Manga tab from the sidebar.")}
-          value={settings.hideContent.manga}
-          onChange={(v) => pushHideContent("manga", v)}
-        />
-        <ToggleRow
-          label={t("Hide Live TV")}
-          leading={<CatIcon src={livetvCatIcon} />}
-          sub={t("Removes the Live TV tab from the sidebar.")}
-          value={settings.hideContent.liveTv}
-          onChange={(v) => pushHideContent("liveTv", v)}
         />
         <ToggleRow
           label={t("Hide adult content")}
@@ -92,6 +73,14 @@ export function LibraryTab() {
         )}
       >
         <SettingGroup label={t("On disk")}>
+          <ToggleRow
+            label={t("Keep folders up to date")}
+            sub={t(
+              "Checks the folders already in your library when you open it and adds anything new it finds. Titles you already have are left alone, including any you corrected with Identify.",
+            )}
+            value={settings.localAutoScan}
+            onChange={(v) => update({ localAutoScan: v })}
+          />
           <SettingRow
             icon={<HardDrive size={18} strokeWidth={2} />}
             label={t("Minimum file size")}
@@ -167,7 +156,7 @@ export function LibraryTab() {
 
 function ArtworkSwatch({ ratio }: { ratio: "portrait" | "landscape" | "logo" }) {
   const t = useT();
-  const art = useSampleArtwork();
+  const art = useSampleArtwork(10);
   if (ratio === "logo") {
     return (
       <div className="flex h-14 w-full items-center justify-center rounded-[10px] bg-elevated px-3">

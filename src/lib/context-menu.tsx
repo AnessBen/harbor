@@ -1,5 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import type { Meta } from "@/lib/cinemeta";
+import type { NavItemId } from "@/chrome/nav-items";
+import type { View } from "@/lib/view";
+import type { MangaProgressEntry } from "@/lib/manga-progress";
+import type { MangaChapter } from "@/lib/manga/model";
 
 export type ViewSummonable = "home" | "discover" | "anime" | "queue" | "addons";
 
@@ -25,8 +29,17 @@ export type ContextMenuTarget =
   | { kind: "edit"; element: HTMLElement | null; selection: string }
   | { kind: "backdrop"; metaId: string; url: string }
   | { kind: "person"; id: number }
-  | { kind: "manga"; id: string }
+  | { kind: "manga"; id: string; title?: string; cover?: string }
+  | { kind: "manga-continue"; entry: MangaProgressEntry }
+  | {
+      kind: "manga-chapter";
+      mangaId: string;
+      mangaTitle?: string;
+      mangaCover?: string;
+      chapter: MangaChapter;
+    }
   | { kind: "ebook"; id: string }
+  | { kind: "nav"; itemId?: NavItemId; view?: View; label?: string; onOpen?: () => void }
   | {
       kind: "subtitle";
       label: string;

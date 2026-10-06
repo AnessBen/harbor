@@ -1,4 +1,13 @@
 const misc: Record<string, string> = {
+  "Hide this tab": "إخفاء علامة التبويب هذه",
+  "Show this tab": "إظهار علامة التبويب هذه",
+  "Nothing hidden.": "لا توجد علامات تبويب مخفية.",
+  "Edit sidebar": "تعديل الشريط الجانبي",
+  "Show all tabs": "إظهار كل علامات التبويب",
+  "Hide categories from recommendations. Customize tabs separately in the sidebar.":
+    "إخفاء فئات من التوصيات. يمكنك تخصيص علامات التبويب بشكل منفصل في الشريط الجانبي.",
+  "Hides anime titles from Home, Discover, Top 10, and catalogs. Western animation stays visible. To hide the Anime tab, edit the sidebar.":
+    "يخفي عناوين الأنمي من الرئيسية والاستكشاف وأفضل 10 والكتالوجات، مع إبقاء الرسوم المتحركة الغربية ظاهرة. لإخفاء علامة تبويب الأنمي، عدّل الشريط الجانبي.",
   Collections: "المجموعات",
   "Open settings": "فتح الإعدادات",
   "Collapse sidebar": "طيّ الشريط الجانبي",
@@ -191,6 +200,12 @@ const misc: Record<string, string> = {
   Reveal: "إظهار",
   "Reveal comments": "إظهار التعليقات",
   "Comments are hidden": "التعليقات مخفية",
+  "Hosted elsewhere": "مستضاف لدى جهة أخرى",
+  "A third party runs these plans. Harbor is not affiliated with them and receives nothing from a signup. Current pricing and terms are on their site.": "تدير هذه الخطط جهة خارجية. Harbor غير مرتبط بها ولا يتلقى شيئًا من أي اشتراك. الأسعار والشروط الحالية على موقعهم.",
+  "{name} can run on a hosted instance": "يمكن تشغيل {name} على نسخة مستضافة",
+  "A third party operates this. Harbor is not affiliated with them, does not resell it, and receives nothing if you sign up. Whatever it costs and whatever it includes is on their site.": "تدير هذا جهة خارجية. Harbor ليس مرتبطًا بها ولا يعيد بيعه ولا يتلقى شيئًا إن اشتركت. السعر وما يشمله مذكور على موقعهم.",
+  "Show comments": "إظهار التعليقات",
+  "Hide comments": "إخفاء التعليقات",
   "You haven't commented yet": "لم تعلق بعد",
   "Reveal image": "إظهار الصورة",
 

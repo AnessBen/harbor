@@ -38,6 +38,7 @@ import { AnilistRows } from "./anime/anilist-rows";
 import { MalRows } from "./anime/mal-rows";
 import { useCwAdvance } from "./home/hooks/use-cw-advance";
 import { detectAnimeForCw, useDetectedAnimeVersion } from "@/lib/anime-detect";
+import { useExternalCw } from "@/lib/feed/external-cw";
 import { RowControls } from "./home/row-controls";
 import {
   applyAnimeRowCustomization,
@@ -99,7 +100,6 @@ import {
 import {
   clearLocalCw,
   listLocalCw,
-  localCwEntry,
   localCwVersion,
   subscribeLocalCw,
 } from "@/lib/local-cw";
@@ -387,18 +387,20 @@ export function AnimeView({ active = true }: { active?: boolean }) {
   }, [simklConnected]);
 
   const animeDetectVer = useDetectedAnimeVersion();
+  const trackerCw = useExternalCw(!hideSharedCw && settings.cwSources.trakt);
   const [cwRootVersion, setCwRootVersion] = useState(0);
   const localCwVer = useSyncExternalStore(subscribeLocalCw, localCwVersion);
   const localAnimeCw = useMemo<LibraryItem[]>(() => {
     void localCwVer;
-    return listLocalCw()
-      .filter((e) => ANIME_CLOUD_ID.test(e.id))
+    return listLocalCw(hideSharedCw)
+      .filter((e) => ANIME_CLOUD_ID.test(e.id) || e.isAnime)
       .map((e) => ({
         _id: e.id,
         type: e.type,
         name: e.name,
         poster: e.poster,
         background: e.background,
+        isAnime: true,
         state: {
           timeOffset: e.positionMs,
           duration: e.durationMs,
@@ -414,16 +416,20 @@ export function AnimeView({ active = true }: { active?: boolean }) {
         _mtime: new Date(e.t).toISOString(),
         local: true,
       }));
-  }, [localCwVer]);
+  }, [localCwVer, hideSharedCw, activeProfile?.id]);
   const continueWatching = useMemo(() => {
     const seen = new Set<string>();
     const seenRoot = new Set<string>();
-    return [...localAnimeCw, ...libItems.filter((i) => !ANIME_CLOUD_ID.test(i._id)), ...simklCw]
+    return [
+      ...localAnimeCw,
+      ...(hideSharedCw ? [] : libItems.filter((i) => !ANIME_CLOUD_ID.test(i._id))),
+      ...(hideSharedCw ? [] : simklCw),
+      ...(hideSharedCw ? [] : trackerCw.filter((i) => i.external === "trakt")),
+    ]
       .filter((i) => {
         if (!isCwMember(i)) return false;
         if (!i.local && !isAnimeCwItem(i)) return false;
         if (isCwDismissed(i)) return false;
-        if (hideSharedCw && localCwEntry(i._id) === null && !i.local) return false;
         if (seen.has(i._id)) return false;
         seen.add(i._id);
         return true;
@@ -441,6 +447,7 @@ export function AnimeView({ active = true }: { active?: boolean }) {
     localAnimeCw,
     libItems,
     simklCw,
+    trackerCw,
     cwVersion,
     animeDetectVer,
     cwRootVersion,
@@ -453,6 +460,7 @@ export function AnimeView({ active = true }: { active?: boolean }) {
       ...localAnimeCw,
       ...libItems.filter((i) => !ANIME_CLOUD_ID.test(i._id)),
       ...simklCw,
+      ...trackerCw.filter((i) => i.external === "trakt"),
     ]
       .filter((i) => isCwMember(i) && (i.local || isAnimeCwItem(i)))
       .map((i) => i._id);
@@ -465,7 +473,7 @@ export function AnimeView({ active = true }: { active?: boolean }) {
     return () => {
       cancelled = true;
     };
-  }, [localAnimeCw, libItems, simklCw]);
+  }, [localAnimeCw, libItems, simklCw, trackerCw, animeDetectVer]);
 
   useEffect(() => {
     publishResumeStates(continueWatching);
@@ -996,7 +1004,16 @@ export function AnimeView({ active = true }: { active?: boolean }) {
             for (const spec of SPECS) {
               if (spec.key === TOP_PICKS_KEY) continue;
               const r = filteredRowsByKey[spec.key] ?? EMPTY_ROW;
-              if (r.ready && r.metas.length === 0) continue;
+              const raw = rowsByKey[spec.key];
+              // Franchise dedupe can strip a freshly loaded page down to a couple of cards while
+              // the next page is already on its way. Showing that stub makes the row visibly pop
+              // as it fills, so it stays a skeleton until it has settled.
+              const settling =
+                r.ready &&
+                r.metas.length < ROW_MIN_VISIBLE &&
+                !!raw?.hasMore &&
+                (raw?.page ?? 1) < ROW_MAX_PAGES;
+              if (r.ready && !settling && r.metas.length === 0) continue;
               const specName = nameOf(spec.key, t(spec.title));
               const rankName = t("Top 10 {name}", { name: specName.replace(/^Top\s*/i, "") });
               const viewAll = () =>
@@ -1008,7 +1025,7 @@ export function AnimeView({ active = true }: { active?: boolean }) {
               rd.push({
                 key: spec.key,
                 name: spec.rank ? rankName : specName,
-                node: !r.ready ? (
+                node: !r.ready || settling ? (
                   <RowSkeleton title={spec.rank ? rankName : specName} />
                 ) : spec.rank && r.metas.length >= 10 ? (
                   <Row

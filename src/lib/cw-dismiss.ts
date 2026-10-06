@@ -3,16 +3,26 @@ import { clearResume, readResumeEntry } from "./resume";
 import { setItemWithRecovery } from "./storage-recovery";
 import { episodeFromVideoId, type LibraryItem } from "./stremio";
 import { cloudLibraryPut } from "./stremio-write-queue";
+import { privateCwProfileId } from "./cw-profile";
 
 const SIMKL_KEY = "harbor.cw.dismissed.simkl";
 const DISMISS_KEY = "harbor.cw.dismissed.v1";
+const PRIVATE_PREFIX = "harbor.cw.dismissed.private.v1.";
+let loadedKey: string | null = null;
 const dismissed = new Map<string, number>();
 const dismissedVid = new Map<string, string>();
 const dismissedPos = new Map<string, { s?: number; e?: number; p: number }>();
 const listeners = new Set<() => void>();
 let version = 0;
 
-(() => {
+function loadDismissed(): void {
+  const profileId = privateCwProfileId();
+  const key = profileId ? PRIVATE_PREFIX + profileId : DISMISS_KEY;
+  if (key === loadedKey) return;
+  loadedKey = key;
+  dismissed.clear();
+  dismissedVid.clear();
+  dismissedPos.clear();
   const loadNow = Date.now();
   const add = (k: string, ms: number) => {
     const prev = dismissed.get(k);
@@ -20,7 +30,7 @@ let version = 0;
   };
   let legacy = false;
   try {
-    const raw = JSON.parse(localStorage.getItem(DISMISS_KEY) ?? "null");
+    const raw = JSON.parse(localStorage.getItem(key) ?? "null");
     if (Array.isArray(raw)) {
       for (const v of raw) if (typeof v === "string") add(v, loadNow);
       legacy = true;
@@ -47,7 +57,7 @@ let version = 0;
     }
   } catch {}
   try {
-    const raw = JSON.parse(localStorage.getItem(SIMKL_KEY) ?? "[]");
+    const raw = JSON.parse(profileId ? "[]" : localStorage.getItem(SIMKL_KEY) ?? "[]");
     const arr = Array.isArray(raw) ? (raw as string[]) : [];
     for (const v of arr) {
       if (typeof v !== "string" || !v) continue;
@@ -60,7 +70,7 @@ let version = 0;
     }
   } catch {}
   if (legacy) persistDismissed();
-})();
+}
 
 function persistDismissed(): void {
   try {
@@ -83,7 +93,7 @@ function persistDismissed(): void {
         out[k] = t;
       }
     }
-    setItemWithRecovery(DISMISS_KEY, JSON.stringify(out));
+    setItemWithRecovery(loadedKey ?? DISMISS_KEY, JSON.stringify(out));
   } catch {}
 }
 
@@ -130,7 +140,30 @@ function progressRatio(item: LibraryItem): number {
   return Math.min(1, Math.max(item.state?.timeOffset ?? 0, resumeMs) / duration);
 }
 
+// A dismissal is lifted only by moving forward. An entry reporting an earlier episode
+// than the one dismissed - a stale tracker copy, or a sibling entry sharing the same id -
+// is not new progress, so it must stay hidden instead of resurfacing.
+function isEpisodeAhead(
+  current: { season?: number; episode?: number },
+  dismissed: { season?: number; episode?: number },
+): boolean | null {
+  const { season: cs, episode: ce } = current;
+  const { season: ds, episode: de } = dismissed;
+  if (cs == null || ce == null || ds == null || de == null) return null;
+  if (
+    !Number.isFinite(cs) ||
+    !Number.isFinite(ce) ||
+    !Number.isFinite(ds) ||
+    !Number.isFinite(de)
+  ) {
+    return null;
+  }
+  if (cs !== ds) return cs > ds;
+  return ce > de;
+}
+
 export function isCwDismissed(item: LibraryItem): boolean {
+  loadDismissed();
   const plain = dismissed.get(item._id);
   const ext = item.external ? dismissed.get(`${item.external}|${item._id}`) : undefined;
   const dismissedAt = Math.max(plain ?? -1, ext ?? -1);
@@ -153,16 +186,23 @@ export function isCwDismissed(item: LibraryItem): boolean {
     }
   }
   if (vid && typeof curVid === "string" && curVid) {
-    if (vid !== curVid) return false;
+    if (vid !== curVid) {
+      const ahead = isEpisodeAhead(episodeFromVideoId(curVid) ?? {}, episodeFromVideoId(vid) ?? {});
+      if (ahead === null || ahead) return false;
+    }
   } else if (pos != null) {
     const { season, episode } = resolveEpisode(item);
-    if (season !== pos.s || episode !== pos.e) return false;
+    if (season !== pos.s || episode !== pos.e) {
+      const ahead = isEpisodeAhead({ season, episode }, { season: pos.s, episode: pos.e });
+      if (ahead === null || ahead) return false;
+    }
   }
   if (activity > 0) return activity <= dismissedAt;
   return true;
 }
 
 export function dismissCw(item: LibraryItem, authKey: string | null): void {
+  loadDismissed();
   const id = item._id;
   const now = new Date().toISOString();
   const nowMs = Date.parse(now);
@@ -186,7 +226,7 @@ export function dismissCw(item: LibraryItem, authKey: string | null): void {
   }
   persistDismissed();
   emit();
-  if (!authKey || !item.state) return;
+  if (!authKey || !item.state || privateCwProfileId()) return;
   const vid = item.state.video_id ?? "";
   const kitsuThreeSeg = /^(kitsu|mal|anilist|anidb):/.test(id) && vid.split(":").length === 3;
   const se = kitsuThreeSeg ? null : episodeFromVideoId(item.state.video_id);
@@ -215,4 +255,13 @@ export function useCwDismissVersion(): number {
     () => version,
     () => version,
   );
+}
+
+if (typeof window !== "undefined") {
+  const refresh = () => {
+    loadDismissed();
+    emit();
+  };
+  window.addEventListener("harbor:active-profile-changed", refresh);
+  window.addEventListener("harbor:profiles-updated", refresh);
 }

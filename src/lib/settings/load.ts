@@ -40,6 +40,7 @@ const RETIRED_GEMINI = new Set([
 import { DEFAULT, STORAGE_KEY } from "./defaults";
 import type { Settings } from "./types";
 import { adoptLegacyPlaylists, readPlaylists } from "@/lib/iptv/playlists-store";
+import { sanitizeDisplaySelection } from "@/lib/monitors";
 
 const HEX_RE = /^#[0-9a-f]{6}$/i;
 
@@ -162,6 +163,7 @@ function parseStoredSettings(raw: string | null): Settings {
       _contentAdvisoryOnByDefaultV1?: boolean;
       _skipButtonHideSecV2?: boolean;
       _anilistSyncOnV1?: boolean;
+      _musicSeekThumbV1?: boolean;
       _rememberLastStreamOnV1?: boolean;
       _streamSortAddonV1?: boolean;
       scrapers?: unknown;
@@ -171,6 +173,7 @@ function parseStoredSettings(raw: string | null): Settings {
       _tennisWtaV1?: boolean;
       _liquidGlassOptIn?: boolean;
       _navThemeRepairV1?: boolean;
+      _navHideMigrateV1?: boolean;
       _playlistsTabV1?: boolean;
       _smoothScrollOptIn?: boolean;
       _streamCacheCapV1?: boolean;
@@ -234,6 +237,11 @@ function parseStoredSettings(raw: string | null): Settings {
     if (!parsed._anilistSyncOnV1) {
       parsed.anilistAutoSync = true;
       parsed._anilistSyncOnV1 = true;
+    }
+    if (!parsed._musicSeekThumbV1) {
+      parsed.musicSeekThumb = true;
+      parsed.musicSeekThumbHover = true;
+      parsed._musicSeekThumbV1 = true;
     }
     if (!parsed._rememberLastStreamOnV1) {
       parsed.rememberLastStream = true;
@@ -319,11 +327,26 @@ function parseStoredSettings(raw: string | null): Settings {
       }
     }
     if (!parsed._navThemeRepairV1) {
-      const nav = parsed.navCustomization as Partial<Settings["navCustomization"]> | undefined;
-      if (nav && Array.isArray(nav.hidden) && nav.hidden.length > 0) {
-        parsed.navCustomization = { ...nav, hidden: [] } as Settings["navCustomization"];
-      }
       parsed._navThemeRepairV1 = true;
+    }
+    if (!parsed._navHideMigrateV1) {
+      const legacy = (parsed.hideContent ?? {}) as Record<string, unknown>;
+      const carry: string[] = [];
+      if (legacy.manga === true) carry.push("manga");
+      if (legacy.liveTv === true) carry.push("live");
+      if (carry.length > 0) {
+        const prevNav = (parsed.navCustomization ?? {}) as { hidden?: unknown };
+        const prev = Array.isArray(prevNav.hidden)
+          ? prevNav.hidden.filter((x): x is string => typeof x === "string")
+          : [];
+        parsed.navCustomization = {
+          ...parsed.navCustomization,
+          hidden: [...prev, ...carry.filter((c) => !prev.includes(c))],
+        } as Settings["navCustomization"];
+      }
+      delete legacy.manga;
+      delete legacy.liveTv;
+      parsed._navHideMigrateV1 = true;
     }
     if (parsed.cwSources == null) {
       const ext = parsed.externalContinueWatching === true;
@@ -340,13 +363,21 @@ function parseStoredSettings(raw: string | null): Settings {
         parsed.topbarGlassControls,
       ),
       posterDockTransitionMs: sanitizePosterDockTransition(parsed.posterDockTransitionMs),
+      bigPictureDisplay: sanitizeDisplaySelection(parsed.bigPictureDisplay),
+      playerSeparateDisplay: sanitizeDisplaySelection(parsed.playerSeparateDisplay),
+      playerSeparateCoverTaskbar:
+        typeof parsed.playerSeparateCoverTaskbar === "boolean"
+          ? parsed.playerSeparateCoverTaskbar
+          : DEFAULT.playerSeparateCoverTaskbar,
       fullscreenClockEnabled:
         typeof parsed.fullscreenClockEnabled === "boolean"
           ? parsed.fullscreenClockEnabled
           : DEFAULT.fullscreenClockEnabled,
       controllerCursor: sanitizeControllerCursor(parsed.controllerCursor),
       screensaverStyle:
-        parsed.screensaverStyle === "catBoat" || parsed.screensaverStyle === "custom"
+        parsed.screensaverStyle === "catBoat" ||
+        parsed.screensaverStyle === "halloween" ||
+        parsed.screensaverStyle === "custom"
           ? parsed.screensaverStyle
           : "ambient",
       screensaverMedia: sanitizeScreensaverMedia(parsed.screensaverMedia),

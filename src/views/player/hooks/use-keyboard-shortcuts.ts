@@ -6,6 +6,7 @@ import { effectiveBinding, eventToBinding, isTypingTarget, type HotkeyId } from 
 import { isWindowsDesktop } from "@/lib/platform";
 import { isRtxHdrBlocked, isRtxVsrBlocked } from "@/lib/player/rtx-video-policy";
 import { mediaKeyGate } from "@/lib/media-session";
+import { setVideoOwnsMediaKeys } from "@/lib/player/media-key-owner";
 import { useSettings } from "@/lib/settings";
 import { isAnyFullscreen, exitAnyFullscreen } from "@/lib/fullscreen-state";
 import { isBigPictureActive } from "@/lib/big-picture";
@@ -20,6 +21,7 @@ export function useKeyboardShortcuts(params: {
   drawMode: boolean;
   setDrawMode: (v: boolean) => void;
   closePlayer: () => void;
+  returnToPreview?: () => void;
   playPauseToggle: () => void;
   seekStep: (delta: number) => void;
   seekTo: (sec: number) => void;
@@ -60,6 +62,7 @@ export function useKeyboardShortcuts(params: {
     drawMode,
     setDrawMode,
     closePlayer,
+    returnToPreview,
     playPauseToggle,
     seekStep,
     seekTo,
@@ -150,6 +153,8 @@ export function useKeyboardShortcuts(params: {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      const dock = document.querySelector('[data-harbor-player][data-docked="true"]');
+      if (dock && !dock.contains(e.target as Node) && !e.key.startsWith("Media")) return;
       if (isPlayerInteractionLocked()) {
         if (e.cancelable) e.preventDefault();
         return;
@@ -189,6 +194,11 @@ export function useKeyboardShortcuts(params: {
         if (getLeaveConfirm().open) return;
         if (drawMode) {
           setDrawMode(false);
+          return;
+        }
+        if (returnToPreview) {
+          e.preventDefault();
+          returnToPreview();
           return;
         }
         void (async () => {
@@ -537,6 +547,7 @@ export function useKeyboardShortcuts(params: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     closePlayer,
+    returnToPreview,
     togglePip,
     drawMode,
     snap.muted,
@@ -581,6 +592,7 @@ export function useKeyboardShortcuts(params: {
 
   useEffect(() => {
     if (typeof window === "undefined" || !("__TAURI_INTERNALS__" in window)) return;
+    setVideoOwnsMediaKeys(true);
     let dead = false;
     let cleanup: (() => void) | undefined;
     void import("@tauri-apps/api/event").then(async ({ listen }) => {
@@ -641,6 +653,7 @@ export function useKeyboardShortcuts(params: {
     });
     return () => {
       dead = true;
+      setVideoOwnsMediaKeys(false);
       cleanup?.();
     };
   }, []);

@@ -1,13 +1,18 @@
 import {
+  ArrowDown,
   ArrowDownToLine,
   ArrowLeft,
+  ArrowUp,
+  BookOpen,
   Bookmark,
   BookmarkCheck,
+  Check,
   CheckCheck,
   ClipboardPaste,
   Copy,
   Download,
   ExternalLink,
+  Eye,
   EyeOff,
   Heart,
   Info,
@@ -15,15 +20,18 @@ import {
   Magnet,
   Maximize,
   Navigation,
+  Pencil,
   RotateCcw,
   Share2,
   UserPlus,
   Wallpaper,
+  X,
 } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useActiveAddon } from "@/lib/active-addon";
 import { copyText } from "@/components/player/copy-link-button";
 import { emitListToast } from "@/components/lists/list-toast";
+import { TvModalClose } from "@/components/tv-modal-close";
 import { shareDeepLink } from "@/lib/deep-link";
 import { magnetFromHash } from "@/lib/debrid/types";
 import { openUrl } from "@/lib/window";
@@ -45,6 +53,30 @@ import { useIsFavorite, useMediaFavorites } from "@/lib/media-favorites";
 import { toggleAutoDownload, useIsAutoDownloaded } from "@/lib/auto-download";
 import { clearTitleBackdrop, getTitleBackdrop, setTitleBackdrop } from "@/lib/title-backdrop";
 import { MyListSubmenu } from "./context-menu/my-list-submenu";
+import { useSettings } from "@/lib/settings";
+import {
+  NAV_ITEMS,
+  effectiveNavOrder,
+  moveNavItem,
+  resetNavCustomization,
+  toggleNavHidden,
+} from "@/chrome/nav-items";
+import { setNavEditMode, useNavEditMode } from "@/chrome/nav-edit-mode";
+import { useProfiles } from "@/lib/profiles";
+import { useIsMangaFavorite, useMangaFavorites } from "@/lib/manga-favorites";
+import {
+  recordMangaChapterRead,
+  removeMangaChapterRead,
+  removeMangaProgressEntry,
+  useMangaProgressEntry,
+  useReadMangaChapterIds,
+} from "@/lib/manga-progress";
+import { addMangaBookmark, removeMangaBookmark, useMangaBookmarks } from "@/lib/manga-bookmarks";
+import { downloadChapter } from "@/lib/manga-downloads";
+import { requestMangaChapterRead, setMangaReadIntent } from "@/lib/manga/read-intent";
+import { mangaLists } from "@/lib/manga-lists";
+import { mangaChapters } from "@/lib/manga/api";
+import { resolveReaderChapters } from "@/lib/manga/chapter-identity";
 
 const MENU_WIDTH = 220;
 const SUBTITLE_MENU_WIDTH = 360;
@@ -79,6 +111,7 @@ export function ContextMenu() {
   const { state, close, open } = useContextMenu();
   const {
     openMeta,
+    openManga,
     setView,
     openQueue,
     openPicker,
@@ -111,6 +144,22 @@ export function ContextMenu() {
   const { toggle: toggleFavorite } = useMediaFavorites();
   const isFav = useIsFavorite(targetMetaId);
   const isAutoDl = useIsAutoDownloaded(targetMetaId ?? "");
+  const { settings: appSettings, update: updateSettings } = useSettings();
+  const navEditing = useNavEditMode();
+  const commitNav = (next: typeof appSettings.navCustomization) =>
+    updateSettings({ navCustomization: next });
+
+  const mangaCard = state?.target.kind === "manga" ? state.target : null;
+  const mangaContinue = state?.target.kind === "manga-continue" ? state.target : null;
+  const mangaChapter = state?.target.kind === "manga-chapter" ? state.target : null;
+  const menuMangaId = mangaCard?.id ?? mangaContinue?.entry.id ?? mangaChapter?.mangaId;
+  const { activeId } = useProfiles();
+  const pid = activeId ?? "default";
+  const { toggle: toggleMangaFav } = useMangaFavorites();
+  const isMangaFav = useIsMangaFavorite(menuMangaId ?? "");
+  const cardProgress = useMangaProgressEntry(menuMangaId);
+  const chapterBookmarks = useMangaBookmarks(mangaChapter?.mangaId);
+  const readChapterIds = useReadMangaChapterIds(mangaChapter?.mangaId);
 
   const shareLink = (type: string, id: string) => {
     void copyText(shareDeepLink(type, id)).then((ok) => {
@@ -151,9 +200,9 @@ export function ContextMenu() {
         open(e, { kind: "person", id: personId });
         return;
       }
-      if (topKind === "manga" && mangaId) {
+      if (topKind === "manga") {
         e.preventDefault();
-        open(e, { kind: "manga", id: mangaId });
+        if (mangaId) open(e, { kind: "manga", id: mangaId });
         return;
       }
       if (topKind === "ebook" && ebookId) {
@@ -202,6 +251,47 @@ export function ContextMenu() {
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [state, close]);
+
+  const [flipUp, setFlipUp] = useState(0);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el || !state) {
+      setFlipUp(0);
+      return;
+    }
+    const measure = () => {
+      const estimatedHeight = state.target.kind === "subtitle" && state.target.details ? 460 : 120;
+      const anchorTop = Math.max(
+        8,
+        Math.min(state.pos.y, window.innerHeight - estimatedHeight - 8),
+      );
+      // Use layout height, not the opening animation's scaled rectangle.
+      const overflow = anchorTop + el.offsetHeight - (window.innerHeight - 8);
+      setFlipUp(Math.min(Math.max(0, overflow), anchorTop - 8));
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [state]);
+
+  useLayoutEffect(() => {
+    if (state?.target.kind !== "nav") return;
+    const trigger = document.activeElement;
+    const buttons = ref.current?.querySelectorAll<HTMLButtonElement>(
+      'button[role="menuitem"]:not(:disabled)',
+    );
+    buttons?.forEach((button, index) => {
+      button.tabIndex = index === 0 ? 0 : -1;
+    });
+    // Let the opening pointer event finish before moving focus into the menu.
+    const focusFrame = requestAnimationFrame(() => buttons?.[0]?.focus({ preventScroll: true }));
+    return () => {
+      cancelAnimationFrame(focusFrame);
+      if (trigger instanceof HTMLElement && trigger.isConnected)
+        trigger.focus({ preventScroll: true });
+    };
+  }, [state]);
 
   if (!state) return null;
 
@@ -550,12 +640,279 @@ export function ContextMenu() {
     );
   } else if (state.target.kind === "manga") {
     const target = state.target;
+    const resumeEntry = cardProgress && cardProgress.id === target.id ? cardProgress : null;
+    if (resumeEntry) {
+      const resumeLabel = resumeEntry.chapterNumber
+        ? t("Resume Ch. {n}", { n: resumeEntry.chapterNumber })
+        : t("Resume reading");
+      items.push(
+        <Item
+          key="manga-resume"
+          icon={<RotateCcw size={14} strokeWidth={2} />}
+          label={resumeLabel}
+          onClick={() => {
+            setMangaReadIntent(resumeEntry);
+            openManga(resumeEntry.id);
+            close();
+          }}
+          accent
+        />,
+      );
+    } else {
+      items.push(
+        <Item
+          key="manga-start"
+          icon={<BookOpen size={14} strokeWidth={2} />}
+          label={t("Start reading")}
+          onClick={() => {
+            close();
+            void (async () => {
+              try {
+                const chs = await mangaChapters(target.id);
+                const first = resolveReaderChapters(chs)[0] ?? chs[0];
+                if (first) requestMangaChapterRead(target.id, first.id);
+              } catch {}
+              openManga(target.id);
+            })();
+          }}
+          accent
+        />,
+      );
+    }
     items.push(
+      <Item
+        key="manga-details"
+        icon={<Info size={14} strokeWidth={2} />}
+        label={t("View details")}
+        onClick={() => {
+          openManga(target.id);
+          close();
+        }}
+      />,
+    );
+    items.push(
+      <Item
+        key="manga-favorite"
+        icon={<Heart size={14} strokeWidth={2} fill={isMangaFav ? "currentColor" : "none"} />}
+        label={isMangaFav ? t("Favorited") : t("Favorite")}
+        onClick={() => {
+          toggleMangaFav({ id: target.id, title: target.title, cover: target.cover });
+          close();
+        }}
+        accent={isMangaFav}
+      />,
+      <MyListSubmenu
+        key="manga-list"
+        item={{ id: target.id, type: "manga", name: target.title, poster: target.cover }}
+        store={mangaLists}
+        onClose={close}
+      />,
       <Item
         key="share-manga"
         icon={<Share2 size={14} strokeWidth={2} />}
         label={t("Share as link")}
         onClick={() => shareLink("manga", target.id)}
+      />,
+    );
+  } else if (state.target.kind === "nav") {
+    const target = state.target;
+    const navItem = target.itemId ? NAV_ITEMS.find((it) => it.id === target.itemId) : undefined;
+    if (navItem && target.itemId) {
+      const order = effectiveNavOrder(appSettings.navCustomization);
+      const at = order.indexOf(target.itemId);
+      const prevId = at > 0 ? order[at - 1] : null;
+      const nextId = at >= 0 && at < order.length - 1 ? order[at + 1] : null;
+      items.push(
+        <Item
+          key="nav-open"
+          icon={<Info size={14} strokeWidth={2} />}
+          label={t("Open")}
+          disabled={!target.onOpen}
+          onClick={() => {
+            target.onOpen?.();
+            close();
+          }}
+        />,
+        <Item
+          key="nav-hide"
+          icon={<EyeOff size={14} strokeWidth={2} />}
+          label={t("Hide this tab")}
+          onClick={() => {
+            commitNav(toggleNavHidden(appSettings.navCustomization, target.itemId!));
+            close();
+          }}
+        />,
+      );
+      if (prevId) {
+        items.push(
+          <Item
+            key="nav-up"
+            icon={<ArrowUp size={14} strokeWidth={2} />}
+            label={t("Move up")}
+            onClick={() => {
+              commitNav(
+                moveNavItem(appSettings.navCustomization, target.itemId!, prevId, "before"),
+              );
+              close();
+            }}
+          />,
+        );
+      }
+      if (nextId) {
+        items.push(
+          <Item
+            key="nav-down"
+            icon={<ArrowDown size={14} strokeWidth={2} />}
+            label={t("Move down")}
+            onClick={() => {
+              commitNav(moveNavItem(appSettings.navCustomization, target.itemId!, nextId, "after"));
+              close();
+            }}
+          />,
+        );
+      }
+    }
+    items.push(
+      <Item
+        key="nav-edit"
+        icon={<Pencil size={14} strokeWidth={2} />}
+        label={navEditing ? t("Done editing") : t("Edit sidebar")}
+        onClick={() => {
+          setNavEditMode(!navEditing);
+          close();
+        }}
+        accent={navEditing}
+      />,
+      <Item
+        key="nav-show-all"
+        icon={<Eye size={14} strokeWidth={2} />}
+        label={t("Show all tabs")}
+        onClick={() => {
+          commitNav({ ...appSettings.navCustomization, hidden: [] });
+          close();
+        }}
+      />,
+      <Item
+        key="nav-reset"
+        icon={<RotateCcw size={14} strokeWidth={2} />}
+        label={t("Reset layout")}
+        onClick={() => {
+          commitNav(resetNavCustomization());
+          close();
+        }}
+      />,
+    );
+  } else if (state.target.kind === "manga-continue") {
+    const entry = state.target.entry;
+    const resumeLabel = entry.chapterNumber
+      ? t("Resume Ch. {n}", { n: entry.chapterNumber })
+      : t("Resume reading");
+    items.push(
+      <Item
+        key="continue-resume"
+        icon={<RotateCcw size={14} strokeWidth={2} />}
+        label={resumeLabel}
+        onClick={() => {
+          setMangaReadIntent(entry);
+          openManga(entry.id);
+          close();
+        }}
+        accent
+      />,
+      <Item
+        key="continue-details"
+        icon={<Info size={14} strokeWidth={2} />}
+        label={t("View details")}
+        onClick={() => {
+          openManga(entry.id);
+          close();
+        }}
+      />,
+      <Item
+        key="continue-remove"
+        icon={<X size={14} strokeWidth={2} />}
+        label={t("Remove from continue reading")}
+        onClick={() => {
+          removeMangaProgressEntry(pid, entry.id);
+          close();
+        }}
+      />,
+      <Item
+        key="share-continue"
+        icon={<Share2 size={14} strokeWidth={2} />}
+        label={t("Share as link")}
+        onClick={() => shareLink("manga", entry.id)}
+      />,
+    );
+  } else if (state.target.kind === "manga-chapter") {
+    const target = state.target;
+    const chapter = target.chapter;
+    const chapterLabel =
+      chapter.chapter == null ? t("Oneshot") : t("Chapter {n}", { n: chapter.chapter });
+    const existingBookmark = chapterBookmarks.find((bm) => bm.chapterId === chapter.id);
+    const isRead = chapter.serverRead === true || readChapterIds.has(chapter.id);
+    items.push(
+      <Item
+        key="chapter-read"
+        icon={<BookOpen size={14} strokeWidth={2} />}
+        label={t("Read {label}", { label: chapterLabel })}
+        onClick={() => {
+          requestMangaChapterRead(target.mangaId, chapter.id);
+          openManga(target.mangaId);
+          close();
+        }}
+        accent
+      />,
+      <Item
+        key="chapter-bookmark"
+        icon={
+          existingBookmark ? (
+            <BookmarkCheck size={14} strokeWidth={2} />
+          ) : (
+            <Bookmark size={14} strokeWidth={2} />
+          )
+        }
+        label={existingBookmark ? t("Bookmarked") : t("Bookmark")}
+        onClick={() => {
+          if (existingBookmark) removeMangaBookmark(pid, existingBookmark.id);
+          else
+            addMangaBookmark(pid, {
+              mangaId: target.mangaId,
+              title: target.mangaTitle ?? "",
+              cover: target.mangaCover,
+              chapterId: chapter.id,
+              chapterNumber: chapter.chapter,
+              chapterLabel,
+              page: 1,
+              totalPages: 1,
+            });
+          close();
+        }}
+        accent={!!existingBookmark}
+      />,
+      <Item
+        key="chapter-download"
+        icon={<Download size={14} strokeWidth={2} />}
+        label={t("Download chapter")}
+        onClick={() => {
+          void downloadChapter(target.mangaId, chapter.id, {
+            title: target.mangaTitle,
+            cover: target.mangaCover,
+            chapter: chapter.chapter,
+          });
+          close();
+        }}
+      />,
+      <Item
+        key="chapter-read-flag"
+        icon={isRead ? <EyeOff size={14} strokeWidth={2} /> : <Check size={14} strokeWidth={2} />}
+        label={isRead ? t("Mark as unread") : t("Mark as read")}
+        onClick={() => {
+          if (isRead) removeMangaChapterRead(pid, target.mangaId, chapter.id);
+          else recordMangaChapterRead(pid, target.mangaId, chapter.id);
+          close();
+        }}
+        accent={isRead}
       />,
     );
   } else if (state.target.kind === "ebook") {
@@ -636,10 +993,41 @@ export function ContextMenu() {
       <div
         ref={ref}
         role="menu"
+        data-tv-focus-scope={state.target.kind === "nav" || undefined}
+        onKeyDown={(e) => {
+          if (state.target.kind !== "nav") return;
+          if (e.key === "Escape" || e.key === "Tab") {
+            if (e.key === "Escape") e.preventDefault();
+            e.stopPropagation();
+            close();
+            return;
+          }
+          if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(e.key)) return;
+          e.preventDefault();
+          e.stopPropagation();
+          const buttons = Array.from(
+            e.currentTarget.querySelectorAll<HTMLButtonElement>(
+              'button[role="menuitem"]:not(:disabled)',
+            ),
+          );
+          if (!buttons.length) return;
+          const index = buttons.indexOf(document.activeElement as HTMLButtonElement);
+          const next =
+            e.key === "Home"
+              ? 0
+              : e.key === "End"
+                ? buttons.length - 1
+                : (index + (e.key === "ArrowDown" ? 1 : -1) + buttons.length) % buttons.length;
+          buttons.forEach((button, i) => {
+            button.tabIndex = i === next ? 0 : -1;
+          });
+          buttons[next].focus({ preventScroll: true });
+        }}
         aria-label={subtitleDetails ? t("Subtitle details") : undefined}
-        style={{ left, top, width: menuWidth, maxHeight: "calc(100vh - 16px)" }}
-        className="fixed z-[145] flex flex-col overflow-y-auto rounded-xl border border-edge bg-elevated p-1 shadow-[0_18px_50px_-15px_rgba(0,0,0,0.7)] animate-popover-in"
+        style={{ left, top: top - flipUp, width: menuWidth, maxHeight: "calc(100vh - 16px)" }}
+        className={`fixed z-[145] flex flex-col overflow-y-auto rounded-xl border border-edge bg-elevated p-1 shadow-[0_18px_50px_-15px_rgba(0,0,0,0.7)] ${state.target.kind === "nav" ? "" : "animate-popover-in"}`}
       >
+        {state.target.kind === "nav" && <TvModalClose onClose={close} label={t("Close")} />}
         {items}
       </div>
     </>

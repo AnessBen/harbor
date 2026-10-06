@@ -12,6 +12,7 @@ import {
   type MangaSummary,
 } from "@/lib/manga/api";
 import { useMangaFavorites } from "@/lib/manga-favorites";
+import { subscribeMangaLibraryChanged } from "@/lib/manga/library-events";
 import { activeMangaSource, activeMangaSourceId, subscribeMangaSources } from "@/lib/manga/sources";
 import type { SuwayomiSource } from "@/lib/manga/sources/suwayomi/provider";
 import {
@@ -48,10 +49,12 @@ export function MangaBrowse({
   onOpen,
   onManageSources,
   onBrowseExtension,
+  onOpenLibrary,
 }: {
   onOpen: (mangaId: string) => void;
   onManageSources: () => void;
   onBrowseExtension: (source: SuwayomiSource) => void;
+  onOpenLibrary?: () => void;
 }) {
   const t = useT();
   const [query, setQuery] = useState("");
@@ -97,6 +100,10 @@ export function MangaBrowse({
 
   const reload = useCallback(() => setReloadTick((n) => n + 1), []);
 
+  useEffect(() => subscribeMangaLibraryChanged(() => {
+    if (/(?:^|::)category:\d+$/.test(tagRef.current)) reload();
+  }), [reload]);
+
   const sourceRef = useRef(activeMangaSourceId());
   const activeSource = activeMangaSource();
   const allExtensionsMode = tagId === "" && !query.trim() && activeSource?.kind === "suwayomi";
@@ -117,6 +124,7 @@ export function MangaBrowse({
         const id = activeMangaSourceId();
         if (id === sourceRef.current) return;
         sourceRef.current = id;
+        setTagId("");
         reload();
       }),
     [reload],
@@ -338,7 +346,7 @@ export function MangaBrowse({
           />
         </div>
         <SourceDropdown />
-        <TagDropdown tagId={tagId} onSelect={setTagId} />
+        <TagDropdown tagId={tagId} onSelect={setTagId} onOpenLibrary={onOpenLibrary} />
         {activeSource?.kind === "suwayomi" && <LanguageDropdown />}
         <ManageServersButton onClick={onManageSources} className="ms-auto me-2" />
       </div>

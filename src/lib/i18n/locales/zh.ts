@@ -1,3 +1,12 @@
+import mediaStart from "./zh/media-start";
+import spooktober from "./zh/spooktober";
+import listenTogether from "./zh/listen-together";
+import music from "./zh/music";
+import sportsConsent from "./zh/sports-consent";
+import sportsStatistics from "./zh/sports-statistics";
+import sportsApi from "./zh/sports-api";
+import esportsArena from "./zh/esports-arena";
+import sportsHub from "./zh/sports-hub";
 import ebookSources from "./zh/ebook-sources";
 import settingsRefinements from "./zh/settings-refinements";
 import coverage from "./zh/coverage";
@@ -19,8 +28,19 @@ import books from "./zh/books";
 import system from "./zh/system";
 import plugins from "./zh/plugins";
 import brands from "./zh/brands";
+import bpSports from "./zh/bp-sports";
+
+import nytTv from "./zh/nyt-tv";
 
 const zh: Record<string, string> = {
+  "Translations": "翻译",
+  "Translating…": "正在翻译…",
+  "Showing {lang}": "正在显示{lang}",
+  "Show all": "显示全部",
+  ...mediaStart,
+  ...spooktober,
+  ...videoCast,
+  ...music,
   ...ebookSources,
   ...coverage,
   ...sweepA,
@@ -42,6 +62,15 @@ const zh: Record<string, string> = {
   ...settingsRefinements,
   ...plugins,
   ...brands,
+  ...sportsHub,
+  ...sportsConsent,
+  ...sportsStatistics,
+  ...sportsApi,
+  ...esportsArena,
+  ...bpSports,
+  ...listenTogether,
+  ...nytTv,
 };
 
 export default zh;
+import videoCast from "./zh/video-cast";

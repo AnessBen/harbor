@@ -1,14 +1,39 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { MOVIE_GENRES } from "@/lib/feed/tags";
 import { metaLooksAnime } from "@/lib/anime-detect";
 import { useParental } from "@/lib/parental";
-import { searchAll, searchAnime, searchCinemeta, searchLiveTvChannels, type SearchResults } from "@/lib/search";
-import { searchAddonCatalogs, searchAddonGroups, mergeMetas, type AddonQuery } from "@/lib/search-addons";
+import {
+  searchAll,
+  searchAnime,
+  searchCinemeta,
+  searchLiveTvChannels,
+  type SearchResults,
+} from "@/lib/search";
+import {
+  searchAddonCatalogs,
+  searchAddonGroups,
+  mergeMetas,
+  type AddonQuery,
+} from "@/lib/search-addons";
 import { searchAddonIndex } from "@/lib/search-addon-index";
 import { createSearchRequestGuard } from "@/lib/search-request-guard";
 import { normalizeSearchQuery } from "@/lib/search-query";
 import { searchManga } from "@/lib/manga/api";
 import type { MangaSummary } from "@/lib/manga/model";
+import { searchEBooks, type EBook } from "@/lib/ebook/api";
+import { searchTyped } from "@/lib/music/catalog";
+import { toMusicHits } from "@/lib/search-music-hits";
+import type { MusicSearchHit } from "@/lib/search";
+import { searchSportsEvents, type SportsEventHit } from "@/lib/sports/search-events";
 import { anilistCharacterSearch, type CharacterHit } from "@/lib/anilist/character";
 import { gatherCatalogAddons, type Addon } from "@/lib/addons";
 import { useAuth } from "@/lib/auth";
@@ -80,7 +105,11 @@ type TitledMeta = { name?: string; releaseInfo?: string };
 function dedupeByTitle<T extends TitledMeta>(list: T[]): T[] {
   const seen = new Map<string, T[]>();
   const out: T[] = [];
-  const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const norm = (s: string) =>
+    s
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim();
   for (const m of list) {
     const key = norm(m.name ?? "");
     if (!key) {
@@ -122,7 +151,10 @@ function upsertAddonQuery(list: AddonQuery[], q: AddonQuery): AddonQuery[] {
 }
 
 function normShow(s: string): string {
-  return s.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  return s
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
 }
 
 function loadRecent(): string[] {
@@ -132,9 +164,7 @@ function loadRecent(): string[] {
     const arr = JSON.parse(raw);
     if (!Array.isArray(arr)) return [];
     const all = arr.filter((x): x is string => typeof x === "string");
-    const clean = all
-      .filter((x) => !isMagnetInput(x) && !isDirectVideoUrl(x))
-      .slice(0, MAX_RECENT);
+    const clean = all.filter((x) => !isMagnetInput(x) && !isDirectVideoUrl(x)).slice(0, MAX_RECENT);
     if (clean.length !== all.length) {
       try {
         localStorage.setItem(RECENT_KEY, JSON.stringify(clean));
@@ -173,7 +203,9 @@ export function SearchProvider({ children }: { children: ReactNode }) {
   const requestGuardRef = useRef(createSearchRequestGuard());
   const tmdbCacheRef = useRef<SearchCache<SearchResults | null>>(new Map());
   const animeCacheRef = useRef<SearchCache<Awaited<ReturnType<typeof searchAnime>>>>(new Map());
-  const cinemetaCacheRef = useRef<SearchCache<Awaited<ReturnType<typeof searchCinemeta>>>>(new Map());
+  const cinemetaCacheRef = useRef<SearchCache<Awaited<ReturnType<typeof searchCinemeta>>>>(
+    new Map(),
+  );
   const addonsRef = useRef<{ key: string | null; addons: Addon[] } | null>(null);
   const ensureAddons = useCallback(async (): Promise<Addon[]> => {
     if (addonsRef.current && addonsRef.current.key === authKey) return addonsRef.current.addons;
@@ -216,7 +248,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
     setAddonQueries([]);
     setStatus("typing");
     const animeAllowed = !hiddenTabs.anime && !settings.hideContent.anime;
-    const mangaAllowed = settings.mangaEnabled && !settings.hideContent.manga;
+    const mangaAllowed = settings.mangaEnabled;
     const franchiseAllowed = animeAllowed || mangaAllowed;
     const liveTvAllowed = !hiddenTabs.liveTv && playlists.length > 0;
     debounceRef.current = window.setTimeout(() => {
@@ -256,6 +288,12 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       const mangaPromise: Promise<MangaSummary[]> = mangaAllowed
         ? guard(searchManga(trimmed), [])
         : Promise.resolve([]);
+      const musicPromise: Promise<MusicSearchHit[]> = guard(
+        searchTyped(trimmed, 10).then(toMusicHits),
+        [],
+      );
+      const ebookPromise: Promise<EBook[]> = guard(searchEBooks(trimmed), []);
+      const sportsPromise: Promise<SportsEventHit[]> = guard(searchSportsEvents(trimmed), []);
       const charactersPromise: Promise<CharacterHit[]> = franchiseAllowed
         ? guard(anilistCharacterSearch(trimmed), [])
         : Promise.resolve([]);
@@ -301,6 +339,9 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       const acc = {
         anime: [] as Awaited<typeof animePromise>,
         manga: [] as MangaSummary[],
+        music: [] as MusicSearchHit[],
+        ebooks: [] as EBook[],
+        sports: [] as SportsEventHit[],
         characters: [] as CharacterHit[],
         addon: { movies: [], series: [] } as Awaited<typeof addonPromise>,
         cine: { movies: [], series: [] } as Awaited<typeof cinemetaPromise>,
@@ -317,6 +358,9 @@ export function SearchProvider({ children }: { children: ReactNode }) {
           liveTv: [],
           anime: [],
           manga: [],
+          music: [],
+          ebooks: [],
+          sports: [],
           characters: [],
           addonGroups: [],
           addons: [],
@@ -328,10 +372,14 @@ export function SearchProvider({ children }: { children: ReactNode }) {
         const dropAnime = <T extends { id: string }>(list: T[]): T[] =>
           settings.hideContent.anime ? list.filter((m) => !metaLooksAnime(m)) : list;
         const mergedMovies = dropAnime(
-          dedupeByTitle(mergeMetas(mergeMetas(base.movies, acc.addon.movies), acc.cine.movies)).filter(notAnimeDupe),
+          dedupeByTitle(
+            mergeMetas(mergeMetas(base.movies, acc.addon.movies), acc.cine.movies),
+          ).filter(notAnimeDupe),
         );
         const mergedSeries = dropAnime(
-          dedupeByTitle(mergeMetas(mergeMetas(base.series, acc.addon.series), acc.cine.series)).filter(notAnimeDupe),
+          dedupeByTitle(
+            mergeMetas(mergeMetas(base.series, acc.addon.series), acc.cine.series),
+          ).filter(notAnimeDupe),
         );
         const shown = new Set<string>([...mergedMovies, ...mergedSeries].map((m) => m.id));
         const dedupedGroups = acc.groups
@@ -340,12 +388,18 @@ export function SearchProvider({ children }: { children: ReactNode }) {
         const topMatch = base.topMatch;
         setResults({
           ...base,
-          topMatch: settings.hideContent.anime && topMatch && metaLooksAnime(topMatch.meta) ? null : topMatch,
+          topMatch:
+            settings.hideContent.anime && topMatch && metaLooksAnime(topMatch.meta)
+              ? null
+              : topMatch,
           movies: mergedMovies,
           series: mergedSeries,
           liveTv,
           anime: acc.anime,
           manga: acc.manga,
+          music: acc.music,
+          ebooks: acc.ebooks,
+          sports: acc.sports,
           characters: acc.characters,
           addonGroups: dedupedGroups,
           addons: searchAddonIndex(trimmed),
@@ -361,6 +415,18 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       });
       void mangaPromise.then((m) => {
         acc.manga = m;
+        publish();
+      });
+      void musicPromise.then((m) => {
+        acc.music = m;
+        publish();
+      });
+      void ebookPromise.then((b) => {
+        acc.ebooks = b;
+        publish();
+      });
+      void sportsPromise.then((s) => {
+        acc.sports = s;
         publish();
       });
       void charactersPromise.then((c) => {
@@ -409,7 +475,21 @@ export function SearchProvider({ children }: { children: ReactNode }) {
         debounceRef.current = null;
       }
     };
-  }, [query, aiHold, retryNonce, settings.tmdbKey, settings.tmdbLanguage, settings.translateTitles, playlists, excludeGenres, hiddenTabs.anime, settings.hideContent.anime, hiddenTabs.liveTv, settings.mangaEnabled, settings.hideContent.manga, authKey]);
+  }, [
+    query,
+    aiHold,
+    retryNonce,
+    settings.tmdbKey,
+    settings.tmdbLanguage,
+    settings.translateTitles,
+    playlists,
+    excludeGenres,
+    hiddenTabs.anime,
+    settings.hideContent.anime,
+    hiddenTabs.liveTv,
+    settings.mangaEnabled,
+    authKey,
+  ]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -448,7 +528,10 @@ export function SearchProvider({ children }: { children: ReactNode }) {
     if (!trimmed) return;
     if (isMagnetInput(trimmed) || isDirectVideoUrl(trimmed)) return;
     setRecent((prev) => {
-      const next = [trimmed, ...prev.filter((p) => p.toLowerCase() !== trimmed.toLowerCase())].slice(0, MAX_RECENT);
+      const next = [
+        trimmed,
+        ...prev.filter((p) => p.toLowerCase() !== trimmed.toLowerCase()),
+      ].slice(0, MAX_RECENT);
       saveRecent(next);
       return next;
     });
@@ -502,8 +585,38 @@ export function SearchProvider({ children }: { children: ReactNode }) {
   }, [open]);
 
   const value = useMemo(
-    () => ({ open, setOpen, query, setQuery, results, addonQueries, status, recent, clear, closeForNavigation, recordRecent, removeRecent, clearRecent, setAiHold, retry }),
-    [open, query, results, addonQueries, status, recent, setQuery, clear, closeForNavigation, recordRecent, removeRecent, clearRecent, retry],
+    () => ({
+      open,
+      setOpen,
+      query,
+      setQuery,
+      results,
+      addonQueries,
+      status,
+      recent,
+      clear,
+      closeForNavigation,
+      recordRecent,
+      removeRecent,
+      clearRecent,
+      setAiHold,
+      retry,
+    }),
+    [
+      open,
+      query,
+      results,
+      addonQueries,
+      status,
+      recent,
+      setQuery,
+      clear,
+      closeForNavigation,
+      recordRecent,
+      removeRecent,
+      clearRecent,
+      retry,
+    ],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

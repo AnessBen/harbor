@@ -9,10 +9,12 @@ import {
   type TrackInfo,
 } from "../bridge";
 import { fetchAndParse, findActiveCue } from "@/lib/subtitles/parser";
-import { prepareSubtitle } from "@/lib/subtitles/prepare";
+import { SubtitlePreparationError, prepareSubtitle } from "@/lib/subtitles/prepare";
 import { stripSdhText } from "@/lib/subtitles/sdh-filter";
 import { subtitleTrackDownloadHeaders } from "@/lib/subtitles/provider-auth";
 import { takePreparedSubtitle } from "@/lib/subtitles/prepared-registry";
+import { clearPendingSub, markPendingSub } from "@/lib/subtitles/pending-subs";
+import { registerTranslationJob } from "@/lib/subtitles/translation-jobs";
 import type { SubTrack } from "./types";
 import { bufferedAhead, readAudioTracks, videoAudio } from "./audio-tracks";
 import { mapErrorCode } from "./error-map";
@@ -53,6 +55,7 @@ export function createHtml5Bridge(): PlayerBridge {
   let lastSecondText = "";
   let activeTraceId: string | null = null;
   let mediaRevision = 0;
+  let autoplayUnmuteTimer: ReturnType<typeof setTimeout> | null = null;
   const mainSubtitleSelection = new SubtitleSelectionCoordinator();
   const secondarySubtitleSelection = new SubtitleSelectionCoordinator();
 
@@ -90,8 +93,8 @@ export function createHtml5Bridge(): PlayerBridge {
     snap.positionSec = Number.isFinite(video.currentTime) ? video.currentTime : 0;
     snap.durationSec = Number.isFinite(video.duration) ? video.duration : 0;
     snap.bufferedSec = bufferedAhead(video);
-    snap.buffering =
-      !video.paused && !video.ended && video.readyState < HTMLMediaElement.HAVE_FUTURE_DATA;
+    // A paused stream can still be waiting for data after a stall or seek.
+    snap.buffering = !video.ended && video.readyState < HTMLMediaElement.HAVE_FUTURE_DATA;
     snap.volume = pendingVolume;
     snap.muted = video.muted;
     snap.rate = video.playbackRate;
@@ -116,7 +119,10 @@ export function createHtml5Bridge(): PlayerBridge {
       snap.status = "ended";
     } else if (!video.paused) {
       snap.status = "playing";
-    } else if (video.readyState >= 3) {
+    } else if (video.readyState >= 3 || snap.firstFrameReady) {
+      // If paused mid-playback, report "paused" so the BufferingIndicator stays visible.
+      // Without this check, hitting pause could fall through to "loading", causing the
+      // BufferingIndicator to hide since it does not render when snap.status is "loading".
       snap.status = "paused";
     } else {
       snap.status = "loading";
@@ -293,6 +299,7 @@ export function createHtml5Bridge(): PlayerBridge {
             archive: prepared.archive,
             prepared: true,
           };
+          clearPendingSub(track.originalUrl ?? track.url);
         } else {
           const cues = await fetchAndParse(track.url, { ...track.metadata, lang: track.lang });
           if (requestMediaRevision !== mediaRevision || !subTracks.includes(track)) return false;
@@ -305,6 +312,21 @@ export function createHtml5Bridge(): PlayerBridge {
           release: track.metadata?.release,
           error: e instanceof Error ? e.name : "unknown",
         });
+        if (
+          track.metadata?.refreshable === true &&
+          e instanceof SubtitlePreparationError &&
+          (e.reason === "invalid-cues" || e.reason === "unsupported-format")
+        ) {
+          // The addon answered before the subtitle was ready: a pending job, not a failure.
+          const pendingUrl = track.originalUrl ?? track.url;
+          markPendingSub(pendingUrl);
+          registerTranslationJob({
+            url: pendingUrl,
+            lang: track.lang,
+            title: track.title,
+            metadata: track.metadata,
+          });
+        }
         if (requestMediaRevision === mediaRevision && subTracks.includes(track)) track.cues = [];
         return false;
       } finally {
@@ -622,7 +644,7 @@ export function createHtml5Bridge(): PlayerBridge {
       startCueTicker();
       emit();
     },
-    async play() {
+    async play(options) {
       if (!video) return;
       const v = video;
       if (pendingStart != null && v.readyState < 1) {
@@ -643,6 +665,13 @@ export function createHtml5Bridge(): PlayerBridge {
         if (pendingStart > 5 && pendingStart < max) v.currentTime = pendingStart;
         pendingStart = null;
       }
+      // A video using a network speaker must never enter the autoplay unmute fallback.
+      if (options?.preserveMuted) {
+        if (autoplayUnmuteTimer != null) clearTimeout(autoplayUnmuteTimer);
+        autoplayUnmuteTimer = null;
+        await v.play();
+        return;
+      }
       v.muted = false;
       try {
         await v.play();
@@ -650,7 +679,9 @@ export function createHtml5Bridge(): PlayerBridge {
         v.muted = true;
         try {
           await v.play();
-          setTimeout(() => {
+          if (autoplayUnmuteTimer != null) clearTimeout(autoplayUnmuteTimer);
+          autoplayUnmuteTimer = setTimeout(() => {
+            autoplayUnmuteTimer = null;
             if (v && !v.paused) v.muted = false;
           }, 200);
         } catch {}
@@ -690,6 +721,10 @@ export function createHtml5Bridge(): PlayerBridge {
       emit();
     },
     setMuted(m) {
+      if (m && autoplayUnmuteTimer != null) {
+        clearTimeout(autoplayUnmuteTimer);
+        autoplayUnmuteTimer = null;
+      }
       if (video) video.muted = m;
     },
     setRate(r) {
@@ -807,6 +842,19 @@ export function createHtml5Bridge(): PlayerBridge {
       const prepared = takePreparedSubtitle(url);
       const providerDerived = metadata?.providerDerived ?? Boolean(metadata?.provider);
       if (!prepared && providerDerived && !isSafeProviderSubtitleUrl(url)) return false;
+      // Replace a previous track for the same source so a re-fetched provider subtitle
+      // (translating addon) does not stack a duplicate.
+      const sourceUrl = metadata?.originalUrl ?? url;
+      if (!prepared) {
+        const priorIdx = subTracks.findIndex(
+          (track) => track.originalUrl === sourceUrl || track.url === sourceUrl,
+        );
+        if (priorIdx >= 0) {
+          const [oldTrack] = subTracks.splice(priorIdx, 1);
+          oldTrack.cleanup?.();
+          if (activeSubId === oldTrack.id) activeSubId = null;
+        }
+      }
       let resolvedUrl = url;
       if (
         !/^(https?|blob|data):/i.test(url) &&

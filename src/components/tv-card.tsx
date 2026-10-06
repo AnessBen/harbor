@@ -6,6 +6,10 @@ import { useContextMenu } from "@/lib/context-menu";
 import { useSettings } from "@/lib/settings";
 import { useView } from "@/lib/view";
 import { usePosterChain } from "@/components/poster";
+import { ensureStaticHeroArt, peekStaticHeroArt } from "@/lib/providers/anime-hero-art-static";
+import { prepareExpandingCardArtwork } from "@/lib/expanding-card-artwork";
+
+const ANIME_ID = /^(kitsu|mal|anilist|anidb):/;
 
 const POS = {
   center: "inset-0 items-center justify-center text-center",
@@ -15,7 +19,9 @@ const POS = {
 
 function useLogo(meta: Meta): string | undefined {
   const { settings } = useSettings();
-  const [logo, setLogo] = useState<string | undefined>(() => peekCachedLogo(settings.tmdbKey, meta));
+  const [logo, setLogo] = useState<string | undefined>(() =>
+    peekCachedLogo(settings.tmdbKey, meta),
+  );
   useEffect(() => {
     let cancelled = false;
     const cached = peekCachedLogo(settings.tmdbKey, meta);
@@ -36,12 +42,25 @@ function useLogo(meta: Meta): string | undefined {
   return logo;
 }
 
-export const TvCard = memo(function TvCard({ meta, kids = false }: { meta: Meta; kids?: boolean }) {
+export const TvCard = memo(function TvCard({
+  meta,
+  kids = false,
+  reason,
+}: {
+  meta: Meta;
+  kids?: boolean;
+  reason?: string;
+}) {
   const { openMeta, openManga } = useView();
   const { open: openContextMenu } = useContextMenu();
   const { settings } = useSettings();
   const logo = useLogo(meta);
-  const poster = usePosterChain(settings.rpdbKey, meta.id, meta.poster, meta.type === "series" ? "series" : "movie");
+  const poster = usePosterChain(
+    settings.rpdbKey,
+    meta.id,
+    meta.poster,
+    meta.type === "series" ? "series" : "movie",
+  );
 
   const open = () => {
     if (meta.type === "manga") {
@@ -60,10 +79,50 @@ export const TvCard = memo(function TvCard({ meta, kids = false }: { meta: Meta;
       style={{ borderRadius: settings.posterRadius }}
       className="group relative block aspect-[16/9] w-full overflow-hidden bg-elevated ring-1 ring-edge-soft transition-[box-shadow,--tw-ring-color] duration-200 ease-out hover:ring-edge hover:shadow-[0_10px_28px_-18px_rgba(0,0,0,0.8)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/70"
     >
-      <TvCardArtwork meta={meta} kids={kids} logo={logo} posterSrc={poster.src} onPosterError={poster.onError} />
+      <TvCardArtwork
+        meta={meta}
+        kids={kids}
+        logo={logo}
+        posterSrc={poster.src}
+        onPosterError={poster.onError}
+        reason={reason}
+      />
     </button>
   );
 });
+
+// MAL/Kitsu anime metas carry no backdrop; the TV card would otherwise blur the poster.
+function useAnimeBackdrop(meta: Meta): string | undefined {
+  const { settings } = useSettings();
+  const isAnime = ANIME_ID.test(meta.id);
+  const [backdrop, setBackdrop] = useState<{ meta: Meta; url?: string }>(() => ({
+    meta,
+    url: isAnime ? peekStaticHeroArt(meta.id)?.bg : undefined,
+  }));
+  useEffect(() => {
+    if (!isAnime || (meta.background && meta.background !== meta.poster)) {
+      return;
+    }
+    let cancelled = false;
+    const resolve = async () => {
+      await ensureStaticHeroArt().catch(() => {});
+      if (cancelled) return;
+      const staticBg = peekStaticHeroArt(meta.id)?.bg;
+      if (staticBg) {
+        setBackdrop({ meta, url: staticBg });
+        return;
+      }
+      const url = await prepareExpandingCardArtwork(meta, settings.tmdbKey).catch(() => undefined);
+      if (!cancelled) setBackdrop({ meta, url: url && url !== meta.poster ? url : undefined });
+    };
+    void resolve();
+    return () => {
+      cancelled = true;
+    };
+  }, [meta, isAnime, settings.tmdbKey]);
+  // Reused cards must not display the previous title while its replacement resolves.
+  return isAnime && backdrop.meta === meta ? backdrop.url : undefined;
+}
 
 export function TvCardArtwork({
   meta,
@@ -71,16 +130,21 @@ export function TvCardArtwork({
   logo,
   posterSrc,
   onPosterError,
+  reason,
 }: {
   meta: Meta;
   kids?: boolean;
   logo?: string;
   posterSrc?: string;
   onPosterError?: () => void;
+  reason?: string;
 }) {
   const { settings } = useSettings();
-  const [artFailed, setArtFailed] = useState(false);
-  const wide = !artFailed && meta.background && meta.background !== meta.poster ? meta.background : undefined;
+  const [failedBackdrop, setFailedBackdrop] = useState<string>();
+  const animeBackdrop = useAnimeBackdrop(meta);
+  const backdrop =
+    meta.background && meta.background !== meta.poster ? meta.background : animeBackdrop;
+  const wide = backdrop && backdrop !== failedBackdrop ? backdrop : undefined;
   const pos = POS[settings.tvCardLogoPos] ?? POS.bottomStart;
 
   return (
@@ -91,7 +155,7 @@ export function TvCardArtwork({
           alt=""
           draggable={false}
           loading="lazy"
-          onError={() => setArtFailed(true)}
+          onError={() => setFailedBackdrop(backdrop)}
           className="absolute inset-0 h-full w-full object-cover"
         />
       ) : (
@@ -118,7 +182,13 @@ export function TvCardArtwork({
 
       <span className={`absolute z-10 flex gap-2.5 ${pos}`}>
         <span className="h-[54px] w-[36px] shrink-0 overflow-hidden rounded-sm shadow-[0_8px_18px_-8px_rgba(0,0,0,0.9)] ring-1 ring-white/12">
-          <img src={posterSrc} onError={onPosterError} alt="" draggable={false} className="h-full w-full object-cover" />
+          <img
+            src={posterSrc}
+            onError={onPosterError}
+            alt=""
+            draggable={false}
+            className="h-full w-full object-cover"
+          />
         </span>
         <span className="flex min-w-0 flex-1 flex-col justify-end gap-1">
           {logo ? (
@@ -134,9 +204,9 @@ export function TvCardArtwork({
               {meta.name}
             </span>
           )}
-          {!kids && meta.releaseInfo && (
-            <span className="text-[11px] tabular-nums text-ink-muted [text-shadow:0_1px_6px_rgba(0,0,0,0.9)]">
-              {meta.releaseInfo}
+          {!kids && (meta.releaseInfo || reason) && (
+            <span className="truncate text-[11px] tabular-nums text-ink-muted [text-shadow:0_1px_6px_rgba(0,0,0,0.9)]">
+              {[meta.releaseInfo, reason].filter(Boolean).join(" · ")}
             </span>
           )}
         </span>

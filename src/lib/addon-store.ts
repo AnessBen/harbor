@@ -1,4 +1,5 @@
-import { safeFetch as fetch } from "@/lib/safe-fetch";
+import { safeFetch as fetch, safeFetchLocal } from "@/lib/safe-fetch";
+import { isLocalNetworkUrl } from "@/lib/local-network";
 import { readActiveStremioAuthKey } from "./auth";
 import { setUserAddons, userAddons, type Addon } from "./addons";
 import {
@@ -197,10 +198,16 @@ function slimManifest(manifest: Addon["manifest"] | undefined): Addon["manifest"
         id: c.id,
         type: c.type,
         name: c.name,
+        extraSupported: Array.isArray(c.extraSupported)
+          ? c.extraSupported.filter((name): name is string => typeof name === "string")
+          : undefined,
         extra: Array.isArray(c.extra)
           ? (c.extra as Array<Record<string, unknown>>).map((e) => ({
               name: e.name,
               isRequired: e.isRequired,
+              options: Array.isArray(e.options)
+                ? e.options.filter((option): option is string => typeof option === "string")
+                : undefined,
             }))
           : undefined,
       }));
@@ -363,7 +370,11 @@ function validateManifest(
 }
 
 export async function fetchManifestAt(transportUrl: string): Promise<Addon["manifest"]> {
-  const res = await fetch(transportUrl, { headers: { Accept: "application/json" } });
+  // A self-hosted addon lives on loopback/LAN, which the guarded bridge fetch
+  // rejects outright ("blocked internal target"). The URL came from the user, so
+  // it may reach the local network — public URLs keep the DNS-rebinding guard.
+  const doFetch = isLocalNetworkUrl(transportUrl) ? safeFetchLocal : fetch;
+  const res = await doFetch(transportUrl, { headers: { Accept: "application/json" } });
   if (!res.ok) throw new Error(`Manifest fetch failed (HTTP ${res.status}). Check the URL.`);
   let json: unknown;
   try {

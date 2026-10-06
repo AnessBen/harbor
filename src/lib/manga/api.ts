@@ -6,7 +6,7 @@ import {
   aggregateSubProviders,
   ensureMangaSources,
 } from "./sources";
-import { routeById, streamAll, streamAggregateChapters } from "./sources/aggregate";
+import { routeById, streamAll, streamAggregateChapters, withProviderTag } from "./sources/aggregate";
 import { suwayomiSourcesRevision } from "./sources/suwayomi/source-events";
 import { mangaLibraryRevision } from "./library-events";
 import { loadMangaLangFilter, mangaLangFilterRevision } from "./lang-filter";
@@ -199,8 +199,8 @@ export function popularManga(offset = 0, tagId?: string) {
 }
 
 export function searchManga(query: string, offset = 0, tagId?: string) {
-  return cached("search", `${query}|${offset}|${tagId ?? ""}`, 5 * MIN, (p) =>
-    p.search(query, offset, tagId),
+  return cached("search", `${mangaLibraryRevision()}|${query}|${offset}|${tagId ?? ""}`, 5 * MIN, (p) =>
+    withProviderTag(p, tagId, (tag) => p.search(query, offset, tag)),
   );
 }
 
@@ -304,7 +304,7 @@ export function popularMangaStream(offset: number, tagId: string | undefined, on
     "pop2",
     `${offset}|${tag}`,
     5 * MIN,
-    (p) => p.popular(offset, tagId),
+    (p) => withProviderTag(p, tagId, (tag) => p.popular(offset, tag)),
     {
       tries: 3,
       timeout: 10_000,
@@ -322,9 +322,9 @@ export function searchMangaStream(
 ) {
   return streamOrCall(
     "search",
-    `${query}|${offset}|${tagId ?? ""}`,
+    `${mangaLibraryRevision()}|${query}|${offset}|${tagId ?? ""}`,
     5 * MIN,
-    (p) => p.search(query, offset, tagId),
+    (p) => withProviderTag(p, tagId, (tag) => p.search(query, offset, tag)),
     {},
     onChunk,
   );
@@ -357,31 +357,41 @@ export function mangaChapters(id: string, opts?: { tries?: number; timeout?: num
 }
 
 export function resumeChapters(id: string): Promise<MangaChapter[]> {
-  // With a single configured source the details page streams raw provider
-  // chapter ids (no provider prefix) and the progress record's chapterId is a
-  // verbatim copy from that list, so the resume lookup must use the same id
-  // namespace. mangaChapters shares that list's cache entry, so a resume
-  // after a details visit is served from memory and the exact copy id hits.
-  // With several sources the aggregate view labels every copy with its
-  // provider id, own copies through the active provider (see streamChapters),
-  // so resume must search the same prefixed namespace.
+  // Resume only needs the copy the user was reading, not every source's copy
+  // by title. The aggregate title search fans out to all providers and almost
+  // always exceeds the resume timeout, which pushed Continue Reading back to
+  // the details page. Fetch just the owning provider's chapters here; the
+  // details page already streams the full aggregate list separately.
   if (aggregateSubProviders().length > 1) {
     return cached(
       "chapters.own",
       id,
       20 * MIN,
       async () => {
-        const all: MangaChapter[] = [];
-        await streamAggregateChapters(id, (chunk) => all.push(...chunk), activeMangaProvider().id);
-        return all;
+        const routed = routeById(id);
+        if (routed) {
+          const chs = await routed.provider.chapters(routed.orig);
+          return chs.map((c) => ({
+            ...c,
+            id: `${routed.provider.id}::${c.id}`,
+          }));
+        }
+        const subs = aggregateSubProviders();
+        const hint = subs.find((p) => p.id === activeMangaProvider().id) ?? subs[0];
+        if (!hint) return [];
+        const chs = await hint.chapters(id);
+        return chs.map((c) => ({
+          ...c,
+          id: `${hint.id}::${c.id}`,
+        }));
       },
       {
-        tries: 1,
-        timeout: 9_000,
+        tries: 2,
+        timeout: 15_000,
       },
     );
   }
-  return mangaChapters(id, { tries: 1, timeout: 9_000 });
+  return mangaChapters(id, { tries: 2, timeout: 15_000 });
 }
 
 export async function streamChapters(

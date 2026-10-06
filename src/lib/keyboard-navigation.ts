@@ -69,6 +69,8 @@ const BACK_KEYS = new Set(["Escape", "Esc", "BrowserBack", "GoBack", "Back"]);
 
 const MODAL_SELECTOR = '[role="dialog"], [aria-modal="true"]';
 const LOCAL_KEYBOARD_SELECTOR = [
+  // Embedded surfaces handle their own keys; shadow DOM retargets events to their host.
+  '[data-local-keyboard]',
   '[role="listbox"]',
   '[role="menu"]',
   '[role="grid"]',
@@ -108,6 +110,12 @@ export function tvHover(el: HTMLElement | null) {
 }
 
 function borrowRadius(el: HTMLElement) {
+  // Focus restore can target top-level containers (e.g. <body> when search
+  // closes). Never reshape the page itself; drop any stale inline radius.
+  if (el === document.body || el === document.documentElement) {
+    el.style.borderRadius = "";
+    return;
+  }
   const existing = el.style.borderRadius || getComputedStyle(el).borderRadius;
   if (existing && existing !== "0px") return;
 
@@ -189,7 +197,7 @@ function setPointerModality() {
   // TV marker is removed. Drop that stale focus so pointer movement does not
   // replace the inset TV ring with the regular outer keyboard outline.
   const active = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-  if (active && !isEditable(active)) active.blur();
+  if (active && !isEditable(active) && !isLocallyManaged(active)) active.blur();
 }
 
 export function advanceFocus(el: HTMLElement, dir?: Dir) {
@@ -605,6 +613,16 @@ function ensureFocusStyles() {
       position: relative;
     }
 
+    /*
+     * Search overlay is a direct typing surface with its own panel styling.
+     * Never ring its header container or input while editing.
+     */
+    html:not([data-input-modality="pointer"]) [data-search-overlay] [data-tv-search-editing-focused="true"],
+    html:not([data-input-modality="pointer"]) [data-search-overlay] [data-search-editing="true"] {
+      outline: none !important;
+      box-shadow: none !important;
+    }
+
     html:not([data-input-modality="pointer"]) [data-tv-search-editing-focused="true"] [data-search-editing="true"] {
       box-shadow: none !important;
     }
@@ -672,7 +690,7 @@ function getSearchFocusVisual(el: HTMLElement): HTMLElement | null {
 
   return (
     el.closest<HTMLElement>("label, [data-tv-text-field], [data-tv-focus-container]") ??
-    el.parentElement
+    el
   );
 }
 
@@ -687,7 +705,7 @@ function clearSearchVisualFocus() {
     });
 }
 
-/** Ring the visible field container (label/panel) instead of the bare input. */
+/** Ring explicit field wrappers only; a bare input may live in a whole section. */
 function markSearchEditingVisual(el: HTMLElement) {
   const visual = getSearchFocusVisual(el);
   if (visual && visual !== el) {
@@ -1175,6 +1193,17 @@ export function useKeyboardNavigation(options: TVNavigationOptions = {}) {
     if (!enabled) clearTvFocusRing();
   }, [enabled]);
 
+  // F6 is WebView2 pane-focus: on this frameless window it tears down the
+  // renderer instead. Nothing binds F6, so swallow it before default handling.
+  useEffect(() => {
+    const swallowF6 = (e: KeyboardEvent) => {
+      if (e.key !== "F6" || e.defaultPrevented) return;
+      e.preventDefault();
+    };
+    window.addEventListener("keydown", swallowF6);
+    return () => window.removeEventListener("keydown", swallowF6);
+  }, []);
+
   useEffect(() => {
     if (!enabled) return;
     const owner = {};
@@ -1437,7 +1466,9 @@ export function useKeyboardNavigation(options: TVNavigationOptions = {}) {
         const focused =
           document.activeElement instanceof HTMLElement ? document.activeElement : null;
 
-        if (focused && !isEditable(focused)) focused.blur();
+        // Menus and embedded surfaces own focus; blurring their host can close
+        // a menu before the pointer's click reaches the selected item.
+        if (focused && !isEditable(focused) && !isLocallyManaged(focused)) focused.blur();
       });
     };
 

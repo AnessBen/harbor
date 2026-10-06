@@ -1,8 +1,10 @@
+import { activeProfileId } from "@/lib/active-profile-id";
 import { currentActivitiesAll } from "./activities/gate";
 import { simklRequest } from "./client";
 import { simklTargetIds } from "./ids";
-import { subscribeSession } from "./session";
+import { getSession, subscribeSession } from "./session";
 import type { SimklTarget } from "./types";
+import type { LibraryItem } from "@/lib/stremio";
 
 export type WatchlistStatus = "watching" | "plantowatch" | "hold" | "completed" | "dropped";
 
@@ -34,17 +36,21 @@ type RawIds = {
 };
 type RawEpisode = { number?: number; watched_at?: string | null };
 type RawSeason = { number?: number; episodes?: RawEpisode[] };
+type RawNode = { title?: string; ids?: RawIds };
 type RawEntry = {
   status?: string;
-  movie?: { ids?: RawIds };
-  show?: { ids?: RawIds };
+  movie?: RawNode;
+  show?: RawNode;
+  anime?: RawNode;
   seasons?: RawSeason[];
 };
 type RawAllItems = { movies?: RawEntry[]; shows?: RawEntry[]; anime?: RawEntry[] };
 
-type SimklData = {
+export type SimklProgress = {
   statuses: Map<string, WatchlistStatus>;
   watched: Map<string, Set<string>>;
+  watchedAt: Map<string, Map<string, number>>;
+  completedSeries: LibraryItem[];
 };
 
 function isStatus(s: string | undefined): s is WatchlistStatus {
@@ -70,52 +76,96 @@ function targetKeys(target: SimklTarget): string[] {
   return idKeys(ids as RawIds, target.kind === "movie" ? "movie" : "show");
 }
 
-let cache: Promise<SimklData> | null = null;
+let cache: Promise<SimklProgress> | null = null;
 let cacheMarker: string | null = null;
+let sessionGeneration = 0;
 
 subscribeSession(() => {
+  sessionGeneration += 1;
   cache = null;
   cacheMarker = null;
 });
 
-async function pull(): Promise<SimklData> {
-  const data = await simklRequest<RawAllItems>(
+async function pull(): Promise<SimklProgress> {
+  const data = await simklRequest<RawAllItems | null>(
     "/sync/all-items/all/all?extended=full&episode_watched_at=yes",
-  ).catch(() => ({}) as RawAllItems);
+  );
   const statuses = new Map<string, WatchlistStatus>();
   const watched = new Map<string, Set<string>>();
-  const add = (entries: RawEntry[] | undefined, kind: "movie" | "show") => {
+  const watchedAt = new Map<string, Map<string, number>>();
+  const completedSeries: LibraryItem[] = [];
+  const add = (entries: RawEntry[] | undefined, kind: "movie" | "show", isAnime = false) => {
     for (const e of entries ?? []) {
-      const node = kind === "movie" ? e.movie : e.show;
+      const node = kind === "movie" ? e.movie : e.show ?? e.anime;
       const keys = idKeys(node?.ids, kind);
       if (keys.length === 0) continue;
       if (isStatus(e.status)) for (const k of keys) statuses.set(k, e.status);
       if (kind === "show" && e.seasons) {
         const eps = new Set<string>();
+        const times = new Map<string, number>();
         for (const s of e.seasons) {
           for (const ep of s.episodes ?? []) {
             if (ep.watched_at && s.number != null && ep.number != null) {
-              eps.add(`${s.number}:${ep.number}`);
+              const key = `${s.number}:${ep.number}`;
+              eps.add(key);
+              const at = Date.parse(ep.watched_at);
+              if (Number.isFinite(at) && at > 0) times.set(key, at);
             }
           }
         }
         if (eps.size > 0) for (const k of keys) watched.set(k, eps);
+        if (times.size > 0) for (const k of keys) watchedAt.set(k, times);
+        const latest = [...times]
+          .filter(([key]) => key.split(":").every((n) => Number.isInteger(Number(n)) && Number(n) > 0))
+          .sort((a, b) => b[1] - a[1])[0];
+        // Anime history uses season-scoped numbering; it needs an explicit mapping
+        // before it can seed a new library card under a whole-series IMDb identity.
+        if (!isAnime && latest && node?.title && (e.status === "watching" || e.status === "completed")) {
+          const [season, episode] = latest[0].split(":").map(Number);
+          if (!Number.isInteger(season) || !Number.isInteger(episode) || season < 1 || episode < 1) continue;
+          const when = new Date(latest[1]).toISOString();
+          completedSeries.push({
+            _id: keys[0], type: "series", name: node.title, isAnime,
+            state: { season, episode, video_id: `${keys[0]}:${season}:${episode}`,
+              timeOffset: 0, duration: 0, flaggedWatched: 1, lastWatched: when },
+            removed: false, temp: false, _ctime: when, _mtime: when, external: "simkl",
+          });
+        }
       }
     }
   };
-  add(data.movies, "movie");
-  add(data.shows, "show");
-  add(data.anime, "show");
-  return { statuses, watched };
+  add(data?.movies, "movie");
+  add(data?.shows, "show");
+  add(data?.anime, "show", true);
+  return { statuses, watched, watchedAt, completedSeries };
 }
 
-async function loadData(): Promise<SimklData> {
+async function loadData(): Promise<SimklProgress> {
+  const generation = sessionGeneration;
   const all = await currentActivitiesAll();
+  if (generation !== sessionGeneration) throw new Error("SIMKL session changed");
   if (!cache || (all !== null && all !== cacheMarker)) {
-    cache = pull();
+    const request = pull().then((data) => {
+      if (generation !== sessionGeneration) throw new Error("SIMKL session changed");
+      rememberSimklWatched(data.watched);
+      return data;
+    }).catch((error: unknown) => {
+      // A failed pull is not an empty library. Retry it on the next read, without
+      // allowing an older account's completion to clear a newer account's cache.
+      if (cache === request) {
+        cache = null;
+        cacheMarker = null;
+      }
+      throw error;
+    });
+    cache = request;
     cacheMarker = all;
   }
   return cache;
+}
+
+export async function loadSimklProgress(): Promise<SimklProgress> {
+  return loadData();
 }
 
 export async function loadSimklStatusMap(): Promise<Map<string, WatchlistStatus>> {
@@ -124,6 +174,52 @@ export async function loadSimklStatusMap(): Promise<Map<string, WatchlistStatus>
 
 export async function loadSimklWatchedMap(): Promise<Map<string, Set<string>>> {
   return (await loadData()).watched;
+}
+
+function simklWatchedKey(): string {
+  return `harbor.simkl.watched.v1.${activeProfileId()}`;
+}
+
+// Synchronous starting point for the first paint. The async load still runs and replaces
+// this, so a stale copy can only delay a card, never leave it permanently wrong.
+export function peekSimklWatchedMap(): Map<string, Set<string>> {
+  if (typeof localStorage === "undefined") return new Map();
+  try {
+    const saved = JSON.parse(localStorage.getItem(simklWatchedKey()) ?? "null");
+    if (
+      !saved ||
+      !saved.account ||
+      saved.account !== getSession()?.username ||
+      typeof saved.at !== "number" ||
+      Date.now() - saved.at > 86400000
+    )
+      return new Map();
+    const raw: unknown = saved.watched;
+    if (!raw || typeof raw !== "object") return new Map();
+    const map = new Map<string, Set<string>>();
+    for (const [key, episodes] of Object.entries(raw as Record<string, unknown>)) {
+      if (Array.isArray(episodes)) {
+        map.set(key, new Set(episodes.filter((e): e is string => typeof e === "string")));
+      }
+    }
+    return map;
+  } catch {
+    return new Map();
+  }
+}
+
+function rememberSimklWatched(watched: Map<string, Set<string>>): void {
+  if (typeof localStorage === "undefined") return;
+  try {
+    const flat: Record<string, string[]> = {};
+    for (const [key, episodes] of watched) flat[key] = [...episodes];
+    localStorage.setItem(
+      simklWatchedKey(),
+      JSON.stringify({ account: getSession()?.username, at: Date.now(), watched: flat }),
+    );
+  } catch {
+    /* ignore quota */
+  }
 }
 
 export function statusForId(
@@ -157,8 +253,8 @@ export async function setSimklStatus(
   );
   const echoed = r?.added?.[bucket]?.[0]?.to;
   const final = isStatus(echoed) ? echoed : status;
-  const statuses = (await loadData()).statuses;
-  for (const k of targetKeys(target)) statuses.set(k, final);
+  const statuses = await loadData().then((data) => data.statuses).catch(() => null);
+  if (statuses) for (const k of targetKeys(target)) statuses.set(k, final);
   return final;
 }
 
@@ -166,6 +262,6 @@ export async function clearSimklStatus(target: SimklTarget): Promise<void> {
   const ids = simklTargetIds(target);
   const bucket = target.kind === "movie" ? "movies" : "shows";
   await simklRequest("/sync/history/remove", { method: "POST", body: { [bucket]: [{ ids }] } });
-  const statuses = (await loadData()).statuses;
-  for (const k of targetKeys(target)) statuses.delete(k);
+  const statuses = await loadData().then((data) => data.statuses).catch(() => null);
+  if (statuses) for (const k of targetKeys(target)) statuses.delete(k);
 }

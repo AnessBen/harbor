@@ -1,3 +1,12 @@
+import mediaStart from "./de/media-start";
+import spooktober from "./de/spooktober";
+import listenTogether from "./de/listen-together";
+import music from "./de/music";
+import sportsConsent from "./de/sports-consent";
+import sportsStatistics from "./de/sports-statistics";
+import sportsApi from "./de/sports-api";
+import esportsArena from "./de/esports-arena";
+import sportsHub from "./de/sports-hub";
 import ebookSources from "./de/ebook-sources";
 import settingsRefinements from "./de/settings-refinements";
 import sweep from "./de/sweep";
@@ -37,8 +46,19 @@ import together from "./de/together";
 import coverage from "./de/coverage";
 import plugins from "./de/plugins";
 import brands from "./de/brands";
+import bpSports from "./de/bp-sports";
+
+import nytTv from "./de/nyt-tv";
 
 const de: Record<string, string> = {
+  "Translations": "Übersetzungen",
+  "Translating…": "Wird übersetzt…",
+  "Showing {lang}": "{lang} wird angezeigt",
+  "Show all": "Alle anzeigen",
+  ...mediaStart,
+  ...spooktober,
+  ...videoCast,
+  ...music,
   ...ebookSources,
   ...sweep,
   ...used,
@@ -78,6 +98,15 @@ const de: Record<string, string> = {
   ...settingsRefinements,
   ...plugins,
   ...brands,
+  ...sportsHub,
+  ...sportsConsent,
+  ...sportsStatistics,
+  ...sportsApi,
+  ...esportsArena,
+  ...bpSports,
+  ...listenTogether,
+  ...nytTv,
 };
 
 export default de;
+import videoCast from "./de/video-cast";

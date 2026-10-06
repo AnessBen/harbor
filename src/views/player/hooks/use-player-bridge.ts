@@ -17,7 +17,7 @@ import {
 import type { PlayerSrc } from "@/lib/view";
 import type { Settings } from "@/lib/settings";
 import { setPlaybackClock, setPlaybackStatus } from "@/lib/player/playback-clock";
-import { isLinuxDesktop, isWindowsDesktop } from "@/lib/platform";
+import { isLinuxDesktop, isMacDesktop, isWindowsDesktop } from "@/lib/platform";
 import { isLivePlaybackSrc } from "@/lib/player/live-src";
 import { svpEnsureRunning, svpStatus } from "@/lib/svp";
 import { isSvpActiveForMedia } from "@/lib/player/svp-policy";
@@ -26,6 +26,7 @@ import { pickBridge } from "../player-utils";
 function snapChangedIgnoringClock(a: PlayerSnapshot, b: PlayerSnapshot): boolean {
   return (
     a.status !== b.status ||
+    a.buffering !== b.buffering ||
     a.firstFrameReady !== b.firstFrameReady ||
     a.durationSec !== b.durationSec ||
     a.volume !== b.volume ||
@@ -113,13 +114,16 @@ export function usePlayerBridge(params: {
         const el = videoMountRef.current;
         if (!el) return null;
         const r = el.getBoundingClientRect();
+        const doc = document.documentElement;
+        const view = doc.getBoundingClientRect();
+        const usable = view.width > 0 && view.height > 0;
         return {
-          cssLeft: r.left,
-          cssTop: r.top,
+          cssLeft: usable ? r.left - view.left : r.left,
+          cssTop: usable ? r.top - view.top : r.top,
           cssWidth: r.width,
           cssHeight: r.height,
-          cssViewW: document.documentElement.clientWidth,
-          cssViewH: document.documentElement.clientHeight,
+          cssViewW: usable ? view.width : doc.clientWidth,
+          cssViewH: usable ? view.height : doc.clientHeight,
         };
       };
       const { bridge: choose, engine: chosen } = await pickBridge(want, src.notWebReady === true, {
@@ -139,8 +143,14 @@ export function usePlayerBridge(params: {
           ),
           ...generalShaderChain(settings),
         ],
-        macEdr: false,
+        macEdr: isMacDesktop() && embedActive && settings.playerMacEdr && !settings.playerHdrToSdr,
         fullDownload: settings.torrentFullDownload,
+        separateDisplay:
+          settings.playerSeparateDisplay.mode === "explicit"
+            ? settings.playerSeparateDisplay.monitor
+            : null,
+        separateCoverTaskbar: settings.playerSeparateCoverTaskbar,
+        cacheDir: settings.playbackCacheDir,
         extraOptions: [mergeMpvOptions(settings, svpOn), shaderCompanionOptions(settings)]
           .filter(Boolean)
           .join("\n"),

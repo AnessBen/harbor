@@ -1,3 +1,12 @@
+import mediaStart from "./es/media-start";
+import spooktober from "./es/spooktober";
+import listenTogether from "./es/listen-together";
+import music from "./es/music";
+import sportsConsent from "./es/sports-consent";
+import sportsStatistics from "./es/sports-statistics";
+import sportsApi from "./es/sports-api";
+import esportsArena from "./es/esports-arena";
+import sportsHub from "./es/sports-hub";
 import ebookSources from "./es/ebook-sources";
 import settingsRefinements from "./es/settings-refinements";
 import sweep from "./es/sweep";
@@ -31,8 +40,19 @@ import bpSources from "./es/bp-sources";
 import coverage from "./es/coverage";
 import plugins from "./es/plugins";
 import brands from "./es/brands";
+import bpSports from "./es/bp-sports";
+
+import nytTv from "./es/nyt-tv";
 
 const es: Record<string, string> = {
+  "Translations": "Traducciones",
+  "Translating…": "Traduciendo…",
+  "Showing {lang}": "Mostrando {lang}",
+  "Show all": "Mostrar todo",
+  ...mediaStart,
+  ...spooktober,
+  ...videoCast,
+  ...music,
   ...ebookSources,
   ...sweep,
   ...used,
@@ -66,6 +86,15 @@ const es: Record<string, string> = {
   ...settingsRefinements,
   ...plugins,
   ...brands,
+  ...sportsHub,
+  ...sportsConsent,
+  ...sportsStatistics,
+  ...sportsApi,
+  ...esportsArena,
+  ...bpSports,
+  ...listenTogether,
+  ...nytTv,
 };
 
 export default es;
+import videoCast from "./es/video-cast";
