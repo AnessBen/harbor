@@ -52,7 +52,9 @@ export function contributorLabel(s: ScoredStream): string {
 }
 
 export function addonInstanceKey(s: { addonUrl?: string; addonId: string }): string {
-  return s.addonUrl ?? s.addonId;
+  //when addonUrl is returned as the id the logo wont appear in filters.addonLogos.get(o.id)
+  //to fix this we return the addonId as the id
+  return s.addonId ?? s.addonUrl;
 }
 
 export function addonConfigHint(url?: string): string {
