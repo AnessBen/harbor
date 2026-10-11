@@ -17,8 +17,7 @@ import {
 } from "@/lib/providers/anime-detail";
 import { isTextInLanguage } from "@/lib/providers/anime-episode-build";
 import { peekAnimeArt, saveAnimeArt } from "@/lib/providers/anime-art-cache";
-import { imdbToKitsu, tmdbTvToKitsu } from "@/lib/providers/anime-mapping";
-import { kitsuAnime, kitsuMainTvSeries } from "@/lib/providers/kitsu";
+import { resolveAutoAnime } from "@/lib/providers/anime-auto-mapping";
 import { isOrphanAnimeCandidate } from "@/lib/anime-detect";
 import { recordAnimeCwId } from "@/lib/anime-cw-ids";
 import { stripFranchiseSuffix } from "@/lib/providers/jikan";
@@ -184,29 +183,9 @@ import { LetterboxdReviews } from "./detail/letterboxd-reviews";
 import { AnilistComments } from "./detail/anilist-comments";
 import { stremioIdToTraktTarget } from "@/lib/trakt/ids";
 import type { IdResolution } from "@/lib/trakt/ids";
-import { searchAnime } from "@/lib/search";
 import { useTraktRelated } from "@/lib/providers/trakt-related";
 
 const NO_METAS: Meta[] = [];
-
-function parseYear(v: string | number | undefined | null): number {
-  if (v == null) return 0;
-  const n = Number(String(v).slice(0, 4));
-  return Number.isFinite(n) && n > 1900 ? n : 0;
-}
-
-async function kitsuYearVerdict(
-  kitsuId: number,
-  releaseInfo: string | undefined,
-  detailYear: string | undefined,
-): Promise<"ok" | "reject" | "wait"> {
-  const showYear = parseYear(releaseInfo) || parseYear(detailYear);
-  if (!showYear) return "wait";
-  const ka = await kitsuAnime(kitsuId).catch(() => null);
-  const animeYear = parseYear(ka?.year);
-  if (!animeYear) return "ok";
-  return Math.abs(animeYear - showYear) <= 3 ? "ok" : "reject";
-}
 
 if (typeof document !== "undefined") {
   const __id = "harbor-fade-in-up-style";
@@ -591,79 +570,53 @@ export function DetailView({
         ? detail.imdbId
         : null;
     if (tmdbTv == null && !imdb) return;
-    let cancelled = false;
+    const controller = new AbortController();
     setDetectingAnime(true);
-    (async () => {
-      let k = tmdbTv != null && Number.isFinite(tmdbTv) ? await tmdbTvToKitsu(tmdbTv) : null;
-      if (k == null && imdb) k = await imdbToKitsu(imdb);
-      // Orphan ids (standalone TMDB/IMDb entries with no cross-db mapping --
-      // e.g. Bleach TYBW tt14986406): fall back to Kitsu title search and
-      // accept the hit only when the year verdict agrees.
-      if (k == null) {
-        const name = meta.name || detail?.title;
-        const animeLike = isOrphanAnimeCandidate({
-          type: meta.type,
-          animeFormat: meta.animeFormat,
-          genres: [
-            ...(meta.genres ?? []),
-            ...(detail?.genres ?? []),
-            ...(detail?.genresRich ?? []).map((g) => g.name),
-          ],
-          country: meta.country,
-          originalLanguage: detail?.originalLanguage,
-          productionCountries: (detail?.productionCountriesRich ?? []).map((c) => c.iso),
-        });
-        if (animeLike && name && name.trim().length >= 2) {
-          const hits = await searchAnime(name).catch(() => []);
-          const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "");
-          const target = norm(name);
-          const yr = parseInt(detail?.year ?? meta.releaseInfo ?? "", 10) || null;
-          // Strict full normalized-name equality (not an 8-char prefix) plus an
-          // exact year match before accepting a Kitsu hit.
-          const candidates = hits.filter((h) => norm(h.name) === target);
-          const pick = yr ? candidates.find((h) => parseInt(h.year ?? "", 10) === yr) : undefined;
-          if (pick?.kitsuId != null && pick.kitsuId !== failedKitsu.current) {
-            const verdict = await kitsuYearVerdict(
-              pick.kitsuId,
-              meta.releaseInfo,
-              detail?.year ?? pick.year ?? undefined,
-            );
-            if (!cancelled && verdict === "ok") k = pick.kitsuId;
-          }
-        }
-      }
-      if (cancelled) return;
-      if (k != null && k !== failedKitsu.current) {
-        const verdict = await kitsuYearVerdict(k, meta.releaseInfo, detail?.year);
-        if (cancelled) return;
-        if (verdict === "ok") setDetectedKitsu(k);
-        else if (verdict === "reject") {
-          const main = await kitsuMainTvSeries(k).catch(() => null);
-          if (cancelled) return;
-          if (main != null && main !== k && main !== failedKitsu.current) {
-            const mainVerdict = await kitsuYearVerdict(main, meta.releaseInfo, detail?.year);
-            if (cancelled) return;
-            if (mainVerdict === "ok") setDetectedKitsu(main);
-            else failedKitsu.current = k;
-          } else {
-            failedKitsu.current = k;
-          }
-        }
-      }
-      setDetectingAnime(false);
-    })().catch(() => {
-      if (!cancelled) setDetectingAnime(false);
-    });
-    return () => {
-      cancelled = true;
-    };
+    void resolveAutoAnime({
+      kind: meta.type === "movie" ? "movie" : "tv",
+      titles: [meta.name, detail?.title, detail?.originalTitle],
+      year: meta.releaseInfo?.match(/^\d{4}/)?.[0] || detail?.year,
+      episodeCount: detail?.numberOfEpisodes,
+      tmdbTvId: tmdbTv,
+      imdbId: imdb,
+      allowSearch: isOrphanAnimeCandidate({
+        type: meta.type,
+        animeFormat: meta.animeFormat,
+        genres: [
+          ...(meta.genres ?? []),
+          ...(detail?.genres ?? []),
+          ...(detail?.genresRich ?? []).map((g) => g.name),
+        ],
+        country: meta.country,
+        originalLanguage: detail?.originalLanguage || meta.originalLanguage,
+        productionCountries: (detail?.productionCountriesRich ?? []).map((c) => c.iso),
+      }),
+      excludeKitsuId: failedKitsu.current,
+      signal: controller.signal,
+    })
+      .then((kitsuId) => {
+        if (!controller.signal.aborted && kitsuId != null) setDetectedKitsu(kitsuId);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!controller.signal.aborted) setDetectingAnime(false);
+      });
+    return () => controller.abort();
   }, [
     idAnime,
     detectedKitsu,
     addonNative,
     meta.id,
+    meta.type,
+    meta.name,
+    meta.genres,
+    meta.animeFormat,
+    meta.originalLanguage,
     detail?.imdbId,
+    detail?.title,
+    detail?.originalTitle,
     detail?.year,
+    detail?.numberOfEpisodes,
     detail?.genres,
     detail?.genresRich,
     detail?.originalLanguage,

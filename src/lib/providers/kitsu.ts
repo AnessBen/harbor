@@ -240,6 +240,40 @@ export async function kitsuAnime(id: number): Promise<KitsuAnimeDetail | null> {
   };
 }
 
+export type KitsuAnimeCandidate = Pick<
+  KitsuAnimeDetail,
+  "id" | "title" | "altTitles" | "subtype" | "year" | "episodeCount"
+>;
+
+export async function kitsuSearchAnime(query: string): Promise<KitsuAnimeCandidate[]> {
+  if (query.trim().length < 2) return [];
+  const j = await get<Doc<Resource<KitsuAnimeAttrs>[]>>(
+    `/anime?filter[text]=${encodeURIComponent(query)}&sort=-userCount&page[limit]=12`,
+  );
+  // Kitsu's rating filter drops unrated entries and interferes with text search.
+  const hideAdult = adultContentHidden();
+  return (j?.data ?? [])
+    .filter(
+      (item) =>
+        Number.isFinite(Number(item.id)) &&
+        Number(item.id) > 0 &&
+        (!hideAdult || item.attributes.ageRating !== "R18"),
+    )
+    .map((item) => {
+      const a = item.attributes;
+      return {
+        id: Number(item.id),
+        title: a.titles?.en || a.canonicalTitle || a.titles?.en_jp || "Unknown",
+        altTitles: [a.titles?.en, a.titles?.en_jp, a.titles?.ja_jp, a.canonicalTitle].filter(
+          (title): title is string => !!title,
+        ),
+        subtype: a.subtype,
+        year: a.startDate?.slice(0, 4),
+        episodeCount: a.episodeCount ?? undefined,
+      };
+    });
+}
+
 function attrsToMeta(id: string, a: KitsuAnimeAttrs): Meta {
   return {
     id: `kitsu:${id}`,
