@@ -231,6 +231,7 @@ export function DetailView({
   );
   const [detectedKitsu, setDetectedKitsu] = useState<number | null>(null);
   const [detectingAnime, setDetectingAnime] = useState(false);
+  const detectGen = useRef(0);
   const failedKitsu = useRef<number | null>(null);
   const addonMetaTriedRef = useRef<string | null>(null);
   const [streamers, setStreamers] = useState<KitsuStreamer[]>([]);
@@ -571,7 +572,12 @@ export function DetailView({
         : null;
     if (tmdbTv == null && !imdb) return;
     const controller = new AbortController();
+    const gen = (detectGen.current += 1);
     setDetectingAnime(true);
+    // A stalled provider request must not wedge the flag (and the skeleton
+    // behind it) forever. Only the latest run may clear it: an aborted older
+    // run still settles later and must not touch the new run's flag.
+    const timer = window.setTimeout(() => controller.abort(), 15000);
     void resolveAutoAnime({
       kind: meta.type === "movie" ? "movie" : "tv",
       titles: [meta.name, detail?.title, detail?.originalTitle],
@@ -599,9 +605,13 @@ export function DetailView({
       })
       .catch(() => {})
       .finally(() => {
-        if (!controller.signal.aborted) setDetectingAnime(false);
+        window.clearTimeout(timer);
+        if (detectGen.current === gen) setDetectingAnime(false);
       });
-    return () => controller.abort();
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
   }, [
     idAnime,
     detectedKitsu,
@@ -1137,6 +1147,15 @@ export function DetailView({
   // provider offered none.
   const providerEpisodeList = addonNative && (capstanMeta?.meta.videos?.length ?? 0) > 0;
   const tmdbEpisodeList = !providerEpisodeList && !!detail && detail.seasons.length > 0;
+  // Once episode content is on screen, a stuck loading flag must not paint a
+  // phantom second panel above it. Readiness is branch-aware: a TMDB season
+  // list being present must not hide the skeleton while the anime list that
+  // will actually render is still loading (and vice versa).
+  const episodesReady =
+    !detectingAnime &&
+    (isAnime
+      ? animeEpisodes.length > 0
+      : tmdbEpisodeList || (cinemetaFull?.videos?.length ?? 0) > 0);
   const traktResolution = useMemo((): IdResolution => {
     if (isAnime) return { ok: false, reason: "anime" };
     const imdbId = detail?.imdbId ?? (meta.id.startsWith("tt") ? meta.id : null);
@@ -2023,7 +2042,8 @@ export function DetailView({
             </div>
           </div>
         )}
-        {loading &&
+        {(loading || detectingAnime) &&
+          !episodesReady &&
           (meta.type === "series" || isAnime) &&
           (meta.type === "movie" || /^(MOVIE|OVA|SPECIAL|MUSIC)$/i.test(meta.animeFormat ?? "") ? (
             <MovieEntrySkeleton />
@@ -2056,7 +2076,7 @@ export function DetailView({
             </FadeInUp>
           )}
 
-        {!liveContext && tmdbEpisodeList && !isAnime && isSeries && (
+        {!liveContext && tmdbEpisodeList && !isAnime && !detectingAnime && isSeries && (
           <FadeInUp>
             <SeriesEpisodes
               meta={playMeta}
@@ -2075,6 +2095,7 @@ export function DetailView({
 
         {!liveContext &&
           !loading &&
+          !detectingAnime &&
           !tmdbEpisodeList &&
           !isAnime &&
           (isSeries ||

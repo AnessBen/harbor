@@ -26,8 +26,14 @@ function fixture() {
   const resume = new Map<string, { ms: number; t: number }>();
   const manual = new Map<string, boolean>();
   const key = (id: string, season: number, episode: number) => `${id}|${season}:${episode}`;
+  const watchedAtStamps = new Map<string, number>();
+  const unwatchedAtStamps = new Map<string, number>();
   const mocks: Record<string, any> = {
-    "@/lib/manual-watched": { manualWatchedState: (id: string, s: number, e: number) => manual.get(key(id, s, e)) },
+    "@/lib/manual-watched": {
+      manualWatchedState: (id: string, s: number, e: number) => manual.get(key(id, s, e)),
+      watchedAt: (id: string, s: number, e: number) => watchedAtStamps.get(key(id, s, e)),
+      unwatchedAt: (id: string, s: number, e: number) => unwatchedAtStamps.get(key(id, s, e)),
+    },
     "@/lib/resume": { readResumeEntry: (id: string, s: number, e: number) => resume.get(key(id, s, e)) ?? null,
       lastPlayedEpisode: (id: string) => {
         let best: any = null;

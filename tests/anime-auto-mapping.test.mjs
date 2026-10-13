@@ -193,6 +193,8 @@ function detectFromDetail(h, { native = false, meta = {}, detail = {} } = {}) {
     useEffect: (fn) => {
       cleanup = fn();
     },
+    detectGen: { current: 0 },
+    window: { setTimeout, clearTimeout },
     idAnime: native,
     detectedKitsu: null,
     addonNative: false,
@@ -306,9 +308,23 @@ test("unresolved mappings leave the actual SeriesEpisodes render condition enabl
       liveContext: false,
       tmdbEpisodeList: true,
       isAnime: selected != null,
+      detectingAnime: false,
       isSeries: true,
     }),
     true,
+  );
+});
+
+test("anime auto-detection in flight hides the SeriesEpisodes render condition", () => {
+  assert.equal(
+    episodeGate("SeriesEpisodes", {
+      liveContext: false,
+      tmdbEpisodeList: true,
+      isAnime: false,
+      detectingAnime: true,
+      isSeries: true,
+    }),
+    false,
   );
 });
 

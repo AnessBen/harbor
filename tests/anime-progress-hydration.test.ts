@@ -63,8 +63,13 @@ async function fixture(overrides: Partial<KitsuEpisode> = {}, options: {
   const hydrated: KitsuEpisode[] = render([...episodes, sibling]).panel.visibleEpisodes;
   const resume = new Map([["kitsu:11209|1:2", { ms: 750000, t: 100, pct: 0.5 }]]);
   const manual = new Map<string, boolean>();
+  const key = (id: string, s: number, e: number) => `${id}|${s}:${e}`;
   const progressMocks = {
-    "@/lib/manual-watched": { manualWatchedState: (id: string, s: number, e: number) => manual.get(`${id}|${s}:${e}`) },
+    "@/lib/manual-watched": {
+      manualWatchedState: (id: string, s: number, e: number) => manual.get(key(id, s, e)),
+      watchedAt: (id: string, s: number, e: number) => undefined,
+      unwatchedAt: (id: string, s: number, e: number) => undefined,
+    },
     "@/lib/resume": { lastPlayedEpisode: () => null, readResumeEntry: (id: string, s: number, e: number) => resume.get(`${id}|${s}:${e}`) ?? null },
     "@/lib/episode-progress": { WATCHED_THRESHOLD: 0.85 },
     "./anime-episode-identity": identity,

@@ -1,5 +1,5 @@
 import type { KitsuEpisode } from "@/lib/providers/kitsu";
-import { manualWatchedState } from "@/lib/manual-watched";
+import { manualWatchedState, unwatchedAt, watchedAt } from "@/lib/manual-watched";
 import { lastPlayedEpisode, readResumeEntry } from "@/lib/resume";
 import { WATCHED_THRESHOLD, type EpisodeProgress } from "@/lib/episode-progress";
 import { ANIME_ENTRY_ID, animeEpisodeCoordinates, animeSeasonKey } from "./anime-episode-identity";
@@ -36,13 +36,23 @@ export function getAnimeEpisodeProgress(ep: KitsuEpisode, context: AnimeProgress
   let manualDone = false;
   let manualUnwatched = false;
   let remoteDone = false;
+  // Last write wins across the row's coordinates: a stale explicit unwatch on
+  // one provider id must not hide a fresh (or timestamp-less) watch on another.
+  let newestTrue = -1;
+  let newestFalse = -1;
   for (const target of targets) {
     const { id, season, episode } = target;
     const saved = readResumeEntry(id, season, episode);
     if (saved && (!entry || saved.t > entry.t)) entry = saved;
     const manual = manualWatchedState(id, season, episode);
-    manualUnwatched ||= manual === false;
-    manualDone ||= manual === true;
+    if (manual === true) {
+      manualDone = true;
+      newestTrue = Math.max(newestTrue, watchedAt(id, season, episode) ?? Number.POSITIVE_INFINITY);
+    } else if (manual === false) {
+      manualUnwatched = true;
+      const ts = unwatchedAt(id, season, episode);
+      if (ts != null) newestFalse = Math.max(newestFalse, ts);
+    }
     const key = `${season}:${episode}`;
     remoteDone ||= context.simklWatched?.get(id)?.has(key) ?? false;
     if (ANIME_ENTRY_ID.test(id)) {
@@ -58,12 +68,22 @@ export function getAnimeEpisodeProgress(ep: KitsuEpisode, context: AnimeProgress
     for (const target of targets) {
       if (!ANIME_ENTRY_ID.test(target.id)) continue;
       const legacy = manualWatchedState(target.id, ep.imdbSeason, target.episode);
-      manualUnwatched ||= legacy === false;
-      manualDone ||= legacy === true;
+      if (legacy === true) {
+        manualDone = true;
+        newestTrue = Math.max(
+          newestTrue,
+          watchedAt(target.id, ep.imdbSeason, target.episode) ?? Number.POSITIVE_INFINITY,
+        );
+      } else if (legacy === false) {
+        manualUnwatched = true;
+        const ts = unwatchedAt(target.id, ep.imdbSeason, target.episode);
+        if (ts != null) newestFalse = Math.max(newestFalse, ts);
+      }
     }
   }
   const startedAt = entry?.t ?? 0;
-  if (manualUnwatched) return { ratio: 0, watched: false, startedAt };
+  if (manualUnwatched && !(manualDone && newestTrue >= newestFalse))
+    return { ratio: 0, watched: false, startedAt };
   const durationMs = ep.length && ep.length > 0 ? ep.length * 60_000 : 0;
   const ratio = typeof entry?.pct === "number" && Number.isFinite(entry.pct)
     ? Math.min(1, Math.max(0, entry.pct))

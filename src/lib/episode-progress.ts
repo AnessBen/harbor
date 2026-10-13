@@ -1,4 +1,4 @@
-import { manualWatchedState } from "@/lib/manual-watched";
+import { manualWatchedState, unwatchedAt, watchedAt } from "@/lib/manual-watched";
 import { lastPlayedEpisode, readResumeEntry } from "@/lib/resume";
 
 export type EpisodeProgress = {
@@ -85,7 +85,23 @@ export function getEpisodeProgress(
   const manualSelf = manualWatchedState(resumeId, season, episode);
   const manualCanon = canonDiffers ? manualWatchedState(resumeId, canonS, canonE) : undefined;
   const manual = manualSelf !== undefined ? manualSelf : manualCanon;
-  if (manual === false) return { ratio: 0, watched: false, startedAt };
+  // Last write wins across the row's coordinates: a stale explicit unwatch on
+  // one id must not hide a fresh (or timestamp-less) watch on another.
+  let newestTrue = -1;
+  let newestFalse = -1;
+  let hasTrue = false;
+  for (const [s, e] of (canonDiffers ? [[season, episode], [canonS, canonE]] : [[season, episode]])) {
+    const st = manualWatchedState(resumeId, s, e);
+    if (st === true) {
+      hasTrue = true;
+      newestTrue = Math.max(newestTrue, watchedAt(resumeId, s, e) ?? Number.POSITIVE_INFINITY);
+    } else if (st === false) {
+      const ts = unwatchedAt(resumeId, s, e);
+      if (ts != null) newestFalse = Math.max(newestFalse, ts);
+    }
+  }
+  if (manual === false && !(hasTrue && newestTrue >= newestFalse))
+    return { ratio: 0, watched: false, startedAt };
 
   const durationMs = runtimeMin && runtimeMin > 0 ? runtimeMin * 60 * 1000 : 0;
   const pct = entry?.pct;
