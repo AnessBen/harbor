@@ -243,10 +243,10 @@ function CwAdvance({ art }: { art: PreviewArt | null }) {
     <>
       <div className="grid grid-cols-2 gap-2.5">
         <Panel tag={t("Off")}>
-          <CwCard ep="S1 · E4" meta={t("0m left")} progress={100} dim still={s[0]} />
+          <CwCard ep="S1 E4" meta={t("0m left")} progress={100} dim still={s[0]} />
         </Panel>
         <Panel tag={t("On")} active>
-          <CwCard ep="S1 · E5" meta={t("24m")} progress={6} still={s[1] ?? s[0]} />
+          <CwCard ep="S1 E5" meta={t("24m")} progress={6} still={s[1] ?? s[0]} />
         </Panel>
       </div>
       <Caption>{t("Finish an episode and the card jumps to the next one instead of sitting at 0m left.")}</Caption>
