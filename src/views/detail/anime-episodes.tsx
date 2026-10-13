@@ -1,3 +1,4 @@
+import { animeManualProgressCoordinates } from "@/lib/anime-progress";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { Meta } from "@/lib/cinemeta";
 import { scrollToDataEp } from "@/lib/episode-scroll";
@@ -348,9 +349,10 @@ export function AnimeEpisodes({
     const ep = displayEpisodes.find((ep) => ep.number === episode &&
       (ep.imdbSeason === 0 ? 0 : ep.id < 0 ? ep.imdbSeason ?? ep.seasonNumber : ep.seasonNumber) === season &&
       ep.sourceMetaId === sourceMetaId);
-    const target = ep ? animeEpisodeCoordinates(ep, meta.id, trackId, imdbId)[0] : null;
+    const coordinates = ep ? animeManualProgressCoordinates(ep, progressContext) : [];
+    const target = coordinates[0];
     setWatchedMenu({ x: e.clientX, y: e.clientY, season: target?.season ?? season,
-      episode: target?.episode ?? episode, watched, metaId: target?.id ?? sourceMetaId });
+      episode: target?.episode ?? episode, watched, coordinates, metaId: target?.id ?? sourceMetaId });
   };
 
   const { progressFor, nextUpNum, nextUpId, spoilerFor, allWatched } = useAnimeProgressMap({

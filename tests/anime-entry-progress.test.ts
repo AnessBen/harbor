@@ -1,3 +1,4 @@
+import * as manualProgress from "../src/lib/manual-progress-state.ts";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
@@ -29,6 +30,7 @@ function fixture() {
   const watchedAtStamps = new Map<string, number>();
   const unwatchedAtStamps = new Map<string, number>();
   const mocks: Record<string, any> = {
+    "@/lib/manual-progress-state": manualProgress,
     "@/lib/manual-watched": {
       manualWatchedState: (id: string, s: number, e: number) => manual.get(key(id, s, e)),
       watchedAt: (id: string, s: number, e: number) => watchedAtStamps.get(key(id, s, e)),
@@ -63,7 +65,7 @@ function fixture() {
     return h.render({ episodes: [ep], displayEpisodes: [ep], mwVersion: 0, resumeVersion: 0, settings: {},
       progressContext: { metaId, trackId: ep.sourceMetaId, traktWatched: new Set(), ...extra } }).progressFor(ep);
   };
-  return { ep, resume, manual, key, progress, mocks };
+  return { ep, resume, manual, key, progress, mocks, watchedAtStamps, unwatchedAtStamps };
 }
 
 test("CW native entry and search/catalog provider entry show the same mapped resume", () => {
@@ -188,6 +190,7 @@ test("manual bulk marking writes each cour and mapped provider row to its own co
   const f = fixture();
   const writes: any[][] = [], simkl: any[][] = [];
   const mocks = {
+    "@/lib/manual-progress-state": manualProgress,
     "@/lib/manual-watched": { recordManualWatchedMeta() {}, setManualWatchedMany: (...args: any[]) => writes.push(args) },
     "@/lib/anilist/sync": { syncAnimeProgress() {} },
     "@/lib/mal/sync": { syncMalProgress() {} },
@@ -234,4 +237,56 @@ test("closing playback retains the mapped position and actual player percentage"
   await h.render(args).closePlayer();
   assert.deepEqual(writes.map(([id, ms, s, e, , pct, , owner]) => [id, ms, s, e, pct, owner]),
     [[f.ep.sourceMetaId, 720000, 1, 1, 0.5, "one"], ["tt5607616", 720000, 2, 14, 0.5, "one"]]);
+});
+
+
+test("fresh unwatch defeats legacy watches, remote marks and completed resumes across entry paths", () => {
+  const f = fixture();
+  f.manual.set(f.key("tt5607616", 2, 14), true);
+  f.manual.set(f.key("mal:39587", 1, 1), true);
+  f.manual.set(f.key(f.ep.sourceMetaId, 2, 1), true);
+  f.manual.set(f.key(f.ep.sourceMetaId, 1, 1), false);
+  f.unwatchedAtStamps.set(f.key(f.ep.sourceMetaId, 1, 1), Date.now());
+  f.resume.set(f.key("tt5607616", 2, 14), { ms: 24 * 60000, t: 100 });
+  const extra = { entryAliases: new Map([[f.ep.sourceMetaId, ["mal:39587"]]]),
+    simklWatched: new Map([["tt5607616", new Set(["2:14"])]]) };
+  for (const id of [f.ep.sourceMetaId, "tt5607616", "tmdb:tv:65942"])
+    assert.deepEqual(f.progress(id, extra), { ratio: 0, watched: false, startedAt: 100 });
+});
+
+test("regular progress resolves both primary and IMDb aliases and canonical coordinates by date", () => {
+  const f = fixture();
+  const get = () => f.mocks["@/lib/episode-progress"].getEpisodeProgress(
+    "tmdb:tv:65942", 1, 1, 24, "tt5607616", new Set(["imdb:tt5607616:2:14"]),
+    undefined, undefined, undefined, undefined, 2, 14,
+  );
+  f.manual.set(f.key("tmdb:tv:65942", 1, 1), true);
+  f.manual.set(f.key("tt5607616", 2, 14), false);
+  f.unwatchedAtStamps.set(f.key("tt5607616", 2, 14), 2000);
+  assert.equal(get().watched, false);
+  f.watchedAtStamps.set(f.key("tmdb:tv:65942", 1, 1), 3000);
+  assert.equal(get().watched, true);
+  f.unwatchedAtStamps.set(f.key("tt5607616", 2, 14), 3000);
+  assert.equal(get().watched, false);
+});
+
+test("legacy manual conflicts have a deterministic unwatch preference", () => {
+  assert.equal(manualProgress.resolveManualProgress([{ state: true }, { state: false }]), false);
+  assert.equal(manualProgress.resolveManualProgress([{ state: false }, { state: true }]), false);
+  assert.equal(manualProgress.resolveManualProgress([{ state: true }]), true);
+  assert.equal(manualProgress.resolveManualProgress([{ state: undefined }]), undefined);
+});
+
+
+test("manual cleanup coordinates include entry aliases and historical keys without sharing their resumes", () => {
+  const f = fixture();
+  const context = { metaId: "tmdb:tv:65942", trackId: f.ep.sourceMetaId, traktWatched: new Set(),
+    entryAliases: new Map([[f.ep.sourceMetaId, ["mal:39587"]]]) };
+  const api = f.mocks["@/lib/anime-progress"];
+  const coordinates = api.animeManualProgressCoordinates(f.ep, context);
+  assert.ok(coordinates.some((c: any) => c.id === "mal:39587" && c.season === 1 && c.episode === 1));
+  assert.ok(coordinates.some((c: any) => c.id === f.ep.sourceMetaId && c.season === 2 && c.episode === 1));
+  assert.ok(coordinates.some((c: any) => c.id === "tmdb:tv:65942" && c.season === 2 && c.episode === 14));
+  assert.equal(api.animeProgressCoordinates(f.ep, context).some((c: any) =>
+    c.id === f.ep.sourceMetaId && c.season === 2 && c.episode === 1), false);
 });

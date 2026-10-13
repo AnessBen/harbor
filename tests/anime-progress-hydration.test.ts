@@ -1,3 +1,4 @@
+import * as manualProgress from "../src/lib/manual-progress-state.ts";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
@@ -65,6 +66,7 @@ async function fixture(overrides: Partial<KitsuEpisode> = {}, options: {
   const manual = new Map<string, boolean>();
   const key = (id: string, s: number, e: number) => `${id}|${s}:${e}`;
   const progressMocks = {
+    "@/lib/manual-progress-state": manualProgress,
     "@/lib/manual-watched": {
       manualWatchedState: (id: string, s: number, e: number) => manual.get(key(id, s, e)),
       watchedAt: (id: string, s: number, e: number) => undefined,

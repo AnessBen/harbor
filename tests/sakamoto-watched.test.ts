@@ -1,3 +1,4 @@
+import * as manualProgress from "../src/lib/manual-progress-state.ts";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
@@ -119,6 +120,7 @@ function progressFixture() {
   const watchedAtStamps = new Map<string, number>();
   const unwatchedAtStamps = new Map<string, number>();
   const mocks: Record<string, any> = {
+    "@/lib/manual-progress-state": manualProgress,
     "@/lib/manual-watched": {
       manualWatchedState: (id: string, s: number, e: number) => manual.get(key(id, s, e)),
       watchedAt: (id: string, s: number, e: number) => watchedAtStamps.get(key(id, s, e)),
@@ -173,7 +175,7 @@ test("Sakamoto Days: provider-built part-2 rows write provider coordinates the p
   assert.equal(f.progress.getAnimeEpisodeProgress(part2Native as any, context).watched, true);
 });
 
-test("Sakamoto Days: stale alias unwatch does not veto the watched marks", () => {
+test("Sakamoto Days: timestamped alias unwatch supersedes legacy watched marks", () => {
   const f = progressFixture();
   const context = { metaId: META_ID, trackId: TRACK_ID, imdbId: IMDB_ID, traktWatched: new Set() };
   // The bulk unwatch from the TMDB-view era: explicit false on every alias id.
@@ -183,7 +185,7 @@ test("Sakamoto Days: stale alias unwatch does not veto the watched marks", () =>
   }
   // The watched marks carry no timestamp (written before watchedAt existed).
   f.manual.set(f.key(TRACK_ID, 1, 5), true);
-  assert.equal(f.progress.getAnimeEpisodeProgress(part1Native as any, context).watched, true);
+  assert.equal(f.progress.getAnimeEpisodeProgress(part1Native as any, context).watched, false);
 });
 
 test("Sakamoto Days: a newer explicit unwatch still wins over an older watch", () => {

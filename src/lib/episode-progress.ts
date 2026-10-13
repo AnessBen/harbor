@@ -1,3 +1,4 @@
+import { resolveManualProgress } from "@/lib/manual-progress-state";
 import { manualWatchedState, unwatchedAt, watchedAt } from "@/lib/manual-watched";
 import { lastPlayedEpisode, readResumeEntry } from "@/lib/resume";
 
@@ -82,25 +83,17 @@ export function getEpisodeProgress(
   const canonS = traktSeason ?? season;
   const canonE = traktEpisode ?? episode;
   const canonDiffers = canonS !== season || canonE !== episode;
-  const manualSelf = manualWatchedState(resumeId, season, episode);
-  const manualCanon = canonDiffers ? manualWatchedState(resumeId, canonS, canonE) : undefined;
-  const manual = manualSelf !== undefined ? manualSelf : manualCanon;
-  // Last write wins across the row's coordinates: a stale explicit unwatch on
-  // one id must not hide a fresh (or timestamp-less) watch on another.
-  let newestTrue = -1;
-  let newestFalse = -1;
-  let hasTrue = false;
-  for (const [s, e] of (canonDiffers ? [[season, episode], [canonS, canonE]] : [[season, episode]])) {
-    const st = manualWatchedState(resumeId, s, e);
-    if (st === true) {
-      hasTrue = true;
-      newestTrue = Math.max(newestTrue, watchedAt(resumeId, s, e) ?? Number.POSITIVE_INFINITY);
-    } else if (st === false) {
-      const ts = unwatchedAt(resumeId, s, e);
-      if (ts != null) newestFalse = Math.max(newestFalse, ts);
-    }
-  }
-  if (manual === false && !(hasTrue && newestTrue >= newestFalse))
+  const coordinates = resumeIds.flatMap((id) =>
+    (canonDiffers ? [[season, episode], [canonS, canonE]] : [[season, episode]])
+      .map(([s, e]) => ({ id, season: s, episode: e })),
+  );
+  const manual = resolveManualProgress(
+    coordinates.map(({ id, season: s, episode: e }) => {
+      const state = manualWatchedState(id, s, e);
+      return { state, at: state === true ? watchedAt(id, s, e) : unwatchedAt(id, s, e) };
+    }),
+  );
+  if (manual === false)
     return { ratio: 0, watched: false, startedAt };
 
   const durationMs = runtimeMin && runtimeMin > 0 ? runtimeMin * 60 * 1000 : 0;
@@ -121,12 +114,7 @@ export function getEpisodeProgress(
   const anilistDone = anilistWatched ? anilistWatched.has(`${season}:${episode}`) : false;
   const simklDone = simklWatched ? simklWatched.has(`${season}:${episode}`) : false;
   const malDone = malWatched ? malWatched.has(`${season}:${episode}`) : false;
-  const manualDone = resumeIds.some(
-    (id) =>
-      manualWatchedState(id, season, episode) === true ||
-      (canonDiffers && manualWatchedState(id, canonS, canonE) === true),
-  );
-  const done = manualDone || traktDone || stremioDone || anilistDone || simklDone || malDone;
+  const done = manual === true || traktDone || stremioDone || anilistDone || simklDone || malDone;
 
   return {
     ratio: done ? 1 : ratio,

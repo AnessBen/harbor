@@ -1,3 +1,4 @@
+import type { EpisodeCoordinate } from "@/lib/anime-episode-identity";
 import { Ban, Check, Eye, EyeOff } from "lucide-react";
 import { useEffect } from "react";
 import { createPortal } from "react-dom";
@@ -22,6 +23,7 @@ export type WatchedMenuTarget = {
   season: number;
   episode: number;
   watched: boolean;
+  coordinates?: EpisodeCoordinate[];
   metaId?: string;
 };
 
@@ -76,8 +78,13 @@ export function EpisodeWatchedMenu({
   const started = !target.watched && readResumeEntry(metaId, target.season, target.episode) != null;
 
   const unmark = () => {
-    setManualWatched(metaId, target.season, target.episode, false);
-    clearResume(metaId, target.season, target.episode);
+    const coordinates = target.coordinates?.length
+      ? target.coordinates
+      : [{ id: metaId, season: target.season, episode: target.episode }];
+    for (const coordinate of coordinates) {
+      setManualWatched(coordinate.id, coordinate.season, coordinate.episode, false);
+      clearResume(coordinate.id, coordinate.season, coordinate.episode);
+    }
     if (showIds) void unmarkEpisodeWatched(showIds, target.season, target.episode);
     onClose();
   };
