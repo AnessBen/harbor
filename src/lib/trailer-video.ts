@@ -19,6 +19,7 @@ function parkNode(): HTMLElement {
 function node(): HTMLVideoElement {
   if (element) return element;
   const video = document.createElement("video");
+  video.volume = 1;
   video.muted = true;
   video.loop = true;
   video.playsInline = true;
@@ -53,6 +54,8 @@ export function claimTrailerVideo(token: object, mount: HTMLElement): HTMLVideoE
   owner = token;
   const video = node();
   video.style.opacity = "0";
+  video.volume = 1;
+  video.muted = true;
   if (video.parentElement !== mount) mount.appendChild(video);
   return video;
 }
@@ -67,6 +70,8 @@ export function releaseTrailerVideo(token: object): void {
   } catch {
     void 0;
   }
+  video.volume = 1;
+  video.muted = true;
   video.style.opacity = "0";
   parkNode().appendChild(video);
   scheduleRelease();

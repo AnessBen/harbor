@@ -223,6 +223,9 @@ export const Hero = memo(function Hero({
     if (!v) return;
     v.muted = muted || !audioHero;
     v.volume = audioHero && !muted ? Math.max(0, Math.min(1, (visibleRatio - 0.2) / 0.7)) : 0;
+    return () => {
+      v.volume = 1;
+    };
   }, [muted, audioHero, visibleRatio, trailerInfo]);
 
   useEffect(() => {

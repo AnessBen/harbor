@@ -51,6 +51,7 @@ export function DetailHeroTrailer({
     if (!ready) return;
 
     let cancelled = false;
+    v.volume = 1;
     v.muted = muted;
     v.play().catch(() => {
       if (cancelled) return;
