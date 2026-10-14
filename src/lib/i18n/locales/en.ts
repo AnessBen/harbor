@@ -1,4 +1,5 @@
 import playOrders from "./en/play-orders";
+import animeDub from "./en/anime-dub";
 import gameRomLibrary from "./en/game-rom-library";
 import gameNotes from "./en/game-notes";
 import gameLibraryRefinements from "./en/game-library-refinements";
@@ -85,6 +86,7 @@ import criticism from "./en/criticism";
 import soundtrack from "./en/soundtrack";
 
 const en: Record<string, string> = {
+  ...animeDub,
   "collections.feed.more": "Load more collections",
   "collections.feed.error": "Couldn't load collections. Try again.",
   ...gamePokemon,

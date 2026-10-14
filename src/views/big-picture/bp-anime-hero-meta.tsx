@@ -1,16 +1,11 @@
 import { Check } from "lucide-react";
-import { useEffect, useSyncExternalStore, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import { MalLogo } from "@/components/icons/mal-logo";
 import { findTopAward, parseAwardYear, type AwardWin } from "@/lib/anime-awards";
 import { useAwardMasterVersion } from "@/lib/anime-awards-source";
 import type { Meta } from "@/lib/cinemeta";
 import { useMalScore } from "@/lib/mal-rating";
-import {
-  animeHasDub,
-  dubSetReady,
-  ensureDubSet,
-  subscribeDubSet,
-} from "@/lib/providers/anime-dub-sub";
+import { useAnimeDubBadge } from "@/lib/use-anime-dub-badge";
 import { useSettings } from "@/lib/settings";
 import type { LibraryItem } from "@/lib/stremio";
 import { bpAwardShortLabel } from "./bp-card-marks";
@@ -55,16 +50,6 @@ function bpMinutesLeft(item: LibraryItem, t: T): string {
   if (dur <= 0) return "";
   const n = Math.round((dur - off) / 60000);
   return n >= 1 ? t("{n} min left", { n }) : "";
-}
-
-function useBpHeroDub(metaId: string | undefined): boolean {
-  const { settings } = useSettings();
-  const want = settings.showDubBadge && Boolean(metaId);
-  const ready = useSyncExternalStore(subscribeDubSet, dubSetReady);
-  useEffect(() => {
-    if (want) ensureDubSet();
-  }, [want]);
-  return want && ready && animeHasDub(metaId ?? "");
 }
 
 function bpAwardPill(win: AwardWin, t: T): string {
@@ -135,8 +120,9 @@ export function BpAnimeHeroMeta({
 
 export function BpAnimeHeroAvailability({ hero, fade }: { hero: Meta | null; fade: string }) {
   const t = useBpT();
-  const dub = useBpHeroDub(hero?.id);
-  if (!dub) return null;
+  const { settings } = useSettings();
+  const dubLabel = useAnimeDubBadge(hero, settings.showDubBadge && Boolean(hero), t);
+  if (!dubLabel) return null;
 
   return (
     <div
@@ -145,7 +131,7 @@ export function BpAnimeHeroAvailability({ hero, fade }: { hero: Meta | null; fad
       className={`mt-[10px] flex items-center gap-[7px] text-[12.5px] font-medium text-[color-mix(in_oklab,var(--color-ink)_68%,transparent)] ${fade}`}
     >
       <Check className="h-[13px] w-[13px] shrink-0" strokeWidth={3} />
-      {t("Sub and Dub")}
+      <span title={dubLabel} aria-label={dubLabel} className="min-w-0 truncate">{dubLabel}</span>
     </div>
   );
 }

@@ -19,6 +19,7 @@ import kitsuLogo from "@/assets/addon-logos/anime-kitsu.png";
 import omdbLogo from "@/assets/addon-logos/omdb.png";
 import rpdbLogo from "@/assets/addon-logos/rpdb.png";
 import mdblistLogo from "@/assets/addon-logos/mdblist.png";
+import mydublistLogo from "@/assets/service-logos/mydublist.png";
 import imdbLogo from "@/assets/service-logos/imdb.png";
 import rtLogo from "@/assets/service-logos/rottentomatoes.png";
 import metacriticLogo from "@/assets/service-logos/metacritic.png";
@@ -282,6 +283,12 @@ const METADATA: Credit[] = [
   { name: "Gutendex", blurb: "Searchable catalog for Project Gutenberg books.", url: "https://gutendex.com" },
   { name: "IGDB", blurb: "Game metadata, artwork and release dates.", url: "https://www.igdb.com", logo: igdbLogo },
   { name: "ESPN", blurb: "Live scores, schedules and standings.", url: "https://www.espn.com", logo: espnLogo },
+  {
+    name: "MyDubList",
+    blurb: "Dub data © MyDubList. Harbor derives English dub and partial-dub labels from this dataset.",
+    url: "https://mydublist.com",
+    logo: mydublistLogo,
+  },
 ];
 
 const TRACKERS: Credit[] = [

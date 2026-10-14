@@ -140,7 +140,7 @@ export function CardsTab() {
         <ToggleRow
           label={t("Show DUB badge on anime cards")}
           leading={<Captions size={18} strokeWidth={2} />}
-          sub={t("Flags anime with an English dub. Also tags dub / sub / dual on stream sources.")}
+          sub={t("Shows English dub availability from MyDubList, including partial dubs, and upcoming or ongoing dub schedules from AniSchedule. Also tags dub / sub / dual on stream sources.")}
           value={settings.showDubBadge}
           onChange={(v) => update({ showDubBadge: v })}
         />

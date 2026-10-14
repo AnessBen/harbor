@@ -8354,6 +8354,11 @@ const SETTINGS_OPTIONS: SettingsOption[] = [
       "dual audio",
       "dubbed anime",
       "dub sub tag",
+      "partial dub",
+      "dub upcoming",
+      "dubbing",
+      "mydublist",
+      "anischedule",
     ],
   },
   {

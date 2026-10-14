@@ -1,16 +1,12 @@
-import { useEffect, useMemo, useSyncExternalStore } from "react";
+import { useMemo } from "react";
 import { CR_CATEGORY_SHORT, shortCategory } from "@/lib/anime-award-labels";
 import { findTopAward, parseAwardYear, type AwardWin } from "@/lib/anime-awards";
 import { useAwardMasterVersion } from "@/lib/anime-awards-source";
 import { mergeBundledAwards } from "@/lib/awards-history";
 import { useBundledAwardsVersion } from "@/lib/use-bundled-awards";
 import type { Meta } from "@/lib/cinemeta";
-import {
-  animeHasDub,
-  dubSetReady,
-  ensureDubSet,
-  subscribeDubSet,
-} from "@/lib/providers/anime-dub-sub";
+import { useAnimeDubBadge } from "@/lib/use-anime-dub-badge";
+import { isDubId } from "@/lib/providers/anime-dub-status";
 import { useTmdbImdbId } from "@/lib/providers/tmdb";
 import { awardSummary, type AwardType } from "@/lib/providers/wikidata";
 import { useSettings } from "@/lib/settings";
@@ -42,16 +38,6 @@ function isRerun(meta: Meta): boolean {
   const released = Date.parse(meta.releaseDate);
   if (Number.isNaN(released)) return false;
   return (Date.now() - released) / (1000 * 60 * 60 * 24 * 30.44) > 9;
-}
-
-function useDub(metaId: string, isAnime: boolean): boolean {
-  const { settings } = useSettings();
-  const want = settings.showDubBadge && isAnime;
-  const ready = useSyncExternalStore(subscribeDubSet, dubSetReady);
-  useEffect(() => {
-    if (want) ensureDubSet();
-  }, [want]);
-  return want && ready && animeHasDub(metaId);
 }
 
 // Bundled awards only. useClassicAwardWin runs two Wikidata SPARQL queries per
@@ -86,7 +72,7 @@ export function BpCardMarks({ meta }: { meta: Meta }) {
   const t = useBpT();
   useAwardMasterVersion();
   const isAnime = BP_ANIME_ID.test(meta.id);
-  const hasDub = useDub(meta.id, isAnime);
+  const dubLabel = useAnimeDubBadge(meta, settings.showDubBadge && (isAnime || isDubId(meta.malId)), t);
   // Same alternate-id match the other four positions get from useBpCardState. A
   // watchlist entry is often stored under the imdb id while the tile carries a
   // tmdb one. useTmdbImdbId is a cache read and a subscription, never a fetch.
@@ -112,8 +98,8 @@ export function BpCardMarks({ meta }: { meta: Meta }) {
     ? `${animeWin.year} ${bpAwardShortLabel(animeWin, t)}`
     : classic
       ? bpClassicAwardLabel(classic.type, classic.wins, t)
-      : hasDub
-        ? t("DUB")
+      : dubLabel
+        ? dubLabel
         : isNew
           ? t("New")
           : rerun
@@ -131,7 +117,7 @@ export function BpCardMarks({ meta }: { meta: Meta }) {
           relying only on its own drop shadow, which is exactly what disappears
           over bright key art, and an unlabelled mark made a three-Oscar film and
           a one-win indie identical where desktop distinguishes them. */}
-      {badge && <span className={BP_MARK_CHIP}>{badge}</span>}
+      {badge && <span title={badge} aria-label={badge} className={`${BP_MARK_CHIP} pointer-events-auto`}>{badge}</span>}
       {bookmark && <BpWatchlistMark />}
     </span>
   );

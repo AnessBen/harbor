@@ -1,5 +1,8 @@
+import animeDub from "./en/anime-dub";
+
 // Newly introduced UI copy remains usable until each locale provides an override.
 const uiFallback: Record<string, string> = {
+  ...animeDub,
   "Big Picture display": "Big Picture display",
   "Which monitor Big Picture opens on at startup.":
     "Which monitor Big Picture opens on at startup.",

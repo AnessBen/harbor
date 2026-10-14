@@ -1,7 +1,8 @@
 import { ScoreStack, type CardBadge } from "./card-score-stack";
 import { Bookmark, Check, RefreshCcw } from "lucide-react";
-import { memo, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { animeHasDub, dubSetReady, ensureDubSet, subscribeDubSet } from "@/lib/providers/anime-dub-sub";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
+import { useAnimeDubBadge } from "@/lib/use-anime-dub-badge";
+import { isDubId } from "@/lib/providers/anime-dub-status";
 import { awardSourceMeta, findAnyAwardWins, findTopAward, parseAwardYear } from "@/lib/anime-awards";
 import { resolveAwardIcon, useAwardPacks } from "@/lib/award-icons";
 import { shortCategory } from "@/lib/anime-award-labels";
@@ -126,11 +127,8 @@ const PosterCard = memo(function PosterCard({
   const badgeFade = inCardHover !== "none" || activeCustom ? "transition-opacity duration-150 group-hover:opacity-0 group-focus-within:opacity-0" : "";
   const t = useT();
   const isAnimeCardId = /^(kitsu|mal|anilist|anidb|simkl):/.test(meta.id);
-  const dubReady = useSyncExternalStore(subscribeDubSet, dubSetReady);
-  useEffect(() => {
-    if (settings.showDubBadge && isAnimeCardId) ensureDubSet();
-  }, [isAnimeCardId, settings.showDubBadge]);
-  const hasDub = settings.showDubBadge && isAnimeCardId && dubReady && animeHasDub(meta.id);
+  const dubLabel = useAnimeDubBadge(meta, settings.showDubBadge && (isAnimeCardId || isDubId(meta.malId)), t);
+  const hasDub = Boolean(dubLabel);
   useTop10Version();
   const showTop10 = settings.top10Ribbon && isTop10(meta.id, meta.name);
   const inCinema = isInCinema(meta);
@@ -645,8 +643,8 @@ const PosterCard = memo(function PosterCard({
         <div className={badgeFade}>
         {showTop10 && <TopTenRibbon side={settings.top10RibbonSide} />}
         {hasDub && (
-          <span className={`pointer-events-none absolute start-2 ${stackTop(0, ribbonLeft)} z-10 rounded-md bg-accent/90 px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-[0.14em] text-canvas ring-1 ring-black/10`}>
-            DUB
+          <span title={dubLabel} aria-label={dubLabel} className={`absolute start-2 ${stackTop(0, ribbonLeft)} z-10 max-w-[calc(100%-48px)] truncate rounded-md bg-accent/90 px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-[0.14em] text-canvas ring-1 ring-black/10`}>
+            {dubLabel}
           </span>
         )}
         {settings.showCardBadges && (
