@@ -43,24 +43,27 @@ export function DetailHeroTrailer({
 
   useEffect(() => {
     const v = video.current;
-    if (v) v.muted = muted;
-  }, [muted, ready, video]);
-
-  useEffect(() => {
-    const v = video.current;
     if (!v) return;
-    if (wantsPlayback && ready) {
-      v.play().catch(() => {
-        if (!v.muted) {
-          v.muted = true;
-          setMuted(true);
-          v.play().catch(() => {});
-        }
-      });
-    } else if (!wantsPlayback) {
+    if (!wantsPlayback) {
       v.pause();
+      return;
     }
-  }, [wantsPlayback, ready, video]);
+    if (!ready) return;
+
+    let cancelled = false;
+    v.muted = muted;
+    v.play().catch(() => {
+      if (cancelled) return;
+      if (!v.muted) {
+        v.muted = true;
+        setMuted(true);
+        v.play().catch(() => { });
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [wantsPlayback, muted, ready, video]);
 
   return (
     <>

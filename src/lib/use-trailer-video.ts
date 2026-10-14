@@ -31,16 +31,19 @@ export function useTrailerVideo(opts: {
     node.className = className;
     node.loop = loop;
     node.playsInline = true;
+    const handleReady = () => {
+      node.style.opacity = "";
+      setReady(true);
+    };
     const holds = node.getAttribute("src") === src;
-    setReady(holds && node.readyState >= 3);
-    const onCanPlay = () => setReady(true);
+    if (holds && node.readyState >= 3) handleReady();
     const onFinish = () => finish.current?.();
-    node.addEventListener("canplay", onCanPlay);
+    node.addEventListener("canplay", handleReady);
     node.addEventListener("ended", onFinish);
     const timer = window.setTimeout(() => {
       if (video.current !== node || !trailerVideoHeldBy(mine)) return;
       if (node.getAttribute("src") === src) {
-        if (node.readyState >= 3) setReady(true);
+        if (node.readyState >= 3) handleReady();
         return;
       }
       node.preload = "auto";
@@ -48,7 +51,7 @@ export function useTrailerVideo(opts: {
     }, SRC_DELAY_MS);
     return () => {
       window.clearTimeout(timer);
-      node.removeEventListener("canplay", onCanPlay);
+      node.removeEventListener("canplay", handleReady);
       node.removeEventListener("ended", onFinish);
       video.current = null;
       setReady(false);

@@ -26,7 +26,7 @@ import { peekCachedLogo, resolveLogo } from "@/lib/logo";
 import { useSettings } from "@/lib/settings";
 import { useTitleLogo } from "@/lib/title-logo";
 import { useLocalizedOverview } from "@/lib/use-localized-overview";
-import { fetchTrailer, prefetchTrailer, trailerSrc, type TrailerInfo } from "@/lib/trailer";
+import { fetchTrailer, prefetchTrailer, resolveTrailerQuality, trailerSrc, type TrailerInfo } from "@/lib/trailer";
 import { useView } from "@/lib/view";
 import { useProfiles } from "@/lib/profiles";
 import {
@@ -115,7 +115,7 @@ export const Hero = memo(function Hero({
     setTrailerCandidates([]);
     setTrailerInfo(null);
     setEnded(getHeroEnded(meta.id));
-  }, [meta.id]);
+  }, [meta.id, settings.trailerQuality]);
 
   useEffect(() => {
     if (!playTrailer || trailerCandidates.length > 0) return;
@@ -135,13 +135,13 @@ export const Hero = memo(function Hero({
       .then((ids) => {
         if (cancelled) return;
         setTrailerCandidates(ids);
-        if (ids[0]) prefetchTrailer(ids[0], "360p");
+        if (ids[0]) prefetchTrailer(ids[0], resolveTrailerQuality(settings.trailerQuality));
       })
       .catch(() => {});
     return () => {
       cancelled = true;
     };
-  }, [meta.id, meta.type, settings.tmdbKey, playTrailer, trailerCandidates.length]);
+  }, [meta.id, meta.type, settings.tmdbKey, settings.trailerQuality, playTrailer, trailerCandidates.length]);
 
   useEffect(() => {
     // peekCachedLogo, not meta.logo: when the image language is not English the
@@ -206,13 +206,13 @@ export const Hero = memo(function Hero({
   useEffect(() => {
     if (!playTrailer || trailerCandidates.length === 0 || trailerInfo) return;
     let cancelled = false;
-    fetchTrailer(trailerCandidates[0], "360p").then((info) => {
+    fetchTrailer(trailerCandidates[0], resolveTrailerQuality(settings.trailerQuality)).then((info) => {
       if (!cancelled && info) setTrailerInfo(info);
     });
     return () => {
       cancelled = true;
     };
-  }, [playTrailer, trailerCandidates, trailerInfo]);
+  }, [playTrailer, trailerCandidates, trailerInfo, settings.trailerQuality]);
 
   useEffect(() => {
     syncHeroMutedFromSetting(settings.heroTrailerAudio);

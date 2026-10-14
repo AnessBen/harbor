@@ -10,7 +10,7 @@ import { useSettings } from "@/lib/settings";
 import { useTitleLogo } from "@/lib/title-logo";
 import { useLocalizedOverview } from "@/lib/use-localized-overview";
 import { smartPlayEpisode } from "@/lib/smart-play";
-import { fetchTrailer, prefetchTrailer, trailerSrc, type TrailerInfo } from "@/lib/trailer";
+import { fetchTrailer, prefetchTrailer, resolveTrailerQuality, trailerSrc, type TrailerInfo } from "@/lib/trailer";
 import { useT } from "@/lib/i18n";
 import { useView } from "@/lib/view";
 import { observe, usePageVisible } from "@/lib/visibility";
@@ -279,24 +279,24 @@ function CinemaSlide({
       .then((ids) => {
         if (cancelled) return;
         setTrailerCandidates(ids);
-        if (ids[0]) prefetchTrailer(ids[0], "360p");
+        if (ids[0]) prefetchTrailer(ids[0], resolveTrailerQuality(settings.trailerQuality));
       })
       .catch(() => {});
     return () => {
       cancelled = true;
     };
-  }, [active, meta.id, meta.type, settings.tmdbKey, settings.heroTrailers]);
+  }, [active, meta.id, meta.type, settings.tmdbKey, settings.heroTrailers, settings.trailerQuality]);
 
   useEffect(() => {
     if (!active || !settings.heroTrailers || trailerCandidates.length === 0 || trailerInfo) return;
     let cancelled = false;
-    fetchTrailer(trailerCandidates[0], "360p").then((info) => {
+    fetchTrailer(trailerCandidates[0], resolveTrailerQuality(settings.trailerQuality)).then((info) => {
       if (!cancelled && info) setTrailerInfo(info);
     });
     return () => {
       cancelled = true;
     };
-  }, [active, trailerCandidates, trailerInfo, settings.heroTrailers]);
+  }, [active, trailerCandidates, trailerInfo, settings.heroTrailers, settings.trailerQuality]);
 
   useEffect(() => {
     const v = videoRef.current;
